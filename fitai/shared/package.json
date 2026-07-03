@@ -1,0 +1,8 @@
+{
+  "name": "fitai-shared",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}
