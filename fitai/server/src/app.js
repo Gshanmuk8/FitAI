@@ -21,6 +21,11 @@ const { pool } = require('./config/db');
 
 const app = express();
 
+// Render (and most PaaS) put exactly one proxy in front of the app. Trust
+// it so req.ip is the real client IP — express-rate-limit v7 refuses to
+// run when X-Forwarded-For arrives untrusted, and would 500 every request.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 // Development default: allow all origins (Vite dev server, local tools).
 // Production: set CORS_ORIGINS=https://app.example.com[,https://…] to lock

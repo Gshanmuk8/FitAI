@@ -1,0 +1,37 @@
+# Render Blueprint — deploy with New + > Blueprint in the Render dashboard.
+# The project lives in the fitai/ subfolder of this repo, so rootDir points
+# there and all paths below are relative to it.
+services:
+  - type: web
+    name: fitai-server
+    runtime: docker
+    rootDir: fitai
+    dockerfilePath: ./server/Dockerfile
+    # Build context must be the workspace ROOT (fitai/), not server/ —
+    # the image needs shared/ and the root package-lock.json.
+    dockerContext: .
+    plan: free
+    # Pick the region closest to your Supabase project.
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      # Secrets — Render prompts for these on first Blueprint sync.
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      # Comma-separated allowed browser origins, e.g. your Vercel URL:
+      # https://fitai.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Optional — leave blank to run on the rules engine only. Add more
+      # provider keys (OPENAI_API_KEY, GROQ_API_KEY, ...) in the dashboard
+      # as needed.
+      - key: GEMINI_API_KEY
+        sync: false
