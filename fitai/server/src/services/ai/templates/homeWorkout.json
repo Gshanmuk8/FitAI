@@ -1,0 +1,12 @@
+{
+  "goal": "maintain",
+  "days": [
+    { "name": "Bodyweight A", "exercises": [
+      { "name": "Squat", "sets": 4, "reps": 15, "restSeconds": 45 },
+      { "name": "Push-up", "sets": 4, "reps": 12, "restSeconds": 45 },
+      { "name": "Glute Bridge", "sets": 3, "reps": 15, "restSeconds": 45 },
+      { "name": "Mountain Climbers", "sets": 3, "reps": 20, "restSeconds": 30 }
+    ]}
+  ],
+  "notes": "No-equipment fallback template."
+}

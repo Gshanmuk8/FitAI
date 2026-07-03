@@ -1,0 +1,123 @@
+/**
+ * Plan assembly. The AI (or fallback template) contributes only the
+ * workout days; everything numeric that matters — diet targets, the goal
+ * timeframe, roadmap milestones — is layered on deterministically here, so
+ * those values are exact formula output regardless of which provider (if
+ * any) produced the training split.
+ */
+const { generatePlan } = require('../ai/aiOrchestrator');
+const { buildPlanGenerationPrompt } = require('../../../../shared/prompts/templates');
+const { buildDietTargets } = require('../../../../shared/calculations/dietTargets');
+const { resolveTimeframeWeeks, expectedWeightAt, expectedWeeklyRateKg } = require('../../../../shared/calculations/paceTracking');
+const { getExercisePreferences } = require('../memory/memoryRetriever');
+const { upsertUserState } = require('../../models/UserState');
+const logger = require('../../utils/logger');
+
+/**
+ * profile: { age, heightCm, weightKg, targetWeightKg, sex, goal,
+ *            activityLevel, injuries[], equipment, dietaryRestrictions,
+ *            requestedTimeframeWeeks, userId }
+ * Returns the full plan object stored in users_profile.ai_plan.
+ */
+async function generateUserPlan(profile) {
+  // Behavior memory feeds generation: exercises the user repeatedly
+  // removed are named in the prompt as "avoid".
+  const prefs = profile.userId
+    ? await getExercisePreferences(profile.userId)
+    : { disliked: [], favorite: [] };
+
+  const timeframe = resolveTimeframeWeeks({
+    requestedWeeks: profile.requestedTimeframeWeeks,
+    weightKg: profile.weightKg,
+    targetWeightKg: profile.targetWeightKg,
+    goal: profile.goal,
+  });
+
+  const promptProfile = {
+    ...profile,
+    timeframeWeeks: timeframe.weeks,
+    dislikedExercises: prefs.disliked,
+    favoriteExercises: prefs.favorite,
+  };
+  const prompt = buildPlanGenerationPrompt(promptProfile);
+  const aiPlan = await generatePlan({ profile: promptProfile, prompt });
+
+  return attachDeterministicLayers(aiPlan, profile, timeframe);
+}
+
+function attachDeterministicLayers(plan, profile, timeframe) {
+  let diet = null;
+  try {
+    diet = buildDietTargets(profile);
+  } catch (err) {
+    // Missing sex/activity data on legacy profiles — plan still ships,
+    // just without the diet layer rather than failing onboarding.
+    logger.warn('diet targets unavailable for profile', { error: err.message });
+  }
+
+  return {
+    ...plan,
+    diet,
+    timeframe: {
+      weeks: timeframe.weeks,
+      requestedWeeks: timeframe.requestedWeeks,
+      adjusted: timeframe.adjusted,
+      adjustedReason: timeframe.reason,
+      expectedWeeklyRateKg: expectedWeeklyRateKg(profile.goal),
+    },
+    roadmap: buildRoadmap(profile, timeframe.weeks),
+  };
+}
+
+// Checkpoints every 4 weeks — the "realistic roadmap" shown on the
+// progress card. Pure interpolation; empty when the goal has no weight axis.
+function buildRoadmap(profile, timeframeWeeks) {
+  if (!profile.weightKg || !profile.targetWeightKg) return [];
+  const checkpoints = [];
+  for (let week = 4; week <= timeframeWeeks; week += 4) {
+    checkpoints.push({
+      week,
+      expectedWeightKg: expectedWeightAt({
+        startWeightKg: profile.weightKg,
+        targetWeightKg: profile.targetWeightKg,
+        timeframeWeeks,
+        weeksElapsed: week,
+      }),
+    });
+  }
+  return checkpoints;
+}
+
+// One canonical mapping from a users_profile row to plan-generation input —
+// onboarding and regeneration both use this, so they can never drift apart.
+function generationInputFromProfileRow(userId, profile) {
+  return {
+    userId,
+    age: profile.age,
+    heightCm: profile.height_cm != null ? Number(profile.height_cm) : null,
+    weightKg: profile.weight_kg != null ? Number(profile.weight_kg) : null,
+    targetWeightKg: profile.target_weight_kg != null ? Number(profile.target_weight_kg) : null,
+    sex: profile.sex || 'other',
+    goal: profile.goal,
+    activityLevel: profile.activity_level,
+    injuries: profile.injuries ? profile.injuries.split(',').map((s) => s.trim()).filter(Boolean) : [],
+    equipment: profile.gym_availability || 'gym',
+    dietaryRestrictions: profile.dietary_restrictions,
+    requestedTimeframeWeeks: profile.timeframe_weeks || undefined,
+  };
+}
+
+// Keep the semi-permanent memory tier in sync with whatever plan is live.
+async function syncUserState(userId, plan, goal) {
+  try {
+    await upsertUserState(userId, {
+      currentProgram: plan.days ? `${plan.goal || goal}: ${plan.days.length}-day split` : null,
+      calorieTarget: plan.diet?.calorieTarget ?? null,
+      currentPhase: goal,
+    });
+  } catch (err) {
+    logger.error('user_state sync failed', { error: err.message });
+  }
+}
+
+module.exports = { generateUserPlan, attachDeterministicLayers, syncUserState, generationInputFromProfileRow };

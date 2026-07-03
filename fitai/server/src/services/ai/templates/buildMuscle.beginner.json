@@ -1,0 +1,18 @@
+{
+  "goal": "build_muscle",
+  "days": [
+    { "name": "Upper Body", "exercises": [
+      { "name": "Bench Press", "sets": 4, "reps": 8, "restSeconds": 90 },
+      { "name": "Seated Row", "sets": 4, "reps": 10, "restSeconds": 90 },
+      { "name": "Overhead Press", "sets": 3, "reps": 10, "restSeconds": 75 },
+      { "name": "Bicep Curl", "sets": 3, "reps": 12, "restSeconds": 60 }
+    ]},
+    { "name": "Lower Body", "exercises": [
+      { "name": "Back Squat", "sets": 4, "reps": 8, "restSeconds": 120 },
+      { "name": "Romanian Deadlift", "sets": 4, "reps": 10, "restSeconds": 90 },
+      { "name": "Leg Press", "sets": 3, "reps": 12, "restSeconds": 90 },
+      { "name": "Calf Raise", "sets": 3, "reps": 15, "restSeconds": 45 }
+    ]}
+  ],
+  "notes": "Generic 2-day upper/lower split for hypertrophy."
+}

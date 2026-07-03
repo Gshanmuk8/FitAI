@@ -1,0 +1,246 @@
+/**
+ * End-to-end product smoke test. Boots a REAL embedded Postgres, runs all
+ * four migrations from scratch, then walks the entire user journey through
+ * the actual service layer with ZERO AI keys configured:
+ *
+ *   onboarding -> plan (fallback template + deterministic diet/timeframe)
+ *   -> today's checklist from the plan -> meal diary + protein auto-check
+ *   -> weigh-ins -> progress report (pace, snapshot, achievements)
+ *   -> plan edit + preference learning + behavior memory
+ *   -> weekly review -> tutor fallback -> HTTP /health + auth rejection.
+ *
+ * Run: node scripts/smoke-test.js   (dev-only; uses devDependency embedded-postgres)
+ */
+const fs = require('fs');
+const path = require('path');
+const assert = require('assert');
+
+const PORT = 54329;
+const DB_NAME = 'fitai_smoke';
+const DATA_DIR = path.join(__dirname, '..', '.pgdata-smoke');
+
+// Env must be set BEFORE any server module is required.
+process.env.DATABASE_URL = `postgresql://postgres:password@localhost:${PORT}/${DB_NAME}`;
+process.env.SUPABASE_URL = 'https://your-project.supabase.co';
+process.env.SUPABASE_SERVICE_KEY = 'your-service-role-key';
+process.env.GEMINI_API_KEY = 'your-gemini-api-key'; // placeholder = unconfigured on purpose
+process.env.NODE_ENV = 'development';
+
+let passed = 0;
+function step(name) {
+  passed += 1;
+  console.log(`  ✔ ${String(passed).padStart(2)}. ${name}`);
+}
+
+async function main() {
+  const EmbeddedPostgres = require('embedded-postgres');
+  const PgClass = EmbeddedPostgres.default || EmbeddedPostgres;
+  const epg = new PgClass({
+    databaseDir: DATA_DIR,
+    user: 'postgres',
+    password: 'password',
+    port: PORT,
+    persistent: false,
+  });
+
+  console.log('Starting embedded Postgres…');
+  await epg.initialise();
+  await epg.start();
+  await epg.createDatabase(DB_NAME);
+
+  try {
+    await run(epg);
+    console.log(`\nSMOKE TEST PASSED — ${passed} steps green.`);
+  } finally {
+    const { pool } = require('../server/src/config/db');
+    await pool.end().catch(() => {});
+    await epg.stop().catch(() => {});
+    fs.rmSync(DATA_DIR, { recursive: true, force: true });
+  }
+}
+
+async function run(epg) {
+  const { pool } = require('../server/src/config/db');
+
+  // ---- migrations from scratch ----
+  const migrationsDir = path.join(__dirname, '..', 'server', 'migrations');
+  for (const file of fs.readdirSync(migrationsDir).sort()) {
+    await pool.query(fs.readFileSync(path.join(migrationsDir, file), 'utf8'));
+  }
+  step(`all ${fs.readdirSync(migrationsDir).length} migrations apply cleanly on an empty database`);
+
+  // ---- a user signs up (auth shim stands in for Supabase auth) ----
+  const { rows: [user] } = await pool.query(
+    `INSERT INTO auth.users (email) VALUES ('smoke@test.local') RETURNING id`
+  );
+  const userId = user.id;
+  step('user created');
+
+  // ---- onboarding ----
+  const { upsertProfile, savePlan, getProfile } = require('../server/src/models/UserProfile');
+  const { generateUserPlan, syncUserState, generationInputFromProfileRow } = require('../server/src/services/workout/planService');
+
+  const profileRow = await upsertProfile(userId, {
+    age: 30, heightCm: 180, weightKg: 90, targetWeightKg: 80,
+    goal: 'lose_fat', activityLevel: 'moderately_active',
+    injuries: '', dietaryRestrictions: 'vegetarian',
+    gymAvailability: 'gym', sex: 'male', timeframeWeeks: 6, // unsafely fast on purpose
+  });
+  const plan = await generateUserPlan(generationInputFromProfileRow(userId, profileRow));
+  await savePlan(userId, plan, { restartClock: true });
+  await syncUserState(userId, plan, 'lose_fat');
+
+  assert.ok(plan.days?.length >= 1, 'plan has workout days');
+  assert.equal(plan.source, 'fallback', 'keyless -> template plan');
+  assert.equal(plan.timeframe.adjusted, true, 'unsafe 6-week request was clamped');
+  assert.equal(plan.timeframe.weeks, 10, '10kg at max 1kg/wk -> 10 weeks');
+  // BMR(male,30y,180cm,90kg)=1880; TDEE=1880*1.55=2914; lose_fat -500 = 2414
+  assert.equal(plan.diet.calorieTarget, 2414, 'diet layer is exact rules-engine math');
+  assert.ok(plan.roadmap.length >= 1, 'roadmap checkpoints exist');
+  step('onboarding: fallback plan + safety-clamped timeframe + deterministic diet');
+
+  const saved = await getProfile(userId);
+  assert.ok(saved.plan_started_at, 'goal clock started');
+  assert.ok(saved.ai_plan.days, 'plan persisted as jsonb');
+  step('plan persisted, goal clock running');
+
+  // ---- today's mission, generated from the plan ----
+  const { getTodayEnriched } = require('../server/src/services/checklist/checklistService');
+  const checklist = await getTodayEnriched(userId);
+  assert.ok(checklist.plan_snapshot, 'plan snapshot frozen into today');
+  assert.ok(['workout', 'rest'].includes(checklist.plan_snapshot.workout.type));
+  assert.equal(checklist.plan_snapshot.targets.calorieTarget, 2414, 'checklist targets come from the live plan');
+  const proteinItem = checklist.items.find((i) => i.field === 'protein_completed');
+  assert.match(proteinItem.label, /Protein: \d+g/, 'concrete protein label');
+  step(`daily mission built from plan (today: ${checklist.plan_snapshot.workout.type}, ${proteinItem.label})`);
+
+  const again = await getTodayEnriched(userId);
+  assert.equal(again.id, checklist.id, 'same day -> same row, no duplicates');
+  step('checklist is idempotent within the day');
+
+  // ---- meal diary + protein auto-check ----
+  const { addMealAndSync, getTodaySummary } = require('../server/src/services/nutrition/mealDiaryService');
+  await addMealAndSync(userId, { name: 'Paneer bowl', calories: 650, protein: 45, source: 'manual' });
+  let summary = await getTodaySummary(userId);
+  assert.equal(summary.calories, 650);
+  assert.equal(summary.proteinTargetHit, false, 'target (160g = 90kg*1.8 rounded to 5) not hit yet');
+
+  await addMealAndSync(userId, { name: 'Protein shake x3', calories: 900, protein: 125, source: 'manual' });
+  // the auto-check runs fire-and-forget; give it a beat
+  await new Promise((r) => setTimeout(r, 300));
+  summary = await getTodaySummary(userId);
+  assert.equal(summary.proteinTargetHit, true, '170g >= 165g target');
+  assert.equal(summary.proteinCompleted, true, 'checklist item auto-checked');
+  step('meal diary tallies and auto-checks the protein item');
+
+  // ---- workout logging ----
+  const { logSet } = require('../server/src/models/WorkoutLog');
+  await logSet({ userId, exerciseName: 'Squat', weightKg: 60, reps: 8, setNumber: 1, completedAllReps: true });
+  const { suggestNextLoad } = require('../server/src/services/workout/progressionService');
+  const suggestion = await suggestNextLoad(userId, 'Squat', { min: 8, max: 12 });
+  assert.ok(suggestion.weightKg != null && suggestion.note, 'progression suggestion from real log');
+  step(`workout logged, progression says: ${suggestion.weightKg}kg — "${suggestion.note}"`);
+
+  // ---- weigh-ins + progress report ----
+  const { logWeight, getProgressReport } = require('../server/src/services/progress/progressService');
+  // simulate a week of history so the trend math has a real span
+  await pool.query(
+    `INSERT INTO body_weight_logs (user_id, date, weight_kg) VALUES
+     ($1, CURRENT_DATE - 8, 90.0), ($1, CURRENT_DATE - 4, 89.4)`,
+    [userId]
+  );
+  await logWeight(userId, 88.8);
+
+  const report = await getProgressReport(userId);
+  assert.equal(report.goal.timeframeWeeks, 10, 'clamped timeframe flows into the report');
+  assert.equal(report.weight.currentKg, 88.8);
+  assert.ok(report.actual.weeklyRateKg < 0, 'losing weight -> negative measured rate');
+  assert.equal(report.pace.status, 'ahead', '1.2kg down at week 0 of a 10-week plan = ahead');
+  assert.ok(report.streaks && report.adherence, 'streaks + adherence present');
+  const codes = (report.newAchievements || []).map((a) => a.code);
+  assert.ok(codes.includes('FIRST_WORKOUT') && codes.includes('FIRST_WEIGH_IN'), 'achievements unlocked');
+  step(`progress report: pace=${report.pace.status}, rate=${report.actual.weeklyRateKg}kg/wk, achievements=[${codes.join(', ')}]`);
+
+  const cached = await getProgressReport(userId);
+  assert.equal(cached.fresh, false, 'second call same day -> served from snapshot');
+  step('24h snapshot caching works (and a weigh-in invalidates it — exercised above)');
+
+  // ---- plan edit + preference learning ----
+  const { applyPlanEdit } = require('../server/src/services/workout/planEditingService');
+  const removed = saved.ai_plan.days[0].exercises[0].name;
+  const editedDays = saved.ai_plan.days.map((d, i) =>
+    i === 0 ? { ...d, exercises: d.exercises.slice(1).length ? d.exercises.slice(1) : d.exercises } : d
+  );
+  const { plan: editedPlan } = await applyPlanEdit(userId, { days: editedDays, diet: { proteinGrams: 150 } });
+  assert.equal(editedPlan.customized, true);
+  assert.equal(editedPlan.diet.proteinGrams, 150, 'diet override merged');
+  await new Promise((r) => setTimeout(r, 300)); // learning is fire-and-forget
+  const { rows: prefs } = await pool.query(
+    `SELECT * FROM user_exercise_preferences WHERE user_id = $1`, [userId]
+  );
+  assert.ok(prefs.some((p) => p.exercise_name === removed.toLowerCase() && p.sentiment === 'disliked'),
+    'removed exercise learned as disliked');
+  const stillStarted = await getProfile(userId);
+  assert.equal(String(stillStarted.plan_started_at), String(saved.plan_started_at), 'edit did NOT restart goal clock');
+  step(`plan edited: "${removed}" learned as disliked, diet override saved, goal clock untouched`);
+
+  // ---- memory: system rows exist, retrieval is importance-first ----
+  const { getRecentConversationalMemory } = require('../server/src/services/memory/memoryRetriever');
+  const memories = await getRecentConversationalMemory(userId);
+  assert.ok(memories.some((m) => m.category === 'behavior'), 'plan edit wrote a behavior memory');
+  assert.ok(memories.some((m) => m.category === 'progress'), 'achievements wrote progress memories');
+  step(`long-term memory populated by the system (${memories.length} entries, categorized)`);
+
+  // ---- weekly review (empty period -> honest stub, persisted) ----
+  const { getOrGenerateReview } = require('../server/src/services/reviews/reviewService');
+  const review = await getOrGenerateReview(userId, 'weekly');
+  assert.ok(review.period_start && review.narrative, 'review generated + persisted');
+  const reviewAgain = await getOrGenerateReview(userId, 'weekly');
+  assert.equal(reviewAgain.id, review.id, 'review is immutable per period');
+  step('weekly review generated lazily and cached');
+
+  // ---- tutor, keyless -> safe fallback with provider hidden ----
+  const { buildContextForUser } = require('../server/src/services/memory/contextBuilder');
+  const { buildTutorPrompt } = require('../shared/prompts/templates');
+  const { askTutor } = require('../server/src/services/ai/aiOrchestrator');
+  const ctx = await buildContextForUser(userId);
+  assert.ok(ctx.profile.dislikedExercises === undefined || Array.isArray(ctx.profile.dislikedExercises));
+  const tutorRes = await askTutor({
+    mode: 'gym', question: 'How heavy should I squat?', profile: ctx.profile,
+    recentMemorySummaries: ctx.recentMemorySummaries,
+    prompt: buildTutorPrompt({ mode: 'gym', profile: ctx.profile, recentMemorySummaries: ctx.recentMemorySummaries, question: 'How heavy should I squat?' }),
+  });
+  assert.equal(tutorRes.source, 'fallback', 'no providers -> fallback');
+  assert.ok(tutorRes.answer.length > 10, 'usable answer, never a blank');
+  assert.ok(!JSON.stringify(tutorRes).match(/gemini|groq|cerebras|openrouter|cloudflare/i), 'provider names never leak');
+  step('tutor answers keyless via fallback, provider identity hidden');
+
+  // ---- timezone-aware "today" ----
+  const { localDateInZone } = require('../server/src/utils/userDate');
+  const east = localDateInZone('Pacific/Kiritimati'); // UTC+14
+  const west = localDateInZone('Pacific/Midway'); // UTC-11
+  assert.match(east, /^\d{4}-\d{2}-\d{2}$/);
+  assert.notEqual(east, west, '25h apart -> different calendar days, always');
+  assert.equal(localDateInZone('Not/AZone'), null, 'bad tz -> null -> server-date fallback');
+  assert.equal(localDateInZone(null), null, 'no tz -> pre-004 behavior');
+  step('user-local date resolution (rollover at the user\'s midnight, safe fallbacks)');
+
+  // ---- real HTTP layer ----
+  const app = require('../server/src/app');
+  const server = await new Promise((resolve) => {
+    const s = app.listen(0, () => resolve(s));
+  });
+  const base = `http://localhost:${server.address().port}`;
+  const health = await (await fetch(`${base}/health`)).json();
+  assert.equal(health.status, 'ok');
+  assert.equal(health.database, 'ok');
+  const unauth = await fetch(`${base}/api/plan`);
+  assert.equal(unauth.status, 401, 'protected route rejects missing token');
+  await new Promise((resolve) => server.close(resolve));
+  step('HTTP: /health reports db ok; protected routes reject unauthenticated requests');
+}
+
+main().catch((err) => {
+  console.error('\nSMOKE TEST FAILED:', err);
+  process.exit(1);
+});

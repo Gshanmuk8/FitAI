@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# environment & secrets — never commit real keys
+.env
+.env.*
+!.env.example
+
+# builds
+dist/
+build/
+
+# test / tooling artifacts
+.pgdata-smoke/
+coverage/
+*.log
+logs/
+
+# editor & OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

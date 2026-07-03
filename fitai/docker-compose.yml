@@ -1,0 +1,32 @@
+# Local dev convenience. Supabase itself is hosted, not run here — this
+# stands up Redis for the AI cache plus the two app services. Postgres
+# comes from your hosted Supabase project (DATABASE_URL in server/.env).
+version: '3.9'
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  server:
+    build:
+      # Repo root context: the server image needs ../shared too.
+      context: .
+      dockerfile: server/Dockerfile
+    env_file: ./server/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    ports: ["4000:4000"]
+    depends_on: [redis]
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      - /app/server/node_modules
+
+  client:
+    build: ./client
+    env_file: ./client/.env
+    ports: ["5173:5173"]
+    depends_on: [server]
+    volumes:
+      - ./client:/app
+      - /app/node_modules

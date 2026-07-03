@@ -1,0 +1,35 @@
+/* "Chroma Ink" typography — expressive, printed, unmistakable.
+   Bricolage Grotesque — loud, characterful display: headlines & numerals.
+   Karla              — warm humanist grotesque for reading.
+   Space Mono         — retro print annotations: dates, meta, measurements.
+   Caveat             — hand-lettered margin notes (hints, asides). */
+
+:root {
+  --font-display: 'Bricolage Grotesque', 'Arial Black', sans-serif;
+  --font-body: 'Karla', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, Consolas, monospace;
+  --font-hand: 'Caveat', 'Comic Sans MS', cursive;
+}
+
+body, .btn, input, select, textarea { font-family: var(--font-body); }
+body { font-size: 16px; }
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.font-accent { font-family: var(--font-hand); font-weight: 500; }
+
+/* Stamped editorial label — eyebrows, form labels, footers. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+code, kbd, .mono { font-family: var(--font-mono); }
