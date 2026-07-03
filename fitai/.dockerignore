@@ -1,0 +1,8 @@
+# Keep host installs, secrets, and repo noise out of every image build.
+# Applies to any build with this folder as context (server image, compose).
+**/node_modules
+**/.env
+**/.env.local
+.git
+docs
+client/dist
