@@ -1,0 +1,8 @@
+# Keep host installs, secrets, and repo noise out of image builds run
+# from the repo root (the root Dockerfile).
+**/node_modules
+**/.env
+**/.env.local
+.git
+fitai/docs
+fitai/client/dist

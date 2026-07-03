@@ -1,14 +1,11 @@
 # Render Blueprint — deploy with New + > Blueprint in the Render dashboard.
-# The project lives in the fitai/ subfolder of this repo, so rootDir points
-# there and all paths below are relative to it.
+# Uses the Dockerfile at the repo root, which reaches into the fitai/
+# subfolder itself — so NO Root Directory or custom paths are needed.
 services:
   - type: web
     name: fitai-server
     runtime: docker
-    rootDir: fitai
-    dockerfilePath: ./server/Dockerfile
-    # Build context must be the workspace ROOT (fitai/), not server/ —
-    # the image needs shared/ and the root package-lock.json.
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
     # Pick the region closest to your Supabase project.
