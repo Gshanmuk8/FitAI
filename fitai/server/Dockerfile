@@ -1,7 +1,7 @@
 # Build from the REPO ROOT (the server imports ../shared), e.g.:
 #   docker build -f server/Dockerfile -t fitai-server .
 # docker-compose.yml already sets this context correctly.
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app/server
 
