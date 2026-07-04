@@ -26,4 +26,7 @@ ENV NODE_ENV=production
 EXPOSE 4000
 
 WORKDIR /app/server
-CMD ["node", "server.js"]
+# Apply any pending DB migrations, then boot. The runner is idempotent
+# (tracked in schema_migrations), so this is safe on every deploy; a failed
+# migration aborts the boot loudly instead of serving a broken schema.
+CMD ["sh", "-c", "node scripts/migrate.js && node server.js"]
