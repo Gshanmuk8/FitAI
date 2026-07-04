@@ -20,6 +20,18 @@ const sslEnabled = process.env.DATABASE_SSL != null && process.env.DATABASE_SSL 
   ? process.env.DATABASE_SSL === "true"
   : NODE_ENV === "production" || !isLocalHost(DATABASE_URL);
 
+// Log which host we're actually dialing (never the password). This makes
+// deploy logs say plainly whether DATABASE_URL points at the IPv4 pooler
+// (aws-0-*.pooler.supabase.com) or the IPv6-only direct host
+// (db.*.supabase.co) — the latter is unreachable from IPv4-only networks
+// like Render and is the usual cause of "connect ENETUNREACH …:5432".
+try {
+  const host = new URL(DATABASE_URL).host;
+  require("../utils/logger").info(`Postgres: connecting to ${host} (ssl: ${sslEnabled})`);
+} catch {
+  require("../utils/logger").warn("Postgres: DATABASE_URL is unparseable");
+}
+
 const pool = new Pool({
   connectionString: DATABASE_URL,
   max: 10,
