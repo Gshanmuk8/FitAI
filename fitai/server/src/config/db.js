@@ -16,9 +16,35 @@ function isLocalHost(connString) {
     return false; // unparseable -> assume remote, prefer SSL
   }
 }
+
+// Supabase's direct-connection host (db.<ref>.supabase.co) is now IPv6-only.
+// IPv4-only networks (Render, many CI runners) can't route to it, so every
+// connection dies with `connect ENETUNREACH …:5432` before TLS even starts.
+// If we're handed a direct URL, transparently rewrite it to the Session
+// pooler (aws-0-<region>.pooler.supabase.com) — IPv4-reachable and the
+// Supabase-recommended endpoint for such networks. Setting DATABASE_URL to a
+// pooler URL directly is still preferred; this is a safety net so a stale
+// direct URL doesn't take prod down. Region defaults to this project's
+// (ap-northeast-1); override with SUPABASE_POOLER_REGION for other projects.
+function toReachableConnString(url) {
+  try {
+    const u = new URL(url);
+    const m = u.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
+    if (!m) return { url, rewritten: false };
+    const ref = m[1];
+    const region = process.env.SUPABASE_POOLER_REGION || "ap-northeast-1";
+    u.hostname = `aws-0-${region}.pooler.supabase.com`;
+    if (u.username === "postgres") u.username = `postgres.${ref}`; // pooler tenant form
+    return { url: u.toString(), rewritten: true };
+  } catch {
+    return { url, rewritten: false };
+  }
+}
+const { url: CONN_STRING, rewritten: POOLER_REWRITE } = toReachableConnString(DATABASE_URL);
+
 const sslEnabled = process.env.DATABASE_SSL != null && process.env.DATABASE_SSL !== ""
   ? process.env.DATABASE_SSL === "true"
-  : NODE_ENV === "production" || !isLocalHost(DATABASE_URL);
+  : NODE_ENV === "production" || !isLocalHost(CONN_STRING);
 
 // Log which host we're actually dialing (never the password). This makes
 // deploy logs say plainly whether DATABASE_URL points at the IPv4 pooler
@@ -26,14 +52,16 @@ const sslEnabled = process.env.DATABASE_SSL != null && process.env.DATABASE_SSL 
 // (db.*.supabase.co) — the latter is unreachable from IPv4-only networks
 // like Render and is the usual cause of "connect ENETUNREACH …:5432".
 try {
-  const host = new URL(DATABASE_URL).host;
-  require("../utils/logger").info(`Postgres: connecting to ${host} (ssl: ${sslEnabled})`);
+  const host = new URL(CONN_STRING).host;
+  require("../utils/logger").info(
+    `Postgres: connecting to ${host} (ssl: ${sslEnabled})${POOLER_REWRITE ? " [rewrote Supabase direct->pooler]" : ""}`
+  );
 } catch {
   require("../utils/logger").warn("Postgres: DATABASE_URL is unparseable");
 }
 
 const pool = new Pool({
-  connectionString: DATABASE_URL,
+  connectionString: CONN_STRING,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
