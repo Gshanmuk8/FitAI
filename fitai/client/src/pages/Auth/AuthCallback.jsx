@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOnboarded } from '../../services/onboardingService';
 
 // Landing point for Supabase email links (signup confirmation, magic links).
-// Supabase appends the session token — or an error — to the URL; supabase-js
-// (detectSessionInUrl) exchanges it during AuthProvider init. We wait for that
-// to settle, then route the user instead of leaving them on a raw callback URL.
+// supabase-js runs the implicit flow (v2 default): the confirmation link comes
+// back with the session token in the URL, and detectSessionInUrl exchanges it
+// during AuthProvider init. AuthContext.loading stays true until that init
+// resolves — so we wait for it before deciding anything (no redirect races).
 export default function AuthCallback() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -23,21 +25,27 @@ export default function AuthCallback() {
   });
 
   useEffect(() => {
-    if (loading) return; // wait for supabase to finish reading the URL
+    if (loading) return; // wait for supabase to finish establishing the session
 
-    if (user) {
-      // Signed in — Dashboard forwards users without a plan to onboarding.
-      navigate('/dashboard', { replace: true });
+    // No session: link expired/already used, or opened on a device that never
+    // held the session. The email is confirmed regardless — send them to log in.
+    if (!user) {
+      navigate('/login', {
+        replace: true,
+        state: { notice: urlError || 'Your email is confirmed. Please log in to continue.' },
+      });
       return;
     }
 
-    // No session: link expired/already used, or it was opened on a different
-    // device than sign-up (PKCE verifier missing). The email is confirmed
-    // regardless, so send them to log in with an explanation.
-    navigate('/login', {
-      replace: true,
-      state: { notice: urlError || 'Your email is confirmed. Please log in to continue.' },
-    });
+    // Authenticated. Route by onboarding status, per the intended flow:
+    //   incomplete -> /onboarding, complete -> /dashboard. Never the landing page.
+    // If the status check itself fails (backend down/cold), fall back to
+    // /dashboard, which has its own onboarding gate and a retryable error state.
+    let cancelled = false;
+    isOnboarded()
+      .then((done) => { if (!cancelled) navigate(done ? '/dashboard' : '/onboarding', { replace: true }); })
+      .catch(() => { if (!cancelled) navigate('/dashboard', { replace: true }); });
+    return () => { cancelled = true; };
   }, [user, loading, urlError, navigate]);
 
   return <div className="page-loading">Confirming your account…</div>;
