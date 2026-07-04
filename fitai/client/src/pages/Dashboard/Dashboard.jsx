@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { apiFetch } from '../../utils/apiClient';
 import { getProgressReport } from '../../services/progressService';
 import DailyChecklist from '../../components/checklist/DailyChecklist';
@@ -38,9 +38,20 @@ export default function Dashboard() {
     );
   }
 
-  // Onboarding not completed (no profile at all, or a profile with no plan yet)
-  // — send them to build it. This is the intended first-run path.
-  if (noProfileYet || !profile?.plan) return <Navigate to="/onboarding" replace />;
+  // Onboarding is a SIGNUP-completion step, not a login gate — so we never
+  // auto-redirect a logged-in user into it (that's the job of the signup flow:
+  // Signup.jsx / AuthCallback.jsx). If an account somehow reaches the dashboard
+  // without a plan (e.g. abandoned onboarding), render a prompt they can act on
+  // rather than trapping them in a redirect loop.
+  if (noProfileYet || !profile?.plan) {
+    return (
+      <div className="dashboard-empty page-enter">
+        <h2 className="page-title">Finish setting up your plan</h2>
+        <p className="muted">Complete a quick onboarding and we'll generate your training and nutrition plan.</p>
+        <Link to="/onboarding"><Button>Complete onboarding</Button></Link>
+      </div>
+    );
+  }
 
   const plan = profile.plan;
   const calorieTarget = plan.diet?.calorieTarget ?? plan.calorieTarget ?? null;
