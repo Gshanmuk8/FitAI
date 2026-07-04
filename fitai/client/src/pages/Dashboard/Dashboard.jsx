@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { apiFetch } from '../../utils/apiClient';
 import { getProgressReport } from '../../services/progressService';
 import DailyChecklist from '../../components/checklist/DailyChecklist';
@@ -25,15 +25,22 @@ export default function Dashboard() {
 
   if (loading) return <div className="page-loading">Loading your plan…</div>;
 
-  if (error || !profile?.plan) {
+  // A genuine fetch failure (network, expired session) — show it and let them
+  // retry. Don't misread it as "not onboarded" and shove them into onboarding.
+  const noProfileYet = /no profile found/i.test(error);
+  if (error && !noProfileYet) {
     return (
       <div className="dashboard-empty page-enter">
-        <h2 className="page-title">No plan found</h2>
-        <p className="muted">{error || 'Complete onboarding to generate your plan.'}</p>
-        <Link to="/onboarding"><Button>Complete onboarding</Button></Link>
+        <h2 className="page-title">Couldn't load your dashboard</h2>
+        <p className="muted">{error}</p>
+        <Button onClick={() => window.location.reload()}>Try again</Button>
       </div>
     );
   }
+
+  // Onboarding not completed (no profile at all, or a profile with no plan yet)
+  // — send them to build it. This is the intended first-run path.
+  if (noProfileYet || !profile?.plan) return <Navigate to="/onboarding" replace />;
 
   const plan = profile.plan;
   const calorieTarget = plan.diet?.calorieTarget ?? plan.calorieTarget ?? null;
