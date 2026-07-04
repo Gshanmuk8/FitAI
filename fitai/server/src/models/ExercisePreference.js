@@ -1,12 +1,12 @@
 // user_exercise_preferences — structured behavior memory. Strength counts
 // how many times the signal repeated (removed running 3 times = strength 3);
 // retrieval thresholds on strength so one-off edits don't become dogma.
-const { pool } = require('../config/db');
+const { queryAs } = require('../db/userAccess');
 
 async function bumpPreference(userId, exerciseName, sentiment) {
   const normalized = exerciseName.trim().toLowerCase();
   if (!normalized) return null;
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `INSERT INTO user_exercise_preferences (user_id, exercise_name, sentiment, strength, updated_at)
      VALUES ($1, $2, $3, 1, NOW())
      ON CONFLICT (user_id, exercise_name) DO UPDATE SET

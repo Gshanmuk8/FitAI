@@ -4,7 +4,28 @@ let client;
 
 if (REDIS_URL) {
   const Redis = require("ioredis");
-  client = new Redis(REDIS_URL);
+  // The AI cache is optional enrichment: a Redis outage must degrade to
+  // "no cache", never hang or crash a request. Default ioredis queues
+  // commands while disconnected and retries each 20x before rejecting with
+  // MaxRetriesPerRequestError — which, uncaught, 500s the user's request
+  // (this was the "Internal server error while generating plan" bug). Fail
+  // commands fast instead so cacheManager's guards treat them as a miss.
+  client = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false,
+    connectTimeout: 3000,
+    retryStrategy: (times) => Math.min(times * 200, 5000),
+  });
+  // Without an 'error' listener ioredis emits an *unhandled* 'error' event
+  // on connection loss, which can crash the process. Log once, then stay
+  // quiet — reads/writes are already best-effort in cacheManager.
+  const logger = require("../utils/logger");
+  let warned = false;
+  client.on("error", (err) => {
+    if (warned) return;
+    warned = true;
+    logger.warn("Redis cache unavailable — serving AI without cache", { error: err.message });
+  });
 } else {
   const store = new Map();
   client = {

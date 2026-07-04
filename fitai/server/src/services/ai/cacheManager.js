@@ -18,9 +18,18 @@ function hashQuestion(input) {
   return crypto.createHash("sha256").update(normalized).digest("hex");
 }
 
+// Every cache op is best-effort: the cache is an optimization, never a
+// dependency. A Redis outage (or any client error) must read as a miss / be
+// a no-op so the request falls through to the live provider or fallback —
+// it must NEVER throw into the caller and 500 the request.
 async function getCached(namespace, input) {
   const key = `ai:${namespace}:${hashQuestion(input)}`;
-  const raw = await cacheClient.get(key);
+  let raw;
+  try {
+    raw = await cacheClient.get(key);
+  } catch {
+    return null; // cache unreachable -> treat as a miss
+  }
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -32,7 +41,11 @@ async function getCached(namespace, input) {
 async function setCached(namespace, input, value, ttlSeconds) {
   const key = `ai:${namespace}:${hashQuestion(input)}`;
   const ttl = ttlSeconds ?? NAMESPACE_TTL[namespace] ?? DEFAULT_TTL_SECONDS;
-  await cacheClient.set(key, JSON.stringify(value), "EX", ttl);
+  try {
+    await cacheClient.set(key, JSON.stringify(value), "EX", ttl);
+  } catch {
+    // best-effort write; a failed cache set must not fail the request
+  }
 }
 
 // "Cached responses" as its own fallback tier (see architecture doc's
@@ -44,7 +57,12 @@ async function setCached(namespace, input, value, ttlSeconds) {
 // template.
 async function getLastKnownGood(namespace, input) {
   const key = `ai:lkg:${namespace}:${hashQuestion(input)}`;
-  const raw = await cacheClient.get(key);
+  let raw;
+  try {
+    raw = await cacheClient.get(key);
+  } catch {
+    return null; // cache unreachable -> no last-known-good available
+  }
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -55,7 +73,11 @@ async function getLastKnownGood(namespace, input) {
 
 async function setLastKnownGood(namespace, input, value) {
   const key = `ai:lkg:${namespace}:${hashQuestion(input)}`;
-  await cacheClient.set(key, JSON.stringify(value), "EX", CACHE_TTL_SECONDS.LAST_KNOWN_GOOD);
+  try {
+    await cacheClient.set(key, JSON.stringify(value), "EX", CACHE_TTL_SECONDS.LAST_KNOWN_GOOD);
+  } catch {
+    // best-effort write
+  }
 }
 
 module.exports = { getCached, setCached, getLastKnownGood, setLastKnownGood, hashQuestion };

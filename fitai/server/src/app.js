@@ -17,7 +17,7 @@ const progressRoutes = require('./routes/progress');
 const reviewRoutes = require('./routes/reviews');
 const achievementRoutes = require('./routes/achievements');
 const profileRoutes = require('./routes/profile');
-const { pool } = require('./config/db');
+const { querySystem } = require('./db/userAccess');
 
 const app = express();
 
@@ -40,19 +40,25 @@ app.use((req, _res, next) => {
 });
 app.use(apiLimiter);
 
-// Liveness + readiness in one: the process is up, and (best-effort, 1s
+// Liveness + readiness in one: the process is up, and (best-effort, 3s
 // budget) whether Postgres is reachable. Load balancers can key off
-// status; humans get the detail.
+// status; humans get the detail. The budget must clear the FIRST-request
+// cold path: a managed Postgres (Supabase/Render) SSL handshake on a fresh
+// pool routinely exceeds 1s, and a false 503 on boot can make the platform
+// fail the health check and roll back a good deploy.
 app.get('/health', async (_req, res) => {
   let database = 'unknown';
+  let timer;
   try {
     await Promise.race([
-      pool.query('SELECT 1'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('db ping timeout')), 1000)),
+      querySystem('SELECT 1'),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('db ping timeout')), 3000); }),
     ]);
     database = 'ok';
   } catch {
     database = 'unreachable';
+  } finally {
+    clearTimeout(timer); // don't leave a dangling 3s timer once the query settles
   }
   res.status(database === 'ok' ? 200 : 503).json({
     status: database === 'ok' ? 'ok' : 'degraded',

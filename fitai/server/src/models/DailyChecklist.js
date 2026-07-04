@@ -8,10 +8,10 @@
 // Every function takes an optional `date` (YYYY-MM-DD, the user's local
 // "today" from utils/userDate). Null falls back to the server's
 // CURRENT_DATE — identical to pre-004 behavior.
-const { pool } = require('../config/db');
+const { queryAs } = require('../db/userAccess');
 
 async function getToday(userId, date = null) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT * FROM daily_checklists WHERE user_id = $1 AND date = COALESCE($2::date, CURRENT_DATE)`,
     [userId, date]
   );
@@ -21,7 +21,7 @@ async function getToday(userId, date = null) {
 // ON CONFLICT DO NOTHING + re-select: two concurrent first-requests of the
 // day both succeed and read back the same row instead of one 500ing.
 async function insertToday(userId, planSnapshot = null, date = null) {
-  await pool.query(
+  await queryAs(userId,
     `INSERT INTO daily_checklists (user_id, date, plan_snapshot)
      VALUES ($1, COALESCE($3::date, CURRENT_DATE), $2)
      ON CONFLICT (user_id, date) DO NOTHING`,
@@ -31,7 +31,7 @@ async function insertToday(userId, planSnapshot = null, date = null) {
 }
 
 async function getYesterday(userId, date = null) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT * FROM daily_checklists WHERE user_id = $1 AND date = COALESCE($2::date, CURRENT_DATE) - 1`,
     [userId, date]
   );
@@ -42,7 +42,7 @@ async function updateChecklistItem(userId, field, value, date = null) {
   const allowed = ['workout_completed', 'protein_completed', 'water_completed', 'sleep_completed', 'steps_completed'];
   if (!allowed.includes(field)) throw new Error(`Invalid checklist field: ${field}`);
 
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `UPDATE daily_checklists SET ${field} = $1
      WHERE user_id = $2 AND date = COALESCE($3::date, CURRENT_DATE) RETURNING *`,
     [value, userId, date]
@@ -51,7 +51,7 @@ async function updateChecklistItem(userId, field, value, date = null) {
 }
 
 async function getHistory(userId, days = 14) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT * FROM daily_checklists WHERE user_id = $1 ORDER BY date DESC LIMIT $2`,
     [userId, days]
   );
@@ -59,7 +59,7 @@ async function getHistory(userId, days = 14) {
 }
 
 async function getRange(userId, startDate, endDate) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT * FROM daily_checklists
      WHERE user_id = $1 AND date >= $2 AND date <= $3
      ORDER BY date ASC`,

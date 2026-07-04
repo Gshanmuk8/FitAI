@@ -6,7 +6,7 @@
  * exchange is simply not summarized — system memories (memoryWriter) and
  * the other three tiers still work.
  */
-const { pool } = require('../../config/db');
+const { queryAs } = require('../../db/userAccess');
 const { callGeminiText, isConfigured } = require('../ai/geminiService');
 const { buildMemorySummaryPrompt } = require('../../../../shared/prompts/templates');
 const { MemorySummarySchema } = require('../../../../shared/schemas/aiSchemas');
@@ -35,7 +35,7 @@ async function summarizeAndStore({ userId, mode, userMessage, aiAnswer }) {
 
   if (!parsed.summary || parsed.summary === 'SKIP') return null;
 
-  await pool.query(
+  await queryAs(userId,
     `INSERT INTO memory_summaries (user_id, mode, summary, category, importance, created_at)
      VALUES ($1, $2, $3, $4, $5, NOW())`,
     [userId, mode, parsed.summary, parsed.category, parsed.importance]

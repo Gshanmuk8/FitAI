@@ -5,7 +5,7 @@
  * zero AI providers — but they land in the same store the tutor reads,
  * which is what makes the coach feel like it "noticed".
  */
-const { pool } = require('../../config/db');
+const { queryAs } = require('../../db/userAccess');
 const logger = require('../../utils/logger');
 
 const VALID_CATEGORIES = ['injury', 'preference', 'constraint', 'progress', 'schedule', 'behavior', 'conversation'];
@@ -15,7 +15,7 @@ async function recordSystemMemory(userId, { summary, category = 'progress', impo
   const safeCategory = VALID_CATEGORIES.includes(category) ? category : 'conversation';
   const safeImportance = Math.min(3, Math.max(1, Math.round(importance)));
   try {
-    await pool.query(
+    await queryAs(userId,
       `INSERT INTO memory_summaries (user_id, mode, summary, category, importance, created_at)
        VALUES ($1, 'system', $2, $3, $4, NOW())`,
       [userId, summary.slice(0, 300), safeCategory, safeImportance]

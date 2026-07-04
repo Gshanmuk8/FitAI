@@ -1,9 +1,9 @@
 // body_weight_logs — one weigh-in per user per day; same-day re-logging
 // overwrites (people step on the scale twice; the latest value wins).
-const { pool } = require('../config/db');
+const { queryAs } = require('../db/userAccess');
 
 async function upsertToday(userId, weightKg, date = null) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `INSERT INTO body_weight_logs (user_id, date, weight_kg)
      VALUES ($1, COALESCE($3::date, CURRENT_DATE), $2)
      ON CONFLICT (user_id, date) DO UPDATE SET weight_kg = EXCLUDED.weight_kg
@@ -14,7 +14,7 @@ async function upsertToday(userId, weightKg, date = null) {
 }
 
 async function listRecent(userId, days = 90) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT date, weight_kg FROM body_weight_logs
      WHERE user_id = $1 AND date >= CURRENT_DATE - $2::int
      ORDER BY date ASC`,
@@ -24,7 +24,7 @@ async function listRecent(userId, days = 90) {
 }
 
 async function countForUser(userId) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT COUNT(*)::int AS count FROM body_weight_logs WHERE user_id = $1`,
     [userId]
   );
@@ -32,7 +32,7 @@ async function countForUser(userId) {
 }
 
 async function listBetween(userId, startDate, endDate) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT date, weight_kg FROM body_weight_logs
      WHERE user_id = $1 AND date >= $2 AND date <= $3
      ORDER BY date ASC`,

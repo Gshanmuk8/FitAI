@@ -3,10 +3,10 @@
  * the architecture doc. Pulls the four memory tiers and lets
  * contextBuilder assemble them into a prompt-ready block.
  */
-const { pool } = require('../../config/db');
+const { queryAs } = require('../../db/userAccess');
 
 async function getPermanentMemory(userId) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT age, height_cm, weight_kg, target_weight_kg, activity_level,
             injuries, dietary_restrictions, gym_availability
      FROM users_profile WHERE user_id = $1`,
@@ -16,7 +16,7 @@ async function getPermanentMemory(userId) {
 }
 
 async function getSemiPermanentMemory(userId) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT current_program, calorie_target, current_phase, body_fat_estimate, current_split
      FROM user_state WHERE user_id = $1`,
     [userId]
@@ -25,7 +25,7 @@ async function getSemiPermanentMemory(userId) {
 }
 
 async function getTemporalMemory(userId) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT workout_completed, protein_completed, water_completed,
             sleep_completed, steps_completed, mood, soreness_level
      FROM daily_checklists
@@ -40,7 +40,7 @@ async function getRecentConversationalMemory(userId, limit = 20) {
   // twenty recent chit-chat summaries. promptBuilder.enforceBudget trims
   // lowest-importance entries first when the prompt runs long, and
   // templates.formatMemoryLine renders these objects (or legacy strings).
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT summary, category, importance, created_at FROM memory_summaries
      WHERE user_id = $1
      ORDER BY importance DESC NULLS LAST, created_at DESC
@@ -60,7 +60,7 @@ async function getRecentConversationalMemory(userId, limit = 20) {
 // deploys): they degrade to null/empty rather than failing the tutor path.
 async function getLatestProgressSnapshot(userId) {
   try {
-    const { rows } = await pool.query(
+    const { rows } = await queryAs(userId,
       `SELECT date, metrics FROM progress_snapshots
        WHERE user_id = $1 ORDER BY date DESC LIMIT 1`,
       [userId]
@@ -74,7 +74,7 @@ async function getLatestProgressSnapshot(userId) {
 // Learned exercise preferences (behavior memory tier, structured form).
 async function getExercisePreferences(userId, { minStrength = 2 } = {}) {
   try {
-    const { rows } = await pool.query(
+    const { rows } = await queryAs(userId,
       `SELECT exercise_name, sentiment, strength FROM user_exercise_preferences
        WHERE user_id = $1 AND strength >= $2
        ORDER BY strength DESC LIMIT 10`,

@@ -1,9 +1,9 @@
 // workout_logs — the piece the original MVP was missing entirely.
 // Records completed sets/reps so progressive overload has real data to act on.
-const { pool } = require('../config/db');
+const { queryAs } = require('../db/userAccess');
 
 async function logSet({ userId, exerciseName, weightKg, reps, setNumber, completedAllReps }) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `INSERT INTO workout_logs (user_id, exercise_name, weight_kg, reps, set_number, completed_all_reps, logged_at)
      VALUES ($1,$2,$3,$4,$5,$6, NOW()) RETURNING *`,
     [userId, exerciseName, weightKg, reps, setNumber, completedAllReps]
@@ -12,7 +12,7 @@ async function logSet({ userId, exerciseName, weightKg, reps, setNumber, complet
 }
 
 async function getLastSessionForExercise(userId, exerciseName) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT * FROM workout_logs WHERE user_id = $1 AND exercise_name = $2
      ORDER BY logged_at DESC LIMIT 10`,
     [userId, exerciseName]
@@ -23,7 +23,7 @@ async function getLastSessionForExercise(userId, exerciseName) {
 // Distinct training days — the unit achievements and consistency use
 // ("logged sets on N days"), not raw set count.
 async function countDistinctWorkoutDays(userId) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT COUNT(DISTINCT logged_at::date)::int AS count FROM workout_logs WHERE user_id = $1`,
     [userId]
   );
@@ -33,7 +33,7 @@ async function countDistinctWorkoutDays(userId) {
 // Aggregate training stats for a date range (weekly/monthly reviews):
 // distinct training days, total sets, and total volume (kg × reps).
 async function statsBetween(userId, startDate, endDate) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT COUNT(DISTINCT logged_at::date)::int AS workout_days,
             COUNT(*)::int AS total_sets,
             COALESCE(SUM(weight_kg * reps), 0)::float AS total_volume_kg

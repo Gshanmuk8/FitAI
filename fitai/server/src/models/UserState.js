@@ -1,10 +1,10 @@
 // user_state — the semi-permanent memory tier (current program, calorie
 // target). 002 starts actually writing it: plan generation and plan edits
 // keep it in sync so the tutor's context block reflects reality.
-const { pool } = require('../config/db');
+const { queryAs } = require('../db/userAccess');
 
 async function upsertUserState(userId, { currentProgram, calorieTarget, currentPhase }) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `INSERT INTO user_state (user_id, current_program, calorie_target, current_phase, updated_at)
      VALUES ($1, $2, $3, $4, NOW())
      ON CONFLICT (user_id) DO UPDATE SET

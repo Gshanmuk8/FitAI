@@ -1,10 +1,10 @@
 // achievements — unlocks are idempotent via unique(user_id, code):
 // awarding an already-held achievement is a no-op, so the deterministic
 // evaluator can re-run every day without guards.
-const { pool } = require('../config/db');
+const { queryAs } = require('../db/userAccess');
 
 async function listForUser(userId) {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(userId,
     `SELECT code, name, description, unlocked_at FROM achievements
      WHERE user_id = $1 ORDER BY unlocked_at DESC`,
     [userId]
@@ -17,7 +17,7 @@ async function awardMany(userId, earned) {
   if (!earned.length) return [];
   const newlyUnlocked = [];
   for (const a of earned) {
-    const { rows } = await pool.query(
+    const { rows } = await queryAs(userId,
       `INSERT INTO achievements (user_id, code, name, description)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id, code) DO NOTHING
