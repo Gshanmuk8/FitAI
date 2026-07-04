@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { signUp } from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 
 export default function Signup() {
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const navigate = useNavigate();
+
+  // Already signed in — no reason to show the signup form.
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();

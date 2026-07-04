@@ -4,9 +4,10 @@ export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    // Where the confirmation email's link lands. Must be within the Site
-    // URL / redirect allow-list configured in Supabase Auth settings.
-    options: { emailRedirectTo: `${window.location.origin}/onboarding` },
+    // Where the confirmation email's link lands. /auth/callback waits for the
+    // session to be established, then forwards the user into the app. Must be
+    // in the Redirect URLs allow-list in Supabase Auth settings.
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
   });
   if (error) throw error;
   return data;

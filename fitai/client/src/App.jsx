@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import Home from './pages/Home/Home';
@@ -19,6 +19,7 @@ import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
+import AuthCallback from './pages/Auth/AuthCallback';
 import Onboarding from './pages/Onboarding/Onboarding';
 import Plan from './pages/Plan/Plan';
 import Tutor from './pages/Tutor/Tutor';
@@ -32,8 +33,11 @@ import ErrorBoundary from './components/layout/ErrorBoundary';
 
 function ProtectedRoute({ children, bare = false }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="page-loading">Loading…</div>;
-  if (!user) return <Navigate to="/" replace />;
+  // Send them to log in, remembering where they were headed so we can return
+  // them there afterwards — a silent bounce to the marketing home reads as a bug.
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   // bare: full-focus pages (onboarding) skip the app chrome.
   if (bare) return children;
   return (
@@ -61,6 +65,7 @@ export default function App() {
           <Route path="/signup" element={<PublicShell><Signup /></PublicShell>} />
           <Route path="/forgot-password" element={<PublicShell><ForgotPassword /></PublicShell>} />
           <Route path="/reset-password" element={<PublicShell><ResetPassword /></PublicShell>} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/onboarding" element={<ProtectedRoute bare><Onboarding /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           {/* Old link shipped in early builds — keep it working. */}
