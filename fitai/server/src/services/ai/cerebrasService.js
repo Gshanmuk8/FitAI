@@ -22,6 +22,7 @@ async function callText(prompt) {
     model: cfg.models.cerebras,
     prompt,
     timeoutMs: cfg.timeoutsMs.cerebras,
+    jsonMode: true,
   });
 }
 

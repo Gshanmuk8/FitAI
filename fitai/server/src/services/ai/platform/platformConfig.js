@@ -43,9 +43,12 @@ function buildPlatformConfig() {
       gemini: envStr('AI_MODEL_GEMINI', 'gemini-2.5-flash'),
       openai: envStr('AI_MODEL_OPENAI', 'gpt-5'),
       anthropic: envStr('AI_MODEL_ANTHROPIC', 'claude-sonnet-5'),
-      openrouter: envStr('AI_MODEL_OPENROUTER', 'meta-llama/llama-3.1-8b-instruct:free'),
-      groq: envStr('AI_MODEL_GROQ', 'llama-3.1-8b-instant'),
-      cerebras: envStr('AI_MODEL_CEREBRAS', 'llama3.1-8b'),
+      openrouter: envStr('AI_MODEL_OPENROUTER', 'meta-llama/llama-3.3-70b-instruct:free'),
+      groq: envStr('AI_MODEL_GROQ', 'llama-3.3-70b-versatile'),
+      // Vision fallback so food-photo analysis survives a Gemini outage —
+      // llama-4-scout is Groq's multimodal model.
+      groqVision: envStr('AI_MODEL_GROQ_VISION', 'meta-llama/llama-4-scout-17b-16e-instruct'),
+      cerebras: envStr('AI_MODEL_CEREBRAS', 'gpt-oss-120b'),
       cloudflare: envStr('AI_MODEL_CLOUDFLARE', '@cf/meta/llama-3.1-8b-instruct'),
     },
 
@@ -54,15 +57,18 @@ function buildPlatformConfig() {
     maxTokens: envInt('AI_MAX_TOKENS', 2048),
 
     // Per-provider timeout (ms); default applies when not listed.
+    // gemini-2.5-flash is a thinking model: plan-sized outputs routinely
+    // take 15-25s, so its budget must be well past that or every plan
+    // generation dies at the timeout and cascades to fallback.
     timeoutsMs: {
-      default: envInt('AI_TIMEOUT_MS', 10000),
-      gemini: envInt('AI_TIMEOUT_GEMINI_MS', 12000),
-      openai: envInt('AI_TIMEOUT_OPENAI_MS', 12000),
-      anthropic: envInt('AI_TIMEOUT_ANTHROPIC_MS', 12000),
-      openrouter: envInt('AI_TIMEOUT_OPENROUTER_MS', 10000),
-      groq: envInt('AI_TIMEOUT_GROQ_MS', 6000),
-      cerebras: envInt('AI_TIMEOUT_CEREBRAS_MS', 6000),
-      cloudflare: envInt('AI_TIMEOUT_CLOUDFLARE_MS', 8000),
+      default: envInt('AI_TIMEOUT_MS', 20000),
+      gemini: envInt('AI_TIMEOUT_GEMINI_MS', 45000),
+      openai: envInt('AI_TIMEOUT_OPENAI_MS', 30000),
+      anthropic: envInt('AI_TIMEOUT_ANTHROPIC_MS', 30000),
+      openrouter: envInt('AI_TIMEOUT_OPENROUTER_MS', 20000),
+      groq: envInt('AI_TIMEOUT_GROQ_MS', 15000),
+      cerebras: envInt('AI_TIMEOUT_CEREBRAS_MS', 20000),
+      cloudflare: envInt('AI_TIMEOUT_CLOUDFLARE_MS', 15000),
     },
 
     // Retries live in the GATEWAY only (adapters make exactly one attempt).

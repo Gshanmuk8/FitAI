@@ -12,8 +12,12 @@ if (GEMINI_API_KEY) {
   const { buildPlatformConfig } = require("../services/ai/platform/platformConfig");
   const model = buildPlatformConfig().models.gemini;
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  textModel = genAI.getGenerativeModel({ model });
-  visionModel = genAI.getGenerativeModel({ model });
+  // Every Gemini call in this app expects JSON back — ask the API to
+  // enforce it so responses can't arrive fenced in markdown or trail off
+  // into prose that breaks JSON.parse downstream.
+  const generationConfig = { responseMimeType: "application/json" };
+  textModel = genAI.getGenerativeModel({ model, generationConfig });
+  visionModel = genAI.getGenerativeModel({ model, generationConfig });
 }
 
 const isGeminiConfigured = () => Boolean(textModel);

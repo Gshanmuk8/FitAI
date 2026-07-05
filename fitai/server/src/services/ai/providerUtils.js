@@ -14,8 +14,21 @@ function stripMarkdownFence(text) {
     .trim();
 }
 
+// LLMs (especially small ones) often wrap the JSON in prose or keep
+// talking after the closing brace. Parse strictly first; on failure,
+// re-parse just the outermost {...} span before giving up.
 function parseJsonResponse(text) {
-  return JSON.parse(stripMarkdownFence(text.trim()));
+  const cleaned = stripMarkdownFence(text.trim());
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    }
+    throw err;
+  }
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {
@@ -39,7 +52,15 @@ class ProviderError extends Error {
   }
 }
 
-async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs, extraHeaders = {} }) {
+async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs, extraHeaders = {}, jsonMode = false, imageBase64 = null, imageMimeType = null }) {
+  // Multimodal messages use the OpenAI content-array form with the image
+  // inlined as a data URL; plain text keeps the simple string form.
+  const content = imageBase64
+    ? [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: `data:${imageMimeType || "image/jpeg"};base64,${imageBase64}` } },
+      ]
+    : prompt;
   let res;
   try {
     res = await fetchWithTimeout(
@@ -53,8 +74,12 @@ async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs,
         },
         body: JSON.stringify({
           model,
-          messages: [{ role: "user", content: prompt }],
+          messages: [{ role: "user", content }],
           temperature: 0.4,
+          // Constrained JSON decoding where the provider supports it —
+          // free-form output from small models is the top parse-failure
+          // source on plan-sized responses.
+          ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
         }),
       },
       timeoutMs
