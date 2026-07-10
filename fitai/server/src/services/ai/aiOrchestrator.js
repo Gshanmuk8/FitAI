@@ -67,7 +67,7 @@ async function analyzeFoodImage({ imageBase64, mimeType, prompt, userId }) {
   return sanitize(data, source);
 }
 
-async function askTutor({ mode, question, profile, prompt, history, userId }) {
+async function askTutor({ mode, question, profile, prompt, history, userId, activity }) {
   const { data, source } = await gateway.execute({
     task: 'tutor',
     schemaName: 'tutorResponse',
@@ -79,9 +79,11 @@ async function askTutor({ mode, question, profile, prompt, history, userId }) {
     // because the ANSWER is personalized (injuries, memories, targets) —
     // without it, one user's cached answer would serve to another user
     // with the same question. Privacy boundary, not an optimization knob.
+    // activity is part of the key so an answer grounded in yesterday's
+    // logs is not served after today's weigh-in/workout changed the facts.
     cacheKey: {
       namespace: 'tutor',
-      input: { userId, mode, question, goal: profile.goal, history: history || [], promptVersion: PROMPT_VERSION },
+      input: { userId, mode, question, goal: profile.goal, history: history || [], activity: activity || null, promptVersion: PROMPT_VERSION },
     },
     useLastKnownGood: true,
     fallback: () => fallback.fallbackTutorResponse(mode),

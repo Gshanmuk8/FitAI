@@ -112,6 +112,12 @@ export default function Progress() {
   const tone = STATUS_TONE[analysis.status] || 'cyan';
   const latestWeight = weighIns.length ? weighIns[weighIns.length - 1].kg : null;
   const totalVolume = training.reduce((sum, t) => sum + (t.volumeKg || 0), 0);
+  // Readable units: "12,400 kg" until tonnes actually mean something.
+  const volumeLabel = !totalVolume
+    ? '—'
+    : totalVolume >= 10000
+      ? `${(totalVolume / 1000).toFixed(1)}t`
+      : `${Math.round(totalVolume).toLocaleString()} kg`;
 
   return (
     <div className="page page-wide page-enter">
@@ -168,8 +174,8 @@ export default function Progress() {
               <div className="stat-value">{training.length}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Volume lifted</div>
-              <div className="stat-value">{totalVolume ? `${Math.round(totalVolume / 1000)}t` : '—'}</div>
+              <div className="stat-label">Volume lifted (28d)</div>
+              <div className="stat-value">{volumeLabel}</div>
             </div>
           </div>
           <p className="small muted" style={{ marginBottom: 0 }}>{analysis.trainingAnalysis}</p>

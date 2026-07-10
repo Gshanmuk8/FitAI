@@ -7,7 +7,7 @@
  * keys): bump it whenever a template changes materially, so stale cached
  * answers from an older prompt generation don't outlive the change.
  */
-const PROMPT_VERSION = 'v3';
+const PROMPT_VERSION = 'v4';
 
 /**
  * Anything user-typed or user-derived that gets interpolated into a prompt
@@ -82,13 +82,36 @@ function formatMemoryLine(entry) {
   return `[${entry.category || 'note'}] ${sanitizeUserText(entry.summary, 300)}`;
 }
 
-function buildTutorPrompt({ mode, profile, recentMemorySummaries, question, history }) {
+// The coach's live view of the user's logged reality — measured numbers from
+// their own records (activitySnapshot), so chat answers ground in what the
+// user actually DID, not just what they say. Kept to a few lines on purpose.
+function formatActivityBlock(activity) {
+  if (!activity) return '';
+  const a = activity.adherence || {};
+  const t = activity.training14d || {};
+  const n = activity.nutrition7d || {};
+  const pct = (v) => (v == null ? 'unknown' : `${Math.round(v * 100)}%`);
+  const lines = [
+    `Adherence: ${pct(a.last7)} last 7 days, ${pct(a.last28)} last 28 days (${a.daysLogged ?? 0} days logged).`,
+    activity.recentWeighIns?.length
+      ? `Recent weigh-ins: ${activity.recentWeighIns.map((w) => `${w.date}: ${w.kg}kg`).join(', ')}.`
+      : 'No weigh-ins logged yet.',
+    `Training last 14 days: ${t.sessions ?? 0} session(s), ${t.sets ?? 0} sets, ~${t.volumeKg ?? 0}kg total volume.`,
+    n.daysLogged
+      ? `Nutrition last 7 days: logged on ${n.daysLogged} day(s), averaging ~${n.avgCalories} kcal and ~${n.avgProtein}g protein per logged day.`
+      : 'No meals logged in the last 7 days.',
+  ];
+  return `\n--- Their recent activity (measured from their logs — ground answers in this) ---\n${lines.join('\n')}`;
+}
+
+function buildTutorPrompt({ mode, profile, recentMemorySummaries, question, history, activity }) {
   return [
     buildSystemPrompt({ mode }),
     `(prompt ${PROMPT_VERSION})`,
     '',
     '--- User profile ---',
     buildUserContextBlock(profile),
+    formatActivityBlock(activity),
     recentMemorySummaries?.length
       ? `\n--- Relevant recent context ---\n${recentMemorySummaries.map(formatMemoryLine).join('\n')}`
       : '',
@@ -201,6 +224,11 @@ function buildProgressAnalysisPrompt({ profile, data }) {
           .map((i) => `${i.date}: ${sanitizeUserText(i.label, 120)} — ${i.done ? 'done' : 'not done'}`)
           .join('\n')}`
       : '',
+    '',
+    `Be statistically honest — this analysis must never claim more than the data supports:`,
+    `- Say how many data points each conclusion rests on; with fewer than ~5, present it as an early signal, not a trend.`,
+    `- Treat physically implausible entries (e.g. dozens of sets in one session, sub-500 or huge single-day calorie totals) as probable logging errors or app testing: mention them as such and exclude them from conclusions rather than building advice on them.`,
+    `- Never extrapolate a pace or trend from a single point; say plainly what is unknown.`,
     '',
     `Analyze ALL of it:`,
     `- weightTrend: what the scale series actually shows (direction, rate, plateaus) — measured from the data, in plain words.`,

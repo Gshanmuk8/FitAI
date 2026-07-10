@@ -221,6 +221,17 @@ async function run(epg) {
   assert.ok(memories.some((m) => m.category === 'behavior'), 'plan edit wrote a behavior memory');
   step(`long-term memory populated by the system (${memories.length} entries, categorized)`);
 
+  // ---- the coach's live activity view: measured from real logs ----
+  const { buildActivitySnapshot } = require('../server/src/services/analytics/activitySnapshot');
+  const activity = await buildActivitySnapshot(userId);
+  assert.ok(activity.recentWeighIns.length >= 1 && activity.recentWeighIns[0].kg === 89.4, 'coach sees the weigh-in');
+  assert.ok(activity.training14d.sessions >= 1 && activity.training14d.sets >= 1, 'coach sees training reality');
+  assert.ok(activity.nutrition7d.daysLogged >= 1 && activity.nutrition7d.avgProtein > 0, 'coach sees nutrition reality');
+  const { buildTutorPrompt: buildTutorPromptForBlock } = require('../shared/prompts/templates');
+  const promptWithActivity = buildTutorPromptForBlock({ mode: 'gym', profile: {}, question: 'test', activity });
+  assert.match(promptWithActivity, /Their recent activity/, 'activity block lands in the coach prompt');
+  step('coach chat is grounded in the user\'s measured activity (weigh-ins, training, nutrition)');
+
   // ---- tutor, keyless -> safe fallback with provider hidden ----
   const { buildContextForUser } = require('../server/src/services/memory/contextBuilder');
   const { buildTutorPrompt } = require('../shared/prompts/templates');
