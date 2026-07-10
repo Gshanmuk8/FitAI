@@ -2,6 +2,7 @@ const { getProfile, savePlan } = require('../models/UserProfile');
 const { applyPlanEdit } = require('../services/workout/planEditingService');
 const { generateUserPlan, syncUserState, generationInputFromProfileRow } = require('../services/workout/planService');
 const { recordSystemMemory } = require('../services/memory/memoryWriter');
+const { propagatePlanChange } = require('../services/plan/planChangeEffects');
 
 async function getPlan(req, res, next) {
   try {
@@ -44,8 +45,12 @@ async function postRegenerate(req, res, next) {
     const plan = await generateUserPlan(generationInputFromProfileRow(userId, profile), { skipCache: true });
     const updated = await savePlan(userId, plan, { restartClock: true });
     await syncUserState(userId, plan, profile.goal);
+    // New plan, same day: today's mission and briefing switch to it now.
+    // History (checklists, meals, weigh-ins, logs) is untouched — the AI
+    // reads the whole journey across plan generations.
+    await propagatePlanChange(userId);
     recordSystemMemory(userId, {
-      summary: 'User regenerated their plan (life change or new goal parameters).',
+      summary: `User regenerated their plan (goal: ${profile.goal}, ${plan.days?.length || '?'}-day split, ${plan.timeframe?.weeks || '?'} weeks).`,
       category: 'behavior',
       importance: 2,
     }).catch(() => {});

@@ -10,6 +10,7 @@ const { getProfile, savePlan } = require('../../models/UserProfile');
 const { bumpPreference } = require('../../models/ExercisePreference');
 const { recordSystemMemory } = require('../memory/memoryWriter');
 const { syncUserState } = require('./planService');
+const { propagatePlanChange } = require('../plan/planChangeEffects');
 const { FLAGS } = require('../../config/featureFlags');
 const logger = require('../../utils/logger');
 
@@ -51,11 +52,26 @@ async function applyPlanEdit(userId, edit) {
   // Edits never restart the goal timeline.
   const updatedProfile = await savePlan(userId, merged, { restartClock: false });
   await syncUserState(userId, merged, profile.goal);
+  // Today's mission + briefing must reflect the edit immediately, not at
+  // midnight — awaited so the Plan page's save round-trip guarantees the
+  // dashboard is already consistent when the user navigates back.
+  await propagatePlanChange(userId);
 
   if (FLAGS.preferenceLearning && edit.days) {
     learnFromDiff(userId, diffExercises(currentPlan.days, edit.days)).catch((err) =>
       logger.error('preference learning failed', { error: err.message })
     );
+  }
+
+  // Target edits are durable facts about the user ("wants 180g protein") —
+  // the coach should know without being told again.
+  if (edit.diet && Object.keys(edit.diet).length) {
+    const changes = Object.entries(edit.diet).map(([k, v]) => `${k}=${v}`).join(', ');
+    recordSystemMemory(userId, {
+      summary: `User adjusted their daily targets: ${changes}.`,
+      category: 'preference',
+      importance: 2,
+    }).catch((err) => logger.error('diet-edit memory failed', { error: err.message }));
   }
 
   return { profile: updatedProfile, plan: merged };

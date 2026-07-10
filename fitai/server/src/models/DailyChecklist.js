@@ -74,6 +74,18 @@ async function updateChecklistFields(userId, fields, date = null) {
   return rows[0];
 }
 
+// Rebuild the day's frozen plan snapshot in place (plan edited/regenerated
+// mid-day). Completion flags, logged values, and custom items live in their
+// own columns and are deliberately untouched.
+async function setPlanSnapshot(userId, snapshot, date = null) {
+  const { rows } = await queryAs(userId,
+    `UPDATE daily_checklists SET plan_snapshot = $1
+     WHERE user_id = $2 AND date = COALESCE($3::date, CURRENT_DATE) RETURNING *`,
+    [snapshot ? JSON.stringify(snapshot) : null, userId, date]
+  );
+  return rows[0];
+}
+
 // Replace the day's user-authored items wholesale. Callers (checklistService)
 // do read-modify-write on the array — fine for a single user's own row, and
 // it keeps toggle/remove out of awkward jsonb-path SQL.
@@ -94,4 +106,4 @@ async function getHistory(userId, days = 14) {
   return rows;
 }
 
-module.exports = { getToday, insertToday, getYesterday, updateChecklistItem, updateChecklistFields, setCustomItems, getHistory };
+module.exports = { getToday, insertToday, getYesterday, updateChecklistItem, updateChecklistFields, setCustomItems, setPlanSnapshot, getHistory };

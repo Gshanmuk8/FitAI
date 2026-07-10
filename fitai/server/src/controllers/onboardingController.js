@@ -1,5 +1,6 @@
 const { upsertProfile, savePlan, getProfile } = require('../models/UserProfile');
 const { generateUserPlan, syncUserState, generationInputFromProfileRow } = require('../services/workout/planService');
+const { propagatePlanChange } = require('../services/plan/planChangeEffects');
 
 async function completeOnboarding(req, res, next) {
   try {
@@ -14,6 +15,9 @@ async function completeOnboarding(req, res, next) {
     // A fresh onboarding starts the goal clock (restartClock: true).
     const updated = await savePlan(userId, plan, { restartClock: true });
     await syncUserState(userId, plan, profile.goal);
+    // Covers the edge where a plan-less account already opened the dashboard
+    // today and froze a bare checklist row — it picks up the new plan now.
+    await propagatePlanChange(userId);
     res.json({ profile: updated, plan });
   } catch (err) {
     next(err);

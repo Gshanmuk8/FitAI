@@ -25,4 +25,14 @@ async function upsertToday(userId, briefing, date = null) {
   return rows[0] || null;
 }
 
-module.exports = { getToday, upsertToday };
+// Called when the plan changes mid-day: today's briefing was written against
+// the OLD plan, so it must not keep being served for the rest of the day.
+// The next dashboard load regenerates it from the new plan.
+async function deleteToday(userId, date = null) {
+  await queryAs(userId,
+    `DELETE FROM daily_briefings WHERE user_id = $1 AND date = COALESCE($2::date, CURRENT_DATE)`,
+    [userId, date]
+  );
+}
+
+module.exports = { getToday, upsertToday, deleteToday };

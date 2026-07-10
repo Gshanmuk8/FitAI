@@ -190,6 +190,16 @@ async function run(epg) {
   assert.equal(String(stillStarted.plan_started_at), String(saved.plan_started_at), 'edit did NOT restart goal clock');
   step(`plan edited: "${removed}" learned as disliked, diet override saved, goal clock untouched`);
 
+  // ---- plan change propagates to TODAY immediately (no midnight wait) ----
+  const refreshed = await getTodayEnriched(userId);
+  assert.equal(refreshed.plan_snapshot.targets.proteinGrams, 150, 'today\'s frozen snapshot now carries the edited target');
+  assert.equal(refreshed.protein_completed, true, 'protein completion re-derived against the NEW target (170g >= 150g)');
+  const refreshedProteinItem = refreshed.items.find((i) => i.field === 'protein_completed');
+  assert.match(refreshedProteinItem.label, /Protein: 150g/, 'mission label shows the new target');
+  assert.equal(refreshed.custom_items.length, 1, 'user\'s own items survive the plan change');
+  assert.ok(refreshed.protein_grams != null, 'logged values survive the plan change');
+  step('plan edit updates today\'s mission in place — user data and history untouched');
+
   // ---- AI progress analysis: keyless -> honest fallback over real data ----
   await setChecklistValues(userId, { weight_kg: 89.4 });
   const { getProgress } = require('../server/src/services/progress/progressAnalysisService');

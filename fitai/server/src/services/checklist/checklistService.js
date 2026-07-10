@@ -10,7 +10,7 @@
  * step is deterministic: no AI call sits on this path.
  */
 const crypto = require('crypto');
-const { getToday, insertToday, getYesterday, updateChecklistFields, setCustomItems } = require('../../models/DailyChecklist');
+const { getToday, insertToday, getYesterday, updateChecklistFields, setCustomItems, setPlanSnapshot } = require('../../models/DailyChecklist');
 const { getProfile } = require('../../models/UserProfile');
 const { localDateInZone } = require('../../utils/userDate');
 const { todaysPlanEntry } = require('../../../../shared/calculations/schedule');
@@ -129,6 +129,34 @@ async function setChecklistValues(userId, values) {
   return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
 }
 
+// A plan edit/regeneration mid-day must show on TODAY's mission immediately,
+// not at the next midnight rollover. Rebuild today's frozen snapshot from the
+// live plan and re-derive the value-based completions against the NEW targets
+// (a protein value that satisfied the old 150g target may not satisfy 180g —
+// the checkbox and the number must never disagree). Everything the user
+// logged (values, weigh-in, notes, custom items, workout tick) is preserved.
+async function refreshTodaySnapshot(userId) {
+  const profile = await getProfile(userId);
+  const userDate = localDateInZone(profile?.timezone);
+  const existing = await getToday(userId, userDate);
+  if (!existing) return null; // day not started — first load freezes the new plan anyway
+
+  const snapshot = await buildTodaySnapshot(userId, profile, userDate);
+  await setPlanSnapshot(userId, snapshot, userDate);
+
+  const targets = snapshot?.targets || {};
+  const completions = {};
+  for (const [col, targetKey] of Object.entries(VALUE_TO_TARGET)) {
+    if (existing[col] == null) continue;
+    const target = targets[targetKey];
+    completions[VALUE_TO_COMPLETION[col]] = target != null ? Number(existing[col]) >= target : Number(existing[col]) > 0;
+  }
+  const updated = Object.keys(completions).length
+    ? await updateChecklistFields(userId, completions, userDate)
+    : await getToday(userId, userDate);
+  return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate };
+}
+
 // User-authored mission items: free text, owned entirely by the user, and
 // part of the same day-row so they show up in history the AI reads. Kept
 // separate from the five plan-derived items — a custom "20 min yoga" must
@@ -207,6 +235,7 @@ module.exports = {
   setChecklistValues,
   buildTodaySnapshot,
   itemsFromSnapshot,
+  refreshTodaySnapshot,
   addCustomItem,
   setCustomItemDone,
   removeCustomItem,
