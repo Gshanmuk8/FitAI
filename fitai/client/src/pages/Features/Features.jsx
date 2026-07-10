@@ -1,6 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import Button from '../../components/ui/Button';
+import ButtonLink from '../../components/ui/ButtonLink';
 
 const GROUPS = [
   {
@@ -27,20 +26,19 @@ const GROUPS = [
     heading: 'Intelligence',
     tone: 'cyan',
     items: [
-      { title: 'AI coach with long-term memory', body: 'Gym, diet, and recovery modes. It knows your plan, your pace, your injuries, and what you told it last month.' },
+      { title: 'AI coach with long-term memory', body: 'Gym, diet, and recovery modes. It knows your plan, your injuries, and what you told it last month.' },
       { title: 'Transparent memory', body: 'A dedicated page shows exactly what the coach remembers — categorized and ranked. No black box.' },
-      { title: 'Never down', body: 'Five AI providers in cascade, then deterministic fallbacks. No API outage ever leaves you without an answer or a plan.' },
-      { title: 'Numbers are math, not AI', body: 'Calories, pace, projections, and progression come from exact formulas over your own data. The AI writes words, never invents numbers.' },
+      { title: 'Never down', body: 'Multiple AI providers in cascade, then deterministic fallbacks. No API outage ever leaves you without an answer or a plan.' },
+      { title: 'Safe numbers', body: 'Calorie targets, safety bounds, and progression come from exact formulas over your own data — with hard floors the AI can\'t cross.' },
     ],
   },
   {
     heading: 'Progress',
     tone: 'amber',
     items: [
-      { title: 'Honest pace tracking', body: 'Ahead, on track, or behind — measured against your plan\'s timeline, with a projected finish date at your actual rate.' },
-      { title: 'Explains "why"', body: 'Behind schedule? FitAI reads your adherence data and tells you which lever slipped — workouts, protein, or sleep — and what to do.' },
-      { title: 'Weekly & monthly reviews', body: 'Auto-generated coaching reviews from your real stats: wins, misses, and next week\'s focus.' },
-      { title: 'Streaks & achievements', body: 'Earned milestones — 7-day streaks, workout counts, goal percentages — unlocked by data, not by opening the app.' },
+      { title: 'Daily coach\'s briefing', body: 'Every day your coach reads your plan, weigh-ins, and adherence, measures your actual pace against the plan\'s pace, and tells you where you stand — ahead, on track, or behind.' },
+      { title: 'Log it where you live', body: 'Weigh-ins, protein, water, sleep, steps, and a daily note — typed straight into Today\'s Mission. Entering a value checks the item off for you.' },
+      { title: 'Focus for today', body: 'The briefing ends with up to three concrete things to focus on today — drawn from your own data, not a generic tip list.' },
     ],
   },
 ];
@@ -66,7 +64,7 @@ export default function Features() {
       ))}
 
       <p style={{ marginTop: '2rem', textAlign: 'center' }}>
-        <Link to="/signup"><Button>Start with your plan</Button></Link>
+        <ButtonLink to="/signup">Create your plan</ButtonLink>
       </p>
     </div>
   );

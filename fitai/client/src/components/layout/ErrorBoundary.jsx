@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '../ui/Button';
 
 // One render error must not white-screen the whole app. This catches it,
 // shows a recoverable message, and logs the detail to the console.
@@ -22,13 +23,14 @@ export default class ErrorBoundary extends React.Component {
         <div style={{ maxWidth: 480, margin: '6rem auto', padding: '0 2rem', textAlign: 'center' }}>
           <h2 className="page-title">Something went wrong</h2>
           <p className="muted">The error has been logged. Your data is safe.</p>
-          <button
+          {/* '/' is safe for both auth states — a crashed marketing page
+              must not shove a logged-out visitor into the login wall. */}
+          <Button
             type="button"
-            className="btn btn-primary"
-            onClick={() => { this.setState({ error: null }); window.location.assign('/dashboard'); }}
+            onClick={() => { this.setState({ error: null }); window.location.assign('/'); }}
           >
-            Back to dashboard
-          </button>
+            Take me back
+          </Button>
         </div>
       );
     }

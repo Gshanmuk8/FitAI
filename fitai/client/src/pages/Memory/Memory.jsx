@@ -1,22 +1,35 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getMemoryTimeline } from '../../services/memoryService';
 
 export default function Memory() {
   const [summaries, setSummaries] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getMemoryTimeline().then(setSummaries).catch((err) => setError(err.message));
+    getMemoryTimeline()
+      .then(setSummaries)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
+  if (loading) return <div className="page-loading">Loading what your coach remembers…</div>;
+
   return (
-    <div className="page-enter" style={{ maxWidth: 600, margin: '4rem auto', padding: '0 2rem' }}>
-      <h2 className="page-title">AI Coach Memory</h2>
+    <div className="page page-mid page-enter">
+      <div className="page-header">
+        <h2 className="page-title">Coach memory</h2>
+        <Link to="/tutor" className="small">← Back to your coach</Link>
+      </div>
       {error && <p className="error-text">{error}</p>}
-      <ul style={{ listStyle: 'none', padding: 0, borderLeft: '2px solid var(--border)' }}>
+      {!error && summaries.length === 0 && (
+        <p className="muted">No memories yet — chat with your coach a few times and durable facts land here.</p>
+      )}
+      <ul style={{ listStyle: 'none', padding: 0, borderLeft: summaries.length ? '2px solid var(--border)' : 'none' }}>
         {summaries.map((s) => (
           <li key={s.id} style={{ padding: '0.75rem 1rem' }}>
-            <div style={{ color: 'var(--slate)', fontSize: '0.85rem' }}>
+            <div className="muted small">
               {new Date(s.created_at).toLocaleDateString()} · {s.mode}
               {s.category && s.category !== 'conversation' && (
                 <span className="chip tone-cyan" style={{ marginLeft: 8 }}>
@@ -27,7 +40,6 @@ export default function Memory() {
             <div>{s.summary}</div>
           </li>
         ))}
-        {summaries.length === 0 && !error && <p style={{ color: 'var(--slate)' }}>No memories yet — ask the AI tutor a few questions first.</p>}
       </ul>
     </div>
   );

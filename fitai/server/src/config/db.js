@@ -65,6 +65,10 @@ const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
+  // A hung query must not pin a client forever — with only 10 clients,
+  // one bad query class could starve the whole pool and 500 the site.
+  statement_timeout: 15000,
+  query_timeout: 20000,
   ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 

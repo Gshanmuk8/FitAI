@@ -38,7 +38,10 @@ async function postRegenerate(req, res, next) {
     const profile = await getProfile(userId);
     if (!profile) return res.status(404).json({ error: 'No profile found — complete onboarding first.' });
 
-    const plan = await generateUserPlan(generationInputFromProfileRow(userId, profile));
+    // skipCache: with an unchanged profile the plan cache key would be
+    // identical, and "regenerate" would silently hand back the same plan
+    // while still resetting the goal clock — a no-op with side effects.
+    const plan = await generateUserPlan(generationInputFromProfileRow(userId, profile), { skipCache: true });
     const updated = await savePlan(userId, plan, { restartClock: true });
     await syncUserState(userId, plan, profile.goal);
     recordSystemMemory(userId, {

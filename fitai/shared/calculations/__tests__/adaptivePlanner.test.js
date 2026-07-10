@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { adaptTodaysPlan } = require('../adaptivePlanner');
-const { evaluateAchievements, goalProgressFraction } = require('../achievements');
 
 const workoutEntry = (name) => ({ type: 'workout', weekday: 'Tuesday', day: { name, exercises: [] } });
 const restEntry = { type: 'rest', weekday: 'Tuesday' };
@@ -62,22 +61,4 @@ test('day one (no yesterday) adapts nothing', () => {
   const r = adaptTodaysPlan({ entryToday: workoutEntry('Push'), entryYesterday: null, yesterday: null });
   assert.equal(r.intensity, 'normal');
   assert.deepEqual(r.adaptations, []);
-});
-
-test('achievements unlock at thresholds', () => {
-  const codes = evaluateAchievements({
-    workoutDayCount: 12,
-    weighInCount: 1,
-    bestStreak: 8,
-    startWeightKg: 90,
-    targetWeightKg: 80,
-    currentWeightKg: 84.5,
-  }).map((a) => a.code);
-  assert.deepEqual(codes.sort(), ['FIRST_WEIGH_IN', 'FIRST_WORKOUT', 'GOAL_HALF', 'GOAL_QUARTER', 'STREAK_7', 'WORKOUTS_10'].sort());
-});
-
-test('goalProgressFraction handles missing data and wrong-direction drift', () => {
-  assert.equal(goalProgressFraction({ startWeightKg: null, targetWeightKg: 80, currentWeightKg: 85 }), null);
-  // drifting away from target clamps to 0, not negative
-  assert.equal(goalProgressFraction({ startWeightKg: 90, targetWeightKg: 80, currentWeightKg: 92 }), 0);
 });

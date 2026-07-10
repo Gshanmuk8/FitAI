@@ -9,12 +9,20 @@ async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Missing bearer token' });
   }
   const token = authHeader.slice('Bearer '.length);
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    req.user = data.user;
+    next();
+  } catch (err) {
+    // A thrown error here is the auth SERVICE failing (network, outage) —
+    // not a bad token. Saying 401 would make every client force-logout its
+    // user during a Supabase blip; 503 tells them to retry instead.
+    require('../utils/logger').error('auth service unreachable', { error: err.message });
+    res.status(503).json({ error: 'Authentication service unavailable — try again shortly.' });
   }
-  req.user = data.user;
-  next();
 }
 
 module.exports = { requireAuth };

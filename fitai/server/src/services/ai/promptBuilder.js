@@ -17,11 +17,9 @@ function estimateTokens(text) {
 // args must include `recentMemorySummaries` (array) for trimming to apply;
 // builders that don't use memory summaries are simply returned as-is.
 //
-// Memory summaries currently come back from the DB as plain strings,
-// newest first (see memoryRetriever.getRecentConversationalMemory).
-// If they ever carry an `importance` score, that's used instead — lower
-// importance gets dropped first. Otherwise the oldest entries (the tail
-// of the newest-first array) are dropped first.
+// Memory summaries are scored objects { summary, category, importance }
+// (memoryRetriever.getRecentConversationalMemory) — lowest importance is
+// dropped first. Plain strings (legacy rows) drop oldest-first instead.
 function enforceBudget(buildFn, args) {
   if (!Array.isArray(args.recentMemorySummaries)) {
     return buildFn(args);

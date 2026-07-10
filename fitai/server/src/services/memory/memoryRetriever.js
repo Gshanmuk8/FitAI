@@ -24,13 +24,16 @@ async function getSemiPermanentMemory(userId) {
   return rows[0] || null;
 }
 
-async function getTemporalMemory(userId) {
+async function getTemporalMemory(userId, date = null) {
+  // "Today" must be the USER's day — checklist rows are keyed to the user's
+  // local date, so reading with server CURRENT_DATE would silently miss
+  // today's row for any user whose calendar day differs from the server's.
   const { rows } = await queryAs(userId,
     `SELECT workout_completed, protein_completed, water_completed,
-            sleep_completed, steps_completed, mood, soreness_level
+            sleep_completed, steps_completed
      FROM daily_checklists
-     WHERE user_id = $1 AND date = CURRENT_DATE`,
-    [userId]
+     WHERE user_id = $1 AND date = COALESCE($2::date, CURRENT_DATE)`,
+    [userId, date]
   );
   return rows[0] || null;
 }
@@ -54,24 +57,9 @@ async function getRecentConversationalMemory(userId, limit = 20) {
   }));
 }
 
-// The latest daily progress snapshot (if the feature has produced one) —
-// this is how the tutor knows whether the user is ahead/on-track/behind.
-// Both helpers below tolerate the 002 tables not existing yet (pre-migration
-// deploys): they degrade to null/empty rather than failing the tutor path.
-async function getLatestProgressSnapshot(userId) {
-  try {
-    const { rows } = await queryAs(userId,
-      `SELECT date, metrics FROM progress_snapshots
-       WHERE user_id = $1 ORDER BY date DESC LIMIT 1`,
-      [userId]
-    );
-    return rows[0] || null;
-  } catch {
-    return null;
-  }
-}
-
 // Learned exercise preferences (behavior memory tier, structured form).
+// Tolerates the table not existing yet (pre-migration deploys): degrades
+// to empty rather than failing the tutor path.
 async function getExercisePreferences(userId, { minStrength = 2 } = {}) {
   try {
     const { rows } = await queryAs(userId,
@@ -89,17 +77,33 @@ async function getExercisePreferences(userId, { minStrength = 2 } = {}) {
   }
 }
 
+// Today's briefing (if one was generated) is the single source of pace
+// truth — the tutor reads it rather than re-measuring, so "the coach knows
+// your pace" stays literally true and the two AI surfaces can't disagree.
+async function getTodayBriefingContext(userId, date) {
+  try {
+    const { getToday } = require('../../models/DailyBriefing');
+    const row = await getToday(userId, date);
+    return row?.briefing || null;
+  } catch {
+    return null; // pre-migration deploys: degrade, never fail the tutor
+  }
+}
+
 async function getFullMemoryContext(userId) {
-  const [permanent, semiPermanent, temporal, conversational, progressSnapshot, exercisePreferences] =
+  // Resolve the user's local "today" first — temporal memory keys on it.
+  const { getUserToday } = require('../../utils/userDate');
+  const userDate = await getUserToday(userId);
+  const [permanent, semiPermanent, temporal, conversational, exercisePreferences, todayBriefing] =
     await Promise.all([
       getPermanentMemory(userId),
       getSemiPermanentMemory(userId),
-      getTemporalMemory(userId),
+      getTemporalMemory(userId, userDate),
       getRecentConversationalMemory(userId),
-      getLatestProgressSnapshot(userId),
       getExercisePreferences(userId),
+      getTodayBriefingContext(userId, userDate),
     ]);
-  return { permanent, semiPermanent, temporal, conversational, progressSnapshot, exercisePreferences };
+  return { permanent, semiPermanent, temporal, conversational, exercisePreferences, todayBriefing };
 }
 
 module.exports = {
@@ -107,7 +111,6 @@ module.exports = {
   getSemiPermanentMemory,
   getTemporalMemory,
   getRecentConversationalMemory,
-  getLatestProgressSnapshot,
   getExercisePreferences,
   getFullMemoryContext,
 };

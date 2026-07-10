@@ -75,7 +75,9 @@ async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs,
         body: JSON.stringify({
           model,
           messages: [{ role: "user", content }],
-          temperature: 0.4,
+          // GPT-5-family models reject any non-default temperature with a
+          // hard 400 — omit it for them or every call dies before retrying.
+          ...(/^gpt-5/i.test(model) ? {} : { temperature: 0.4 }),
           // Constrained JSON decoding where the provider supports it —
           // free-form output from small models is the top parse-failure
           // source on plan-sized responses.

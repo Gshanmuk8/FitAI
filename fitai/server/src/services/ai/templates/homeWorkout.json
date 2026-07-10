@@ -6,7 +6,19 @@
       { "name": "Push-up", "sets": 4, "reps": 12, "restSeconds": 45 },
       { "name": "Glute Bridge", "sets": 3, "reps": 15, "restSeconds": 45 },
       { "name": "Mountain Climbers", "sets": 3, "reps": 20, "restSeconds": 30 }
+    ]},
+    { "name": "Bodyweight B", "exercises": [
+      { "name": "Reverse Lunge", "sets": 4, "reps": 12, "restSeconds": 45 },
+      { "name": "Pike Push-up", "sets": 3, "reps": 10, "restSeconds": 45 },
+      { "name": "Superman", "sets": 3, "reps": 15, "restSeconds": 30 },
+      { "name": "Plank", "sets": 3, "reps": 40, "restSeconds": 45, "notes": "reps = seconds held" }
+    ]},
+    { "name": "Bodyweight C", "exercises": [
+      { "name": "Bulgarian Split Squat", "sets": 3, "reps": 12, "restSeconds": 45 },
+      { "name": "Incline Push-up", "sets": 3, "reps": 15, "restSeconds": 45 },
+      { "name": "Glute Bridge March", "sets": 3, "reps": 20, "restSeconds": 30 },
+      { "name": "Bicycle Crunch", "sets": 3, "reps": 20, "restSeconds": 30 }
     ]}
   ],
-  "notes": "No-equipment fallback template."
+  "notes": "3-day no-equipment routine. Space the days out with a rest day between each."
 }

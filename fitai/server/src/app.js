@@ -13,10 +13,8 @@ const checklistRoutes = require('./routes/checklist');
 const workoutRoutes = require('./routes/workout');
 const memoryRoutes = require('./routes/memory');
 const planRoutes = require('./routes/plan');
-const progressRoutes = require('./routes/progress');
-const reviewRoutes = require('./routes/reviews');
-const achievementRoutes = require('./routes/achievements');
 const profileRoutes = require('./routes/profile');
+const progressRoutes = require('./routes/progress');
 const { querySystem } = require('./db/userAccess');
 
 const app = express();
@@ -38,7 +36,6 @@ app.use((req, _res, next) => {
   req.id = uuid();
   next();
 });
-app.use(apiLimiter);
 
 // Liveness + readiness in one: the process is up, and (best-effort, 3s
 // budget) whether Postgres is reachable. Load balancers can key off
@@ -46,6 +43,10 @@ app.use(apiLimiter);
 // cold path: a managed Postgres (Supabase/Render) SSL handshake on a fresh
 // pool routinely exceeds 1s, and a false 503 on boot can make the platform
 // fail the health check and roll back a good deploy.
+// Registered BEFORE the rate limiter on purpose: a platform probing every
+// few seconds from one IP would otherwise burn the 200/15min budget and
+// start seeing 429s — which it reads as "unhealthy" and restarts a healthy
+// instance.
 app.get('/health', async (_req, res) => {
   let database = 'unknown';
   let timer;
@@ -67,6 +68,8 @@ app.get('/health', async (_req, res) => {
   });
 });
 
+app.use(apiLimiter);
+
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/nutrition', nutritionRoutes);
@@ -74,10 +77,8 @@ app.use('/api/checklist', checklistRoutes);
 app.use('/api/workout', workoutRoutes);
 app.use('/api/memory', memoryRoutes);
 app.use('/api/plan', planRoutes);
-app.use('/api/progress', progressRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/achievements', achievementRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/progress', progressRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use(errorHandler);

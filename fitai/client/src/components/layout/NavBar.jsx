@@ -1,19 +1,19 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
-// One persistent nav for every authenticated page — each destination
-// appears exactly once, in the order of the daily flow: check the mission,
-// train, eat, talk to the coach, review progress, manage the plan/self.
+// One persistent nav for every authenticated page, in the order of the
+// daily flow: check the mission, train, eat, see the journey, talk to the
+// coach, manage the plan, manage yourself. Account actions live on Profile;
+// the coach's memory is reached from the Coach page — neither earns a
+// top-level slot of its own.
 const LINKS = [
   { to: '/dashboard', label: 'Today' },
   { to: '/workout', label: 'Workout' },
   { to: '/nutrition', label: 'Nutrition' },
-  { to: '/tutor', label: 'Coach' },
   { to: '/progress', label: 'Progress' },
+  { to: '/tutor', label: 'Coach' },
   { to: '/plan', label: 'Plan' },
-  { to: '/memory', label: 'Memory' },
   { to: '/profile', label: 'Profile' },
-  { to: '/settings', label: 'Settings' },
 ];
 
 export default function NavBar() {

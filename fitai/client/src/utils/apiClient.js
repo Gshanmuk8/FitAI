@@ -2,9 +2,11 @@ import { supabase } from './supabaseClient';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
+const SESSION_EXPIRED = 'Your session has expired — please log in again.';
+
 async function authHeader() {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('Not authenticated');
+  if (!session?.access_token) throw new Error(SESSION_EXPIRED);
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
@@ -28,19 +30,41 @@ async function parseResponse(res) {
   return json;
 }
 
-export async function apiFetch(path, options = {}) {
-  const headers = await authHeader();
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...headers, ...options.headers },
-  });
+// A 401 mid-session means the server rejected a token the browser still
+// holds (revoked session, password changed elsewhere). Try one silent
+// refresh + retry; if that fails, sign out — onAuthStateChange clears the
+// user and ProtectedRoute bounces to /login — and surface a human message
+// instead of a raw "Invalid or expired token".
+async function fetchWithAuthRetry(makeRequest) {
+  let res = await makeRequest();
+  if (res.status === 401) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data?.session?.access_token) {
+      res = await makeRequest();
+    }
+    if (res.status === 401) {
+      await supabase.auth.signOut().catch(() => {});
+      throw new Error(SESSION_EXPIRED);
+    }
+  }
   return parseResponse(res);
+}
+
+export async function apiFetch(path, options = {}) {
+  return fetchWithAuthRetry(async () => {
+    const headers = await authHeader();
+    return fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...headers, ...options.headers },
+    });
+  });
 }
 
 // For multipart (image upload) requests — no Content-Type override, let
 // the browser set the multipart boundary.
 export async function apiUpload(path, formData) {
-  const headers = await authHeader();
-  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: formData });
-  return parseResponse(res);
+  return fetchWithAuthRetry(async () => {
+    const headers = await authHeader();
+    return fetch(`${API_URL}${path}`, { method: 'POST', headers, body: formData });
+  });
 }

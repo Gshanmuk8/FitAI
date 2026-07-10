@@ -4,11 +4,6 @@
  * numbers. See docs/architecture.md "Rules Engine".
  */
 
-function calculateBMI(weightKg, heightCm) {
-  const heightM = heightCm / 100;
-  return Number((weightKg / (heightM * heightM)).toFixed(1));
-}
-
 function calculateBMR({ weightKg, heightCm, age, sex }) {
   const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
   if (sex === 'male') return Math.round(base + 5);
@@ -49,7 +44,6 @@ function calorieTargetForGoal(tdee, goal) {
 }
 
 module.exports = {
-  calculateBMI,
   calculateBMR,
   calculateTDEE,
   calorieTargetForGoal,

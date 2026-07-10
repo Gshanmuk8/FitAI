@@ -20,28 +20,35 @@ async function getLastSessionForExercise(userId, exerciseName) {
   return rows;
 }
 
-// Distinct training days — the unit achievements and consistency use
-// ("logged sets on N days"), not raw set count.
-async function countDistinctWorkoutDays(userId) {
+// Sets already logged today, grouped by exercise — how the Workout page
+// rehydrates a session after a refresh instead of restarting at 0/N.
+async function todaySetCounts(userId, date = null) {
   const { rows } = await queryAs(userId,
-    `SELECT COUNT(DISTINCT logged_at::date)::int AS count FROM workout_logs WHERE user_id = $1`,
-    [userId]
-  );
-  return rows[0].count;
-}
-
-// Aggregate training stats for a date range (weekly/monthly reviews):
-// distinct training days, total sets, and total volume (kg × reps).
-async function statsBetween(userId, startDate, endDate) {
-  const { rows } = await queryAs(userId,
-    `SELECT COUNT(DISTINCT logged_at::date)::int AS workout_days,
-            COUNT(*)::int AS total_sets,
-            COALESCE(SUM(weight_kg * reps), 0)::float AS total_volume_kg
+    `SELECT exercise_name, COUNT(*)::int AS sets
      FROM workout_logs
-     WHERE user_id = $1 AND logged_at::date >= $2 AND logged_at::date <= $3`,
-    [userId, startDate, endDate]
+     WHERE user_id = $1 AND logged_at::date = COALESCE($2::date, CURRENT_DATE)
+     GROUP BY exercise_name`,
+    [userId, date]
   );
-  return rows[0];
+  return rows;
 }
 
-module.exports = { logSet, getLastSessionForExercise, countDistinctWorkoutDays, statsBetween };
+// Per-day training summary for the progress analysis: how often the user
+// actually trained and how much work each session held. Volume treats
+// bodyweight sets (weight 0) as 0 kg — the sets/exercises counts carry them.
+async function trainingDaySummary(userId, days = 28) {
+  const { rows } = await queryAs(userId,
+    `SELECT logged_at::date AS date,
+            COUNT(*)::int AS sets,
+            COUNT(DISTINCT exercise_name)::int AS exercises,
+            COALESCE(SUM(weight_kg * reps), 0)::float AS volume_kg
+     FROM workout_logs
+     WHERE user_id = $1 AND logged_at >= CURRENT_DATE - $2::int
+     GROUP BY logged_at::date
+     ORDER BY logged_at::date`,
+    [userId, days]
+  );
+  return rows;
+}
+
+module.exports = { logSet, getLastSessionForExercise, todaySetCounts, trainingDaySummary };

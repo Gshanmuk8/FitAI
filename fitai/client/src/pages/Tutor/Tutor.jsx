@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { askTutor } from '../../services/aiService';
 import Button from '../../components/ui/Button';
 
@@ -54,7 +55,12 @@ export default function Tutor() {
 
   return (
     <div className="page page-mid page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: '75vh' }}>
-      <h2 className="page-title">Coach</h2>
+      <div className="page-header">
+        <h2 className="page-title">Coach</h2>
+        {/* The coach's memory belongs to the coach — reached from here, not
+            a top-level nav slot. */}
+        <Link to="/memory" className="small">What your coach remembers →</Link>
+      </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         {MODES.map((m) => (
@@ -63,6 +69,7 @@ export default function Tutor() {
             type="button"
             onClick={() => setMode(m.key)}
             title={m.hint}
+            aria-pressed={mode === m.key}
             className={`mode-pill${mode === m.key ? ' active' : ''}`}
           >
             {m.label}
@@ -74,7 +81,7 @@ export default function Tutor() {
         {messages.length === 0 && (
           <p className="muted small">
             Ask anything about {MODES.find((m) => m.key === mode)?.hint}. The coach knows your plan, your pace,
-            and what it has learned about you — durable facts it picks up here land on your Memory page.
+            and what it has learned about you — durable facts it picks up here are saved to its memory.
           </p>
         )}
         {messages.map((msg, i) => (
@@ -104,7 +111,7 @@ export default function Tutor() {
           maxLength={1000}
           style={{ flex: 1 }}
         />
-        <Button type="submit" disabled={busy || !input.trim()}>Send</Button>
+        <Button type="submit" disabled={busy || !input.trim()}>{busy ? 'Thinking…' : 'Send'}</Button>
       </form>
     </div>
   );

@@ -12,7 +12,19 @@
       { "name": "Incline Push-up", "sets": 3, "reps": 12, "restSeconds": 60 },
       { "name": "Lat Pulldown", "sets": 3, "reps": 12, "restSeconds": 60 },
       { "name": "Dead Bug", "sets": 3, "reps": 10, "restSeconds": 45 }
+    ]},
+    { "name": "Full Body C", "exercises": [
+      { "name": "Romanian Deadlift", "sets": 3, "reps": 12, "restSeconds": 75 },
+      { "name": "Dumbbell Bench Press", "sets": 3, "reps": 12, "restSeconds": 60 },
+      { "name": "Seated Row", "sets": 3, "reps": 12, "restSeconds": 60 },
+      { "name": "Mountain Climbers", "sets": 3, "reps": 20, "restSeconds": 30 }
+    ]},
+    { "name": "Full Body D", "exercises": [
+      { "name": "Leg Press", "sets": 3, "reps": 15, "restSeconds": 75 },
+      { "name": "Overhead Press", "sets": 3, "reps": 10, "restSeconds": 60 },
+      { "name": "Face Pull", "sets": 3, "reps": 15, "restSeconds": 45 },
+      { "name": "Russian Twist", "sets": 3, "reps": 20, "restSeconds": 30 }
     ]}
   ],
-  "notes": "Generic 2-day starter template, increase to 3-4 days as conditioning improves."
+  "notes": "4-day full-body starter for fat loss. Alternate the days across the week with a rest day between clusters."
 }

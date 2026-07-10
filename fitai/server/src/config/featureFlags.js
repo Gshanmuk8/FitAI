@@ -12,10 +12,7 @@ function flag(name, defaultValue = true) {
 
 module.exports = {
   FLAGS: {
-    reviews: flag('FEATURE_REVIEWS'),
-    achievements: flag('FEATURE_ACHIEVEMENTS'),
     adaptivePlanner: flag('FEATURE_ADAPTIVE_PLANNER'),
     preferenceLearning: flag('FEATURE_PREFERENCE_LEARNING'),
-    progressSnapshots: flag('FEATURE_PROGRESS_SNAPSHOTS'),
   },
 };

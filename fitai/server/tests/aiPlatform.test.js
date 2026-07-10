@@ -295,3 +295,46 @@ test('vision requests only route to vision-capable providers', async () => {
   assert.equal(r.data.from, 'eyes');
   assert.equal(textOnly.calls, 0);
 });
+
+test('vision uses its own provider order (Groq-primary config), text keeps the default', async () => {
+  const gem = fakeProvider('gemini', ok({ from: 'gemini' }), { vision: true });
+  const grq = fakeProvider('groq', ok({ from: 'groq' }), { vision: true });
+  const { gateway } = makeGateway({
+    providers: [gem, grq], // text order: gemini first
+    configOverrides: { providerOrder: ['gemini', 'groq'], providerOrderVision: ['groq', 'gemini'] },
+  });
+
+  const vis = await gateway.execute(baseOpts({ mode: 'vision', imageBase64: 'x', mimeType: 'image/png', cacheKey: null }));
+  assert.equal(vis.data.from, 'groq', 'vision order puts groq first');
+  assert.equal(gem.calls, 0);
+
+  const txt = await gateway.execute(baseOpts({ cacheKey: null }));
+  assert.equal(txt.data.from, 'gemini', 'text order unaffected');
+});
+
+test('vision order: health can demote a degraded primary but never promote past a healthy one', async () => {
+  const grq = fakeProvider('groq', ok({ from: 'groq' }), { vision: true });
+  const gem = fakeProvider('gemini', ok({ from: 'gemini' }), { vision: true });
+  // gemini is proven-great, groq untested (neutral 0.5): explicit vision
+  // priority must still win — that's the difference from orderByHealth,
+  // which would sort gemini (0.9) ahead of groq (0.5).
+  const scores = { groq: 0.5, gemini: 0.9 };
+  const health = {
+    healthScore: (name) => scores[name],
+    orderByHealth: (names) => [...names].sort((a, b) => scores[b] - scores[a]),
+    recordOutcome: () => {},
+  };
+  const { gateway } = makeGateway({
+    providers: [grq, gem],
+    health,
+    configOverrides: { providerOrder: ['groq', 'gemini'], providerOrderVision: ['groq', 'gemini'] },
+  });
+
+  const r = await gateway.execute(baseOpts({ mode: 'vision', imageBase64: 'x', mimeType: 'image/png', cacheKey: null }));
+  assert.equal(r.data.from, 'groq', 'healthy-enough primary keeps its slot');
+
+  // Now groq is proven degraded (in cooldown / failing) — it sinks.
+  scores.groq = -1;
+  const r2 = await gateway.execute(baseOpts({ mode: 'vision', imageBase64: 'x', mimeType: 'image/png', cacheKey: null }));
+  assert.equal(r2.data.from, 'gemini', 'degraded primary is demoted');
+});

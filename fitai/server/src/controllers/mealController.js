@@ -20,8 +20,14 @@ async function getTodayMeals(req, res, next) {
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function deleteMeal(req, res, next) {
   try {
+    // A non-UUID id would be a Postgres type error (22P02) -> opaque 500.
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: 'Meal not found (only today\'s meals can be removed).' });
+    }
     const removed = await Meal.deleteMeal(req.user.id, req.params.id, await getUserToday(req.user.id));
     if (!removed) return res.status(404).json({ error: 'Meal not found (only today\'s meals can be removed).' });
     res.json({ status: 'deleted', summary: await getTodaySummary(req.user.id) });

@@ -1,17 +1,15 @@
 /**
  * Turns the memory tiers into the compact object that goes into prompts.
  * This is what keeps token usage down per the architecture doc — the AI
- * never sees raw chat history, only summaries plus current state, plus
- * (new in 002) the user's pace vs. their plan and learned exercise
- * preferences, so the coach's answers acknowledge how the plan is going.
+ * never sees raw chat history, only summaries plus current state plus
+ * learned exercise preferences, so the coach's answers stay grounded in
+ * the user's own history.
  */
 const { getFullMemoryContext } = require('./memoryRetriever');
 
 function formatProfileForPrompt(memory) {
-  const { permanent, semiPermanent, temporal, progressSnapshot, exercisePreferences } = memory;
+  const { permanent, semiPermanent, temporal, exercisePreferences, todayBriefing } = memory;
   if (!permanent) return { profile: {}, contextBlock: 'No profile on file.' };
-
-  const pace = progressSnapshot?.metrics?.pace;
 
   const profile = {
     age: permanent.age,
@@ -22,15 +20,21 @@ function formatProfileForPrompt(memory) {
     injuries: permanent.injuries ? permanent.injuries.split(',').map((s) => s.trim()) : [],
     dietaryRestrictions: permanent.dietary_restrictions || undefined,
     equipment: permanent.gym_availability,
+    trainingDaysPerWeek: permanent.training_days_per_week || undefined,
+    trainingStyle: permanent.training_style || undefined,
     dislikedExercises: exercisePreferences?.disliked?.length ? exercisePreferences.disliked : undefined,
     favoriteExercises: exercisePreferences?.favorite?.length ? exercisePreferences.favorite : undefined,
-    paceStatus: pace?.status && pace.status !== 'no_data' ? `${pace.status} (${pace.message})` : undefined,
+    // Pace comes from today's briefing — the same words the user saw on
+    // their dashboard, so coach chat and briefing can never contradict.
+    paceStatus:
+      todayBriefing?.status && todayBriefing.status !== 'no_data'
+        ? `${todayBriefing.status.replace(/_/g, ' ')} — ${todayBriefing.actualPace}`
+        : undefined,
   };
 
   const lines = [
     semiPermanent?.current_program ? `Current program: ${semiPermanent.current_program}` : null,
     semiPermanent?.calorie_target ? `Daily calorie target: ${semiPermanent.calorie_target} kcal` : null,
-    temporal?.soreness_level ? `Today soreness level: ${temporal.soreness_level}` : null,
     temporal && temporal.workout_completed === false
       ? 'Has not completed the current workout yet.'
       : null,

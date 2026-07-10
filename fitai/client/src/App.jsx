@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -8,11 +8,6 @@ import Profile from './pages/Profile/Profile';
 import Nutrition from './pages/Nutrition/Nutrition';
 import Workout from './pages/Workout/Workout';
 import Memory from './pages/Memory/Memory';
-
-// Progress pulls in the chart library — code-split so the dashboard
-// doesn't pay for recharts until the user opens the Progress page.
-const Progress = lazy(() => import('./pages/Progress/Progress'));
-import Settings from './pages/Settings/Settings';
 import About from './pages/About/About';
 import Features from './pages/Features/Features';
 import Login from './pages/Auth/Login';
@@ -22,6 +17,7 @@ import ResetPassword from './pages/Auth/ResetPassword';
 import AuthCallback from './pages/Auth/AuthCallback';
 import Onboarding from './pages/Onboarding/Onboarding';
 import Plan from './pages/Plan/Plan';
+import Progress from './pages/Progress/Progress';
 import Tutor from './pages/Tutor/Tutor';
 import Learn from './pages/Learn/Learn';
 import Terms from './pages/Legal/Terms';
@@ -72,12 +68,13 @@ export default function App() {
           <Route path="/dashboard/tutor" element={<Navigate to="/tutor" replace />} />
           <Route path="/tutor" element={<ProtectedRoute><Tutor /></ProtectedRoute>} />
           <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
+          <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/nutrition" element={<ProtectedRoute><Nutrition /></ProtectedRoute>} />
           <Route path="/workout" element={<ProtectedRoute><Workout /></ProtectedRoute>} />
           <Route path="/memory" element={<ProtectedRoute><Memory /></ProtectedRoute>} />
-          <Route path="/progress" element={<ProtectedRoute><Suspense fallback={<div className="page-loading">Loading…</div>}><Progress /></Suspense></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          {/* Settings folded into Profile — keep old bookmarks working. */}
+          <Route path="/settings" element={<Navigate to="/profile" replace />} />
         </Routes>
         </ErrorBoundary>
       </BrowserRouter>

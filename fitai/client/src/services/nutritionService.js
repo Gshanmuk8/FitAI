@@ -1,8 +1,13 @@
 import { apiFetch, apiUpload } from '../utils/apiClient';
+import { prepareFoodImage } from '../utils/imageProcessing';
 
-export function analyzeFoodImage(file) {
+export async function analyzeFoodImage(file) {
+  // Downscale before upload: raw phone photos exceed provider payload
+  // limits (the top cause of "couldn't read that image") and waste mobile
+  // data. Best-effort — an undecodable format uploads as-is.
+  const prepared = await prepareFoodImage(file);
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('image', prepared);
   return apiUpload('/api/nutrition/analyze', formData);
 }
 

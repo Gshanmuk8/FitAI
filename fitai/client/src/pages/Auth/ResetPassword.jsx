@@ -16,6 +16,7 @@ export default function ResetPassword() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (busy) return;
     setError('');
     setBusy(true);
     try {
@@ -28,19 +29,19 @@ export default function ResetPassword() {
     }
   }
 
-  if (loading) return <div className="page-loading">Loading…</div>;
+  if (loading) return <div className="page-loading">Checking your reset link…</div>;
   if (!user) {
     return (
-      <div className="page-enter" style={{ maxWidth: 360, margin: '6rem auto' }}>
-        <h2 className="font-display">Link expired</h2>
-        <p>This reset link is invalid or has expired. Request a new one from the login page.</p>
+      <div className="page page-form page-enter">
+        <h2 className="page-title">Link expired</h2>
+        <p>This reset link is invalid or has expired. Request a new one from the sign-in page.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="page-enter" style={{ maxWidth: 360, margin: '6rem auto' }}>
-      <h2 className="font-display">Choose a new password</h2>
+    <form onSubmit={handleSubmit} className="page page-form page-enter">
+      <h2 className="page-title">Choose a new password</h2>
       <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" type="password" minLength={8} required style={{ width: '100%', marginBottom: '0.75rem' }} />
       {error && <p className="error-text">{error}</p>}
       <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>

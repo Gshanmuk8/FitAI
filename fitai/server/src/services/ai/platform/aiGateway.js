@@ -39,11 +39,22 @@ function createGateway({
   const byName = providers instanceof Map ? providers : new Map(Object.entries(providers));
 
   function eligibleProviders({ vision = false } = {}) {
-    const ordered = config.providerOrder
+    const baseOrder = vision && config.providerOrderVision?.length
+      ? config.providerOrderVision
+      : config.providerOrder;
+    const ordered = baseOrder
       .filter((name) => byName.has(name))
       .filter((name) => !config.disabledProviders.has(name))
       .filter((name) => !vision || byName.get(name).supportsVision);
-    return health ? health.orderByHealth(ordered) : ordered;
+    if (!health) return ordered;
+    if (!vision || typeof health.healthScore !== 'function') return health.orderByHealth(ordered);
+    // Vision keeps its explicit priority (the primary is a product choice,
+    // not a latency race) — health only DEMOTES providers that are proven
+    // degraded or cooling down; it never promotes one over the configured
+    // primary the way orderByHealth's score sort can.
+    const healthy = ordered.filter((name) => health.healthScore(name) >= 0.5);
+    const degraded = ordered.filter((name) => health.healthScore(name) < 0.5);
+    return [...healthy, ...degraded];
   }
 
   /**

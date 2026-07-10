@@ -50,6 +50,42 @@ async function updateChecklistItem(userId, field, value, date = null) {
   return rows[0];
 }
 
+// Manual value entry (protein grams, water, sleep, steps, weigh-in, notes)
+// plus the derived *_completed booleans. Every key is checked against a
+// fixed whitelist before it reaches the SQL, so the column list is never
+// user-controlled even though it's interpolated.
+const WRITABLE_FIELDS = new Set([
+  'workout_completed', 'protein_completed', 'water_completed', 'sleep_completed', 'steps_completed',
+  'protein_grams', 'water_ml', 'sleep_hours', 'steps_count', 'weight_kg', 'notes',
+]);
+
+async function updateChecklistFields(userId, fields, date = null) {
+  const keys = Object.keys(fields).filter((k) => WRITABLE_FIELDS.has(k));
+  if (!keys.length) return getToday(userId, date);
+
+  const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+  const params = keys.map((k) => fields[k]);
+  const { rows } = await queryAs(userId,
+    `UPDATE daily_checklists SET ${setClause}
+     WHERE user_id = $${keys.length + 1} AND date = COALESCE($${keys.length + 2}::date, CURRENT_DATE)
+     RETURNING *`,
+    [...params, userId, date]
+  );
+  return rows[0];
+}
+
+// Replace the day's user-authored items wholesale. Callers (checklistService)
+// do read-modify-write on the array — fine for a single user's own row, and
+// it keeps toggle/remove out of awkward jsonb-path SQL.
+async function setCustomItems(userId, items, date = null) {
+  const { rows } = await queryAs(userId,
+    `UPDATE daily_checklists SET custom_items = $1
+     WHERE user_id = $2 AND date = COALESCE($3::date, CURRENT_DATE) RETURNING *`,
+    [JSON.stringify(items), userId, date]
+  );
+  return rows[0];
+}
+
 async function getHistory(userId, days = 14) {
   const { rows } = await queryAs(userId,
     `SELECT * FROM daily_checklists WHERE user_id = $1 ORDER BY date DESC LIMIT $2`,
@@ -58,14 +94,4 @@ async function getHistory(userId, days = 14) {
   return rows;
 }
 
-async function getRange(userId, startDate, endDate) {
-  const { rows } = await queryAs(userId,
-    `SELECT * FROM daily_checklists
-     WHERE user_id = $1 AND date >= $2 AND date <= $3
-     ORDER BY date ASC`,
-    [userId, startDate, endDate]
-  );
-  return rows;
-}
-
-module.exports = { getToday, insertToday, getYesterday, updateChecklistItem, getHistory, getRange };
+module.exports = { getToday, insertToday, getYesterday, updateChecklistItem, updateChecklistFields, setCustomItems, getHistory };

@@ -10,13 +10,19 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
-  // Already signed in — no reason to show the signup form.
-  if (!loading && user) return <Navigate to="/dashboard" replace />;
+  // Already signed in — no reason to show the signup form. Gated on !busy:
+  // with auto-confirm enabled, signUp() flips the auth state mid-submit and
+  // this Navigate would race the handler's navigate('/onboarding'), able to
+  // dump a brand-new user on the empty dashboard instead of onboarding.
+  if (!loading && user && !busy) return <Navigate to="/dashboard" replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
     setError('');
     try {
       const data = await signUp(email, password);
@@ -24,34 +30,36 @@ export default function Signup() {
       // session yet — sending the user to a protected route would just
       // bounce them. Tell them what to do instead.
       if (data.session) {
-        navigate('/onboarding');
+        navigate('/onboarding', { replace: true });
       } else {
         setNeedsConfirmation(true);
+        setBusy(false);
       }
     } catch (err) {
       setError(err.message);
+      setBusy(false);
     }
   }
 
   if (needsConfirmation) {
     return (
-      <div className="page-enter" style={{ maxWidth: 400, margin: '6rem auto' }}>
-        <h2 className="font-display">Confirm your email</h2>
+      <div className="page page-form page-enter">
+        <h2 className="page-title">Confirm your email</h2>
         <p>
           We sent a confirmation link to <strong>{email}</strong>. Click it, then{' '}
-          <Link to="/login">log in</Link> to start onboarding.
+          <Link to="/login">sign in</Link> to start onboarding.
         </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="page-enter" style={{ maxWidth: 360, margin: '6rem auto' }}>
-      <h2 className="font-display">Sign up</h2>
+    <form onSubmit={handleSubmit} className="page page-form page-enter">
+      <h2 className="page-title">Sign up</h2>
       <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required style={{ width: '100%', marginBottom: '0.75rem' }} />
       <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min 8 characters)" type="password" minLength={8} required style={{ width: '100%', marginBottom: '0.75rem' }} />
       {error && <p className="error-text">{error}</p>}
-      <Button type="submit">Sign up</Button>
+      <Button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Sign up'}</Button>
       <p style={{ marginTop: '1rem' }}><Link to="/login">Already have an account?</Link></p>
     </form>
   );

@@ -19,7 +19,7 @@ const logger = require('../../utils/logger');
  *            requestedTimeframeWeeks, userId }
  * Returns the full plan object stored in users_profile.ai_plan.
  */
-async function generateUserPlan(profile) {
+async function generateUserPlan(profile, { skipCache = false } = {}) {
   // Behavior memory feeds generation: exercises the user repeatedly
   // removed are named in the prompt as "avoid".
   const prefs = profile.userId
@@ -40,7 +40,7 @@ async function generateUserPlan(profile) {
     favoriteExercises: prefs.favorite,
   };
   const prompt = buildPlanGenerationPrompt(promptProfile);
-  const aiPlan = await generatePlan({ profile: promptProfile, prompt });
+  const aiPlan = await generatePlan({ profile: promptProfile, prompt, skipCache });
 
   return attachDeterministicLayers(aiPlan, profile, timeframe);
 }
@@ -69,12 +69,15 @@ function attachDeterministicLayers(plan, profile, timeframe) {
   };
 }
 
-// Checkpoints every 4 weeks — the "realistic roadmap" shown on the
-// progress card. Pure interpolation; empty when the goal has no weight axis.
+// Checkpoints every 4 weeks plus the final week — pure interpolation.
+// Only weight-directional goals get a roadmap: a maintain/endurance plan
+// claiming "you'll be at 80kg by week 8" would contradict its own
+// expectedWeeklyRateKg of 0.
 function buildRoadmap(profile, timeframeWeeks) {
+  if (!['lose_fat', 'build_muscle'].includes(profile.goal)) return [];
   if (!profile.weightKg || !profile.targetWeightKg) return [];
   const checkpoints = [];
-  for (let week = 4; week <= timeframeWeeks; week += 4) {
+  for (let week = 4; week < timeframeWeeks; week += 4) {
     checkpoints.push({
       week,
       expectedWeightKg: expectedWeightAt({
@@ -85,6 +88,9 @@ function buildRoadmap(profile, timeframeWeeks) {
       }),
     });
   }
+  // The last checkpoint is always the goal itself — a 10-week plan must
+  // show week 10 at the target, not stop at week 8.
+  checkpoints.push({ week: timeframeWeeks, expectedWeightKg: profile.targetWeightKg });
   return checkpoints;
 }
 
@@ -104,6 +110,8 @@ function generationInputFromProfileRow(userId, profile) {
     equipment: profile.gym_availability || 'gym',
     dietaryRestrictions: profile.dietary_restrictions,
     requestedTimeframeWeeks: profile.timeframe_weeks || undefined,
+    trainingDaysPerWeek: profile.training_days_per_week || undefined,
+    trainingStyle: profile.training_style || undefined,
   };
 }
 

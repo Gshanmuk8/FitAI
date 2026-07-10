@@ -1,6 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import Button from '../../components/ui/Button';
+import ButtonLink from '../../components/ui/ButtonLink';
 
 export default function About() {
   return (
@@ -37,12 +36,12 @@ export default function About() {
       </p>
       <ul>
         <li><strong>Memory.</strong> A coach you have to re-brief every session isn't a coach. FitAI permanently remembers your injuries, preferences, and progress — and learns from every plan edit you make.</li>
-        <li><strong>Honesty.</strong> Pace, adherence, and projections are computed from your own logged data with transparent math — never invented by an AI. If you're behind, it says so, and says why.</li>
+        <li><strong>Honesty.</strong> Every day your coach reads your own logged data — weigh-ins, workouts, adherence — measures your pace against your plan, and says it straight. If you're behind, it says so, and says why. Your targets and safety bounds are exact formulas the AI can't bend.</li>
         <li><strong>Adaptation.</strong> A plan that ignores a missed workout or a bad night's sleep is a PDF, not a program. Your daily mission rebuilds itself every morning.</li>
       </ul>
 
       <p style={{ marginTop: '2rem' }}>
-        <Link to="/signup"><Button>Get started</Button></Link>
+        <ButtonLink to="/signup">Create your plan</ButtonLink>
       </p>
     </div>
   );

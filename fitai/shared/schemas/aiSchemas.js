@@ -44,14 +44,31 @@ const TutorResponseSchema = z.object({
   recommendSeeProfessional: z.boolean().default(false),
 });
 
-// Weekly/monthly review narrative. The stats themselves are computed
-// deterministically server-side — the AI only writes the coaching words,
-// so a hallucinated number can never appear in a review.
-const ReviewNarrativeSchema = z.object({
-  headline: z.string().min(1).max(200),
-  wins: z.array(z.string()).max(5),
-  focusNext: z.array(z.string()).max(5),
-  recommendation: z.string().min(1),
+// The AI's once-per-day progress briefing shown on the dashboard. The coach
+// reads the plan + logged history and MEASURES the pace itself (both the
+// planned/current pace and the actual measured pace are its words), then
+// writes a short narrative — no deterministic math sits on this path.
+const BriefingSchema = z.object({
+  status: z.enum(['ahead', 'on_track', 'behind', 'no_data']),
+  currentPace: z.string().min(1).max(200),   // the pace the plan expects
+  actualPace: z.string().min(1).max(200),    // the pace the user is actually on
+  summary: z.string().min(1).max(800),       // the daily narrative
+  focus: z.array(z.string().min(1).max(200)).max(3).default([]),
+});
+
+// The Progress page's analysis: the coach reads the user's whole logged
+// journey (weigh-ins, training, nutrition, their own habits) and writes the
+// assessment ITSELF — trend, pace, wins, risks, what to change. There is no
+// deterministic pace/risk rule engine behind this; the reasoning is the AI's.
+const ProgressAnalysisSchema = z.object({
+  status: z.enum(['ahead', 'on_track', 'behind', 'no_data']),
+  summary: z.string().min(1).max(1000),              // the journey so far, plainly
+  weightTrend: z.string().min(1).max(500),           // what the scale data actually shows
+  trainingAnalysis: z.string().min(1).max(500),      // consistency, volume, patterns
+  nutritionAnalysis: z.string().min(1).max(500),     // logging habits, protein/calorie reality
+  wins: z.array(z.string().min(1).max(200)).max(5).default([]),
+  risks: z.array(z.string().min(1).max(200)).max(5).default([]),
+  recommendations: z.array(z.string().min(1).max(250)).max(5).default([]),
 });
 
 // One-line durable memory extracted from a chat exchange.
@@ -68,6 +85,7 @@ module.exports = {
   FoodItemSchema,
   FoodAnalysisSchema,
   TutorResponseSchema,
-  ReviewNarrativeSchema,
+  BriefingSchema,
+  ProgressAnalysisSchema,
   MemorySummarySchema,
 };

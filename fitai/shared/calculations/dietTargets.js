@@ -17,7 +17,13 @@ function roundTo(value, step) {
 function buildDietTargets(profile) {
   const bmr = calculateBMR(profile);
   const tdee = calculateTDEE(bmr, profile.activityLevel);
-  const calorieTarget = calorieTargetForGoal(tdee, profile.goal);
+  // Floor at the same safety bound applied to user edits — small/young
+  // profiles can otherwise compute a starvation-level deficit target
+  // (e.g. TDEE 839 - 500 = 339 kcal), which must never ship on a plan.
+  const calorieTarget = Math.max(
+    DIET_EDIT_BOUNDS.calorieTarget.min,
+    calorieTargetForGoal(tdee, profile.goal)
+  );
 
   const proteinPerKg = profile.goal === 'build_muscle' ? 2.0 : 1.8;
   const proteinGrams = roundTo(profile.weightKg * proteinPerKg, 5);

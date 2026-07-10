@@ -5,11 +5,13 @@ async function upsertProfile(userId, profile) {
   const {
     age, heightCm, weightKg, targetWeightKg, goal, activityLevel,
     injuries, dietaryRestrictions, gymAvailability, sex, timeframeWeeks, timezone,
+    trainingDaysPerWeek, trainingStyle,
   } = profile;
   const { rows } = await queryAs(userId,
     `INSERT INTO users_profile (user_id, age, height_cm, weight_kg, target_weight_kg, goal, activity_level,
-                                injuries, dietary_restrictions, gym_availability, sex, timeframe_weeks, timezone, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
+                                injuries, dietary_restrictions, gym_availability, sex, timeframe_weeks, timezone,
+                                training_days_per_week, training_style, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, NOW())
      ON CONFLICT (user_id) DO UPDATE SET
        age = EXCLUDED.age, height_cm = EXCLUDED.height_cm, weight_kg = EXCLUDED.weight_kg,
        target_weight_kg = EXCLUDED.target_weight_kg, goal = EXCLUDED.goal,
@@ -17,10 +19,13 @@ async function upsertProfile(userId, profile) {
        dietary_restrictions = EXCLUDED.dietary_restrictions, gym_availability = EXCLUDED.gym_availability,
        sex = EXCLUDED.sex, timeframe_weeks = EXCLUDED.timeframe_weeks,
        timezone = COALESCE(EXCLUDED.timezone, users_profile.timezone),
+       training_days_per_week = EXCLUDED.training_days_per_week,
+       training_style = EXCLUDED.training_style,
        updated_at = NOW()
      RETURNING *`,
     [userId, age, heightCm, weightKg, targetWeightKg, goal, activityLevel,
-     injuries, dietaryRestrictions, gymAvailability, sex ?? null, timeframeWeeks ?? null, timezone ?? null]
+     injuries, dietaryRestrictions, gymAvailability, sex ?? null, timeframeWeeks ?? null, timezone ?? null,
+     trainingDaysPerWeek ?? null, trainingStyle ?? null]
   );
   return rows[0];
 }
@@ -62,6 +67,8 @@ const EDITABLE_COLUMNS = {
   sex: 'sex',
   timeframeWeeks: 'timeframe_weeks',
   timezone: 'timezone',
+  trainingDaysPerWeek: 'training_days_per_week',
+  trainingStyle: 'training_style',
 };
 
 async function updateProfileFields(userId, fields) {

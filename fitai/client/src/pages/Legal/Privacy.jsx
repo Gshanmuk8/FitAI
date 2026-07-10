@@ -24,11 +24,12 @@ export default function Privacy() {
 
       <h2>AI processing</h2>
       <p>
-        When you use AI features (plan generation, coach chat, food photo analysis, reviews),
-        relevant context — profile facts, memory summaries, your question or photo — is sent to
-        third-party AI providers (such as Google Gemini) to generate the response. Providers may
-        change; responses are validated before reaching you, and which provider answered is never
-        exposed. Deterministic features (targets, pace, progression) involve no AI processing at all.
+        When you use AI features (plan generation, coach chat, food photo analysis, the daily
+        briefing), relevant context — profile facts, memory summaries, logged history, your question
+        or photo — is sent to third-party AI providers (such as Google Gemini) to generate the
+        response. Providers may change; responses are validated before reaching you, and which
+        provider answered is never exposed. Deterministic features (calorie targets, safety bounds,
+        progression) involve no AI processing at all.
       </p>
 
       <h2>What the coach remembers — and your control</h2>

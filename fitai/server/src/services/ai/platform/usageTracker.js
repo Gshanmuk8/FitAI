@@ -40,6 +40,18 @@ function createUsageTracker({ pricing = {}, budget = {}, now = () => new Date() 
     return store.get(key);
   }
 
+  // Keep only the current day + month plus a short tail — without pruning,
+  // a long-lived instance accumulates one period entry (with per-user maps)
+  // per day forever.
+  const KEEP_PERIODS = 4; // today, yesterday, this month, last month
+
+  function prune() {
+    if (store.size <= KEEP_PERIODS) return;
+    const keep = new Set([dayKey(), monthKey()]);
+    const rest = [...store.keys()].filter((k) => !keep.has(k)).sort().reverse();
+    for (const key of rest.slice(KEEP_PERIODS - keep.size)) store.delete(key);
+  }
+
   function record({ provider, model, task, userId, promptTokens = 0, completionTokens = 0 }) {
     for (const key of [dayKey(), monthKey()]) {
       const p = period(key);
@@ -50,6 +62,7 @@ function createUsageTracker({ pricing = {}, budget = {}, now = () => new Date() 
       bump(p.byTask, task || 'unknown', promptTokens, completionTokens);
       if (userId) bump(p.byUser, userId, promptTokens, completionTokens);
     }
+    prune();
   }
 
   function totalTokens(agg) {

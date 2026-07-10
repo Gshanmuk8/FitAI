@@ -4,7 +4,13 @@ function validateBody(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ error: 'Invalid request body', details: result.error.flatten() });
+      // Name the first offending field in the message itself — the client
+      // only surfaces `error`, and a bare "Invalid request body" under a
+      // 10-field form tells the user nothing about what to fix.
+      const first = result.error.issues?.[0];
+      const where = first?.path?.length ? `${first.path.join('.')}: ` : '';
+      const message = first ? `${where}${first.message}` : 'Invalid request body';
+      return res.status(400).json({ error: message, details: result.error.flatten() });
     }
     req.body = result.data;
     next();

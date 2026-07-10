@@ -10,9 +10,20 @@ const TEMPLATE_PLANS = {
 };
 
 function fallbackPlan(profile) {
-  const key = profile.equipment === "home" ? "home_workout" : `${profile.goal}_beginner`;
+  // 'home' and 'minimal' both mean no gym machines -> bodyweight template.
+  // Goals without a dedicated template (maintain, improve_endurance) borrow
+  // the full-body split but keep the USER'S goal — storing the template's
+  // goal would corrupt profile metadata ("lose_fat" on a maintain account).
+  const key = ["home", "minimal"].includes(profile.equipment)
+    ? "home_workout"
+    : `${profile.goal}_beginner`;
   const template = TEMPLATE_PLANS[key] || TEMPLATE_PLANS.lose_fat_beginner;
-  return { ...template, generatedBy: "fallback_template", warning: "AI was unavailable — this is a general starter plan, not personalized." };
+  return {
+    ...template,
+    goal: profile.goal || template.goal,
+    generatedBy: "fallback_template",
+    warning: "AI was unavailable — this is a general starter plan, not personalized.",
+  };
 }
 
 function fallbackTutorResponse(mode) {
@@ -39,31 +50,32 @@ function fallbackFoodAnalysis() {
   };
 }
 
-// Review narrative built purely from the deterministic stats — used when
-// no AI provider is available. Reads templated but is factually exact.
-function fallbackReviewNarrative(stats = {}) {
-  const adherencePct = stats.adherence != null ? Math.round(stats.adherence * 100) : null;
-  const wins = [];
-  const focusNext = [];
-
-  if (stats.workoutsCompleted > 0) wins.push(`Completed ${stats.workoutsCompleted} workout day(s).`);
-  if (stats.weightChangeKg != null && stats.weightChangeKg !== 0) {
-    wins.push(`Body weight moved ${stats.weightChangeKg > 0 ? '+' : ''}${stats.weightChangeKg}kg over the period.`);
-  }
-  if (adherencePct != null && adherencePct >= 70) wins.push(`Strong adherence: ${adherencePct}% of daily targets hit.`);
-
-  if (adherencePct != null && adherencePct < 70) focusNext.push('Raise daily checklist completion — consistency beats intensity.');
-  if (stats.proteinDaysHit != null && stats.daysTracked && stats.proteinDaysHit / stats.daysTracked < 0.7) {
-    focusNext.push('Hit the protein target more days than you miss it.');
-  }
-  if (!focusNext.length) focusNext.push('Keep the current routine — momentum is on your side.');
-
+// Shown when the AI coach can't be reached for the daily briefing. Honest
+// and non-committal — it never fabricates a pace it did not measure.
+function fallbackBriefing() {
   return {
-    headline: adherencePct != null ? `Period summary: ${adherencePct}% adherence` : 'Period summary',
-    wins: wins.length ? wins : ['You showed up — the streak continues from here.'],
-    focusNext,
-    recommendation:
-      'This summary was generated from your logged data. For personalized coaching commentary, AI review will be available when a provider is configured.',
+    status: 'no_data',
+    currentPace: 'Your target pace is set in your plan.',
+    actualPace: 'Your coach could not be reached to measure your pace right now.',
+    summary: 'We could not generate your AI briefing at the moment. Keep logging your daily checklist and weigh-ins — your pace update will be here on the next try.',
+    focus: ['Complete today\'s checklist', 'Log today\'s weigh-in'],
+    generatedBy: 'fallback_template',
+  };
+}
+
+// The Progress page when the coach is unreachable — honest about it, and
+// never a fabricated analysis. The page still shows the raw data (charts,
+// adherence); only the interpretation is missing.
+function fallbackProgressAnalysis() {
+  return {
+    status: 'no_data',
+    summary: 'Your coach could not be reached to analyze your progress right now — your logged data below is safe and this analysis will refresh on the next visit.',
+    weightTrend: 'Analysis unavailable at the moment.',
+    trainingAnalysis: 'Analysis unavailable at the moment.',
+    nutritionAnalysis: 'Analysis unavailable at the moment.',
+    wins: [],
+    risks: [],
+    recommendations: ['Keep logging weigh-ins, meals and workouts — the analysis reads everything when it\'s back.'],
     generatedBy: 'fallback_template',
   };
 }
@@ -72,5 +84,6 @@ module.exports = {
   fallbackPlan,
   fallbackTutorResponse,
   fallbackFoodAnalysis,
-  fallbackReviewNarrative,
+  fallbackBriefing,
+  fallbackProgressAnalysis,
 };

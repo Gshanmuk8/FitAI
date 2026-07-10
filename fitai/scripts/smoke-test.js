@@ -23,8 +23,19 @@ const DATA_DIR = path.join(__dirname, '..', '.pgdata-smoke');
 process.env.DATABASE_URL = `postgresql://postgres:password@localhost:${PORT}/${DB_NAME}`;
 process.env.SUPABASE_URL = 'https://your-project.supabase.co';
 process.env.SUPABASE_SERVICE_KEY = 'your-service-role-key';
-process.env.GEMINI_API_KEY = 'your-gemini-api-key'; // placeholder = unconfigured on purpose
 process.env.NODE_ENV = 'development';
+// The whole point is exercising the KEYLESS path (fallbacks, never blank
+// screens) — a developer's .env with real provider keys must not leak in,
+// or "keyless -> template plan" turns into a live AI call and fails.
+// Placeholders (not deletes): dotenv only fills ABSENT vars, so a deleted
+// key would be re-populated from .env; a "your-*" placeholder wins and is
+// treated as unconfigured by config/env's isPlaceholder().
+for (const key of [
+  'GEMINI_API_KEY', 'GROQ_API_KEY', 'OPENROUTER_API_KEY', 'CEREBRAS_API_KEY',
+  'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN',
+]) {
+  process.env[key] = 'your-placeholder';
+}
 
 let passed = 0;
 function step(name) {
@@ -85,7 +96,10 @@ async function run(epg) {
     goal: 'lose_fat', activityLevel: 'moderately_active',
     injuries: '', dietaryRestrictions: 'vegetarian',
     gymAvailability: 'gym', sex: 'male', timeframeWeeks: 6, // unsafely fast on purpose
+    trainingDaysPerWeek: 4, trainingStyle: 'powerlifting 3 days, yoga on rest days',
   });
+  assert.equal(profileRow.training_days_per_week, 4, 'training days persisted');
+  assert.equal(profileRow.training_style, 'powerlifting 3 days, yoga on rest days', 'training style persisted');
   const plan = await generateUserPlan(generationInputFromProfileRow(userId, profileRow));
   await savePlan(userId, plan, { restartClock: true });
   await syncUserState(userId, plan, 'lose_fat');
@@ -118,6 +132,22 @@ async function run(epg) {
   assert.equal(again.id, checklist.id, 'same day -> same row, no duplicates');
   step('checklist is idempotent within the day');
 
+  // ---- user-authored mission items ----
+  const { addCustomItem, setCustomItemDone, removeCustomItem, setChecklistValues } =
+    require('../server/src/services/checklist/checklistService');
+  let withCustom = await addCustomItem(userId, '20 min yoga');
+  await addCustomItem(userId, 'no sugar today');
+  withCustom = await getTodayEnriched(userId);
+  assert.equal(withCustom.custom_items.length, 2, 'two custom items on today\'s row');
+  const yoga = withCustom.custom_items.find((i) => i.label === '20 min yoga');
+  const ticked = await setCustomItemDone(userId, yoga.id, true);
+  assert.equal(ticked.custom_items.find((i) => i.id === yoga.id).done, true, 'custom item ticked');
+  const sugar = ticked.custom_items.find((i) => i.label === 'no sugar today');
+  const afterRemove = await removeCustomItem(userId, sugar.id);
+  assert.equal(afterRemove.custom_items.length, 1, 'custom item removed');
+  await assert.rejects(() => setCustomItemDone(userId, 'not-a-real-id', true), /not found/i, 'unknown id -> 404 error');
+  step('custom mission items: add, tick, remove, unknown-id rejected');
+
   // ---- meal diary + protein auto-check ----
   const { addMealAndSync, getTodaySummary } = require('../server/src/services/nutrition/mealDiaryService');
   await addMealAndSync(userId, { name: 'Paneer bowl', calories: 650, protein: 45, source: 'manual' });
@@ -141,30 +171,6 @@ async function run(epg) {
   assert.ok(suggestion.weightKg != null && suggestion.note, 'progression suggestion from real log');
   step(`workout logged, progression says: ${suggestion.weightKg}kg — "${suggestion.note}"`);
 
-  // ---- weigh-ins + progress report ----
-  const { logWeight, getProgressReport } = require('../server/src/services/progress/progressService');
-  // simulate a week of history so the trend math has a real span
-  await pool.query(
-    `INSERT INTO body_weight_logs (user_id, date, weight_kg) VALUES
-     ($1, CURRENT_DATE - 8, 90.0), ($1, CURRENT_DATE - 4, 89.4)`,
-    [userId]
-  );
-  await logWeight(userId, 88.8);
-
-  const report = await getProgressReport(userId);
-  assert.equal(report.goal.timeframeWeeks, 10, 'clamped timeframe flows into the report');
-  assert.equal(report.weight.currentKg, 88.8);
-  assert.ok(report.actual.weeklyRateKg < 0, 'losing weight -> negative measured rate');
-  assert.equal(report.pace.status, 'ahead', '1.2kg down at week 0 of a 10-week plan = ahead');
-  assert.ok(report.streaks && report.adherence, 'streaks + adherence present');
-  const codes = (report.newAchievements || []).map((a) => a.code);
-  assert.ok(codes.includes('FIRST_WORKOUT') && codes.includes('FIRST_WEIGH_IN'), 'achievements unlocked');
-  step(`progress report: pace=${report.pace.status}, rate=${report.actual.weeklyRateKg}kg/wk, achievements=[${codes.join(', ')}]`);
-
-  const cached = await getProgressReport(userId);
-  assert.equal(cached.fresh, false, 'second call same day -> served from snapshot');
-  step('24h snapshot caching works (and a weigh-in invalidates it — exercised above)');
-
   // ---- plan edit + preference learning ----
   const { applyPlanEdit } = require('../server/src/services/workout/planEditingService');
   const removed = saved.ai_plan.days[0].exercises[0].name;
@@ -184,20 +190,26 @@ async function run(epg) {
   assert.equal(String(stillStarted.plan_started_at), String(saved.plan_started_at), 'edit did NOT restart goal clock');
   step(`plan edited: "${removed}" learned as disliked, diet override saved, goal clock untouched`);
 
+  // ---- AI progress analysis: keyless -> honest fallback over real data ----
+  await setChecklistValues(userId, { weight_kg: 89.4 });
+  const { getProgress } = require('../server/src/services/progress/progressAnalysisService');
+  const progress = await getProgress(userId);
+  assert.equal(progress.analysis.source, 'fallback', 'keyless -> fallback analysis');
+  assert.ok(progress.data.weighIns.length >= 1 && progress.data.weighIns[0].kg === 89.4, 'weigh-in flows from checklist into progress data');
+  assert.ok(progress.data.training.length >= 1, 'logged sets appear in training summary');
+  assert.ok(progress.data.nutrition.length >= 1, 'meals appear in nutrition summary');
+  assert.ok(progress.data.adherence.daysLogged >= 1, 'adherence computed');
+  assert.ok(progress.data.customItems.some((i) => i.label === '20 min yoga' && i.done), 'custom habits feed the analysis data');
+  assert.ok(!JSON.stringify(progress.analysis).match(/gemini|groq|cerebras|openrouter|cloudflare/i), 'provider names never leak');
+  const { rows: analysisRows } = await pool.query(`SELECT * FROM progress_analyses WHERE user_id = $1`, [userId]);
+  assert.equal(analysisRows.length, 0, 'fallback analysis is NOT persisted (must refresh when AI is back)');
+  step('progress: AI-analysis pipeline assembles the full journey; keyless degrades honestly');
+
   // ---- memory: system rows exist, retrieval is importance-first ----
   const { getRecentConversationalMemory } = require('../server/src/services/memory/memoryRetriever');
   const memories = await getRecentConversationalMemory(userId);
   assert.ok(memories.some((m) => m.category === 'behavior'), 'plan edit wrote a behavior memory');
-  assert.ok(memories.some((m) => m.category === 'progress'), 'achievements wrote progress memories');
   step(`long-term memory populated by the system (${memories.length} entries, categorized)`);
-
-  // ---- weekly review (empty period -> honest stub, persisted) ----
-  const { getOrGenerateReview } = require('../server/src/services/reviews/reviewService');
-  const review = await getOrGenerateReview(userId, 'weekly');
-  assert.ok(review.period_start && review.narrative, 'review generated + persisted');
-  const reviewAgain = await getOrGenerateReview(userId, 'weekly');
-  assert.equal(reviewAgain.id, review.id, 'review is immutable per period');
-  step('weekly review generated lazily and cached');
 
   // ---- tutor, keyless -> safe fallback with provider hidden ----
   const { buildContextForUser } = require('../server/src/services/memory/contextBuilder');

@@ -1,11 +1,11 @@
 import React from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import Button from '../../components/ui/Button';
+import ButtonLink from '../../components/ui/ButtonLink';
 
 const PANELS = [
   { title: 'It remembers', body: 'Injuries, preferences, wins — a coach you never have to re-brief.', wash: 'var(--cyan-dim)', tilt: '-1.6deg' },
-  { title: 'It tells the truth', body: 'Ahead, on track, or behind — computed from your own numbers, never invented.', wash: 'var(--lime-dim)', tilt: '1.2deg' },
+  { title: 'It tells the truth', body: 'Ahead, on track, or behind — your coach measures your pace from your own logged days, and says it straight.', wash: 'var(--lime-dim)', tilt: '1.2deg' },
   { title: 'It adapts daily', body: 'Missed a session? Slept badly? Tomorrow’s plan already knows.', wash: 'var(--emerald-dim)', tilt: '-0.8deg' },
 ];
 
@@ -17,7 +17,7 @@ export default function Home() {
   if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="page-enter" style={{ maxWidth: 1000, margin: '0 auto', padding: '0 2rem' }}>
+    <div className="page page-wide page-enter" style={{ marginTop: 0 }}>
       {/* ---- Opening spread ---- */}
       <section style={{ padding: '10vh 0 5vh', position: 'relative' }}>
         <p className="eyebrow">Chapter one · your goal</p>
@@ -54,8 +54,8 @@ export default function Home() {
             based on how today actually went.
           </p>
           <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link to="/signup"><Button>Start your journey</Button></Link>
-            <Link to="/learn"><Button variant="ghost">How it works</Button></Link>
+            <ButtonLink to="/signup">Create your plan</ButtonLink>
+            <ButtonLink to="/learn" variant="ghost">How it works</ButtonLink>
           </div>
         </div>
         <p className="font-accent" style={{ fontSize: '1.25rem', color: 'var(--emerald)', transform: 'rotate(-1.5deg)', margin: '1.5rem 0 0', display: 'inline-block' }}>

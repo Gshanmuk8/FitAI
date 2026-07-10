@@ -35,6 +35,14 @@ function buildPlatformConfig() {
       'gemini', 'openai', 'anthropic', 'openrouter', 'groq', 'cerebras', 'cloudflare',
     ]),
 
+    // Vision (food-photo) cascade order — separate from text because the
+    // best text provider is not the best vision provider. Groq first:
+    // llama-4-scout is fast, generous free tier, and not subject to the
+    // Gemini quota pressure that was killing photo analysis.
+    providerOrderVision: envList('AI_PROVIDER_ORDER_VISION', [
+      'groq', 'gemini', 'openai', 'anthropic', 'openrouter', 'cerebras', 'cloudflare',
+    ]),
+
     // Per-provider hard disable (feature flag): AI_DISABLE_PROVIDERS=openai,groq
     disabledProviders: new Set(envList('AI_DISABLE_PROVIDERS', [])),
 

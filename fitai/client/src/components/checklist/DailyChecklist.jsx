@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useChecklist } from '../../hooks/useChecklist';
+import Button from '../ui/Button';
 
 // Fallback labels for rows created before plan-aware snapshots existed —
 // the server normally sends concrete items ("Protein: 144g") built from
@@ -12,21 +13,184 @@ const DEFAULT_ITEMS = [
   { field: 'steps_completed', label: 'Steps target' },
 ];
 
+// The four measurable items accept a typed value. Each maps to its storage
+// column and how the number is shown vs. stored (water is entered in litres
+// but persisted in millilitres to match the plan targets).
+const MEASURE = {
+  protein_completed: { col: 'protein_grams', unit: 'g', step: '1', toInput: (v) => v, fromInput: (n) => n },
+  water_completed: { col: 'water_ml', unit: 'L', step: '0.1', toInput: (v) => v / 1000, fromInput: (n) => Math.round(n * 1000) },
+  sleep_completed: { col: 'sleep_hours', unit: 'h', step: '0.5', toInput: (v) => v, fromInput: (n) => n },
+  steps_completed: { col: 'steps_count', unit: 'steps', step: '100', toInput: (v) => v, fromInput: (n) => Math.round(n) },
+};
+
+function ValueInput({ field, checklist, onSave, onError, onSaved }) {
+  const cfg = MEASURE[field];
+  const stored = checklist?.[cfg.col];
+  const wasDone = Boolean(checklist?.[field]);
+  const [val, setVal] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Track the server value; re-sync when it changes from elsewhere (e.g. a
+  // weigh-in save returns the whole row).
+  useEffect(() => {
+    setVal(stored != null ? String(cfg.toInput(Number(stored))) : '');
+  }, [stored]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function commit() {
+    if (val === '') return;
+    const num = Number(val);
+    if (Number.isNaN(num) || num < 0) {
+      onError('Enter a positive number.');
+      return;
+    }
+    if (stored != null && cfg.toInput(Number(stored)) === num) return; // unchanged
+    setSaving(true);
+    try {
+      const updated = await onSave({ [cfg.col]: cfg.fromInput(num) });
+      // Saving must never be silent — and when the value crosses the target
+      // and checks the item off, SAY that's what happened.
+      onSaved(!wasDone && updated?.[field] ? 'Saved — target hit, checked off ✓' : 'Saved');
+    } catch (err) {
+      // The value LOOKS accepted in the input — say plainly that it wasn't.
+      onError(`Couldn't save: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <span className="check-value">
+      <input
+        type="number"
+        inputMode="decimal"
+        step={cfg.step}
+        min="0"
+        value={val}
+        disabled={saving}
+        placeholder="—"
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+        style={{ width: '5rem' }}
+        aria-label={`Log ${cfg.col}`}
+      />
+      {cfg.unit && <span className="tiny faint">{cfg.unit}</span>}
+    </span>
+  );
+}
+
+function WeighInAndNotes({ checklist, onSave, onError }) {
+  const [weight, setWeight] = useState('');
+  const [notes, setNotes] = useState('');
+  const [savedFlash, setSavedFlash] = useState('');
+
+  useEffect(() => { setWeight(checklist?.weight_kg != null ? String(checklist.weight_kg) : ''); }, [checklist?.weight_kg]);
+  useEffect(() => { setNotes(checklist?.notes || ''); }, [checklist?.notes]);
+
+  const flash = (msg) => { setSavedFlash(msg); setTimeout(() => setSavedFlash(''), 1500); };
+
+  async function saveWeight() {
+    if (weight === '') return;
+    const num = Number(weight);
+    if (Number.isNaN(num) || num < 30 || num > 300) {
+      onError('Weight must be between 30 and 300 kg.');
+      return;
+    }
+    if (checklist?.weight_kg != null && Number(checklist.weight_kg) === num) return;
+    try {
+      await onSave({ weight_kg: num });
+      flash('Weigh-in saved');
+    } catch (err) {
+      onError(`Couldn't save weigh-in: ${err.message}`);
+    }
+  }
+
+  async function saveNotes() {
+    if ((checklist?.notes || '') === notes) return;
+    try {
+      await onSave({ notes });
+      flash('Note saved');
+    } catch (err) {
+      onError(`Couldn't save note: ${err.message}`);
+    }
+  }
+
+  return (
+    <div className="checklist-manual">
+      <div className="check-row" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <label className="check-label" htmlFor="weighin" style={{ flex: 1 }}>Today's weight</label>
+        <input
+          id="weighin"
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min="30"
+          max="300"
+          value={weight}
+          placeholder="kg"
+          onChange={(e) => setWeight(e.target.value)}
+          onBlur={saveWeight}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+          style={{ width: '6rem' }}
+        />
+        <span className="tiny faint">kg</span>
+      </div>
+      <textarea
+        value={notes}
+        placeholder="Notes for today — how you felt, energy, anything the coach should know…"
+        onChange={(e) => setNotes(e.target.value)}
+        onBlur={saveNotes}
+        maxLength={1000}
+        rows={2}
+        style={{ width: '100%', marginTop: '0.5rem', resize: 'vertical' }}
+      />
+      {savedFlash && <span className="tiny tone-emerald-text">{savedFlash}</span>}
+    </div>
+  );
+}
+
 export default function DailyChecklist() {
-  const { checklist, loading, error, toggleItem } = useChecklist();
+  const { checklist, loading, error, toggleItem, setValues, addCustom, toggleCustom, removeCustom } = useChecklist();
+  const [saveError, setSaveError] = useState('');
+  const [savedFlash, setSavedFlash] = useState('');
+  const [newItem, setNewItem] = useState('');
+  const [addingItem, setAddingItem] = useState(false);
+
+  function flash(msg) {
+    setSavedFlash(msg);
+    setTimeout(() => setSavedFlash(''), 1800);
+  }
 
   if (loading) return <div className="checklist-skeleton">Loading today's mission…</div>;
-  if (error) return <div className="checklist-error">Couldn't load checklist: {error}</div>;
+  if (error) return <div className="checklist-error">Couldn't load today's mission: {error}</div>;
 
   const items = checklist?.items?.length ? checklist.items : DEFAULT_ITEMS;
   const workout = checklist?.plan_snapshot?.workout;
   const adaptations = checklist?.plan_snapshot?.adaptations || [];
-  const done = items.filter(({ field }) => checklist?.[field]).length;
+  const customItems = Array.isArray(checklist?.custom_items) ? checklist.custom_items : [];
+  const done = items.filter(({ field }) => checklist?.[field]).length + customItems.filter((i) => i.done).length;
+  const total = items.length + customItems.length;
+
+  // A failed toggle must not read as success — the checkbox stays where the
+  // server left it (state only updates from the response), and we say why.
+  async function handleToggle(field, value) {
+    setSaveError('');
+    try {
+      await toggleItem(field, value);
+    } catch (err) {
+      setSaveError(`Couldn't update: ${err.message}`);
+    }
+  }
+
+  async function handleSave(values) {
+    setSaveError('');
+    return setValues(values);
+  }
 
   return (
     <div className="daily-checklist">
       <div className="page-header">
-        <h3 style={{ margin: 0 }}>Today's Mission</h3>
+        <h3 style={{ margin: 0 }}>Today's mission</h3>
         {workout?.weekday && <span className="chip">{workout.weekday}</span>}
       </div>
 
@@ -37,20 +201,81 @@ export default function DailyChecklist() {
       <ul>
         {items.map(({ field, label, detail }) => (
           <li key={field} className={`check-row${checklist?.[field] ? ' done' : ''}`}>
-            <label>
+            <label style={{ flex: 1 }}>
               <input
                 type="checkbox"
                 checked={Boolean(checklist?.[field])}
-                onChange={(e) => toggleItem(field, e.target.checked)}
+                onChange={(e) => handleToggle(field, e.target.checked)}
               />
               <span className="check-label">
                 {label}
                 {detail ? <span className="tiny faint"> — {detail}</span> : null}
               </span>
             </label>
+            {MEASURE[field] && <ValueInput field={field} checklist={checklist} onSave={handleSave} onError={setSaveError} onSaved={flash} />}
+          </li>
+        ))}
+        {customItems.map((item) => (
+          <li key={item.id} className={`check-row${item.done ? ' done' : ''}`}>
+            <label style={{ flex: 1 }}>
+              <input
+                type="checkbox"
+                checked={Boolean(item.done)}
+                onChange={(e) => toggleCustom(item.id, e.target.checked).catch((err) => setSaveError(`Couldn't update: ${err.message}`))}
+              />
+              <span className="check-label">{item.label}</span>
+            </label>
+            <button
+              type="button"
+              className="ghost-button tiny"
+              aria-label={`Remove ${item.label}`}
+              onClick={() => removeCustom(item.id).catch((err) => setSaveError(`Couldn't remove: ${err.message}`))}
+              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--muted)' }}
+            >
+              ✕
+            </button>
           </li>
         ))}
       </ul>
+
+      {/* The mission is the user's too: anything they want tracked today —
+          "20 min yoga", "no sugar" — becomes a real item the AI sees in
+          history, not a note lost to a text field. */}
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const label = newItem.trim();
+          if (!label || addingItem) return;
+          setAddingItem(true);
+          setSaveError('');
+          try {
+            await addCustom(label);
+            setNewItem('');
+          } catch (err) {
+            setSaveError(`Couldn't add: ${err.message}`);
+          } finally {
+            setAddingItem(false);
+          }
+        }}
+        style={{ display: 'flex', gap: '0.4rem', margin: '0.5rem 0' }}
+      >
+        <input
+          value={newItem}
+          maxLength={120}
+          placeholder="Add your own — e.g. 20 min yoga, no sugar today…"
+          onChange={(e) => setNewItem(e.target.value)}
+          style={{ flex: 1 }}
+          aria-label="Add your own checklist item"
+        />
+        <Button type="submit" variant="ghost" disabled={addingItem || !newItem.trim()}>
+          {addingItem ? 'Adding…' : 'Add'}
+        </Button>
+      </form>
+
+      <WeighInAndNotes checklist={checklist} onSave={handleSave} onError={setSaveError} />
+
+      {savedFlash && <p className="tiny tone-emerald-text" style={{ margin: '0.4rem 0 0' }}>{savedFlash}</p>}
+      {saveError && <p className="error-text small" style={{ margin: '0.4rem 0 0' }}>{saveError}</p>}
 
       {workout?.type === 'workout' && workout.exercises?.length > 0 && (
         <details className="small" style={{ marginBottom: '0.5rem' }}>
@@ -66,9 +291,13 @@ export default function DailyChecklist() {
       )}
 
       <div className="progress-track" aria-hidden="true">
-        <div className={`progress-fill ${done === items.length ? 'tone-emerald' : ''}`} style={{ width: `${(done / items.length) * 100}%` }} />
+        <div className={`progress-fill ${done === total ? 'tone-emerald' : ''}`} style={{ width: `${(done / total) * 100}%` }} />
       </div>
-      <p className="checklist-score">{done} / {items.length} completed</p>
+      {done === total ? (
+        <p className="checklist-score tone-emerald-text">Mission complete — see you tomorrow. ✓</p>
+      ) : (
+        <p className="checklist-score">{done} / {total} completed</p>
+      )}
     </div>
   );
 }

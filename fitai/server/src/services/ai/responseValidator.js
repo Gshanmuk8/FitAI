@@ -9,14 +9,18 @@ const {
   PlanSchema,
   FoodAnalysisSchema,
   TutorResponseSchema,
-  ReviewNarrativeSchema,
+  BriefingSchema,
+  ProgressAnalysisSchema,
+  MemorySummarySchema,
 } = require("../../../../shared/schemas/aiSchemas");
 
 const SCHEMAS = {
   plan: PlanSchema,
   foodAnalysis: FoodAnalysisSchema,
   tutorResponse: TutorResponseSchema,
-  reviewNarrative: ReviewNarrativeSchema,
+  briefing: BriefingSchema,
+  progressAnalysis: ProgressAnalysisSchema,
+  memorySummary: MemorySummarySchema,
 };
 
 function validate(schemaName, data) {
@@ -33,7 +37,12 @@ function validate(schemaName, data) {
 // food item where protein grams exceed total grams is schema-valid nonsense.
 function sanityCheck(schemaName, data) {
   if (schemaName === "foodAnalysis") {
+    const before = data.foods.length;
     data.foods = data.foods.filter((f) => f.protein <= f.grams && f.calories <= f.grams * 9);
+    // If plausibility filtering emptied the plate, the original confidence
+    // is meaningless — "found nothing, 90% confident" would tell the client
+    // NOT to ask the user for manual input.
+    if (before > 0 && data.foods.length === 0) data.confidence = 0;
   }
   return data;
 }

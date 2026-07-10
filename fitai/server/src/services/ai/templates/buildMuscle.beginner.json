@@ -1,18 +1,30 @@
 {
   "goal": "build_muscle",
   "days": [
-    { "name": "Upper Body", "exercises": [
+    { "name": "Upper A", "exercises": [
       { "name": "Bench Press", "sets": 4, "reps": 8, "restSeconds": 90 },
       { "name": "Seated Row", "sets": 4, "reps": 10, "restSeconds": 90 },
       { "name": "Overhead Press", "sets": 3, "reps": 10, "restSeconds": 75 },
       { "name": "Bicep Curl", "sets": 3, "reps": 12, "restSeconds": 60 }
     ]},
-    { "name": "Lower Body", "exercises": [
+    { "name": "Lower A", "exercises": [
       { "name": "Back Squat", "sets": 4, "reps": 8, "restSeconds": 120 },
       { "name": "Romanian Deadlift", "sets": 4, "reps": 10, "restSeconds": 90 },
       { "name": "Leg Press", "sets": 3, "reps": 12, "restSeconds": 90 },
       { "name": "Calf Raise", "sets": 3, "reps": 15, "restSeconds": 45 }
+    ]},
+    { "name": "Upper B", "exercises": [
+      { "name": "Incline Dumbbell Press", "sets": 4, "reps": 10, "restSeconds": 90 },
+      { "name": "Lat Pulldown", "sets": 4, "reps": 10, "restSeconds": 90 },
+      { "name": "Lateral Raise", "sets": 3, "reps": 15, "restSeconds": 45 },
+      { "name": "Triceps Pushdown", "sets": 3, "reps": 12, "restSeconds": 60 }
+    ]},
+    { "name": "Lower B", "exercises": [
+      { "name": "Hip Thrust", "sets": 4, "reps": 10, "restSeconds": 90 },
+      { "name": "Front Squat", "sets": 3, "reps": 10, "restSeconds": 120 },
+      { "name": "Leg Curl", "sets": 3, "reps": 12, "restSeconds": 60 },
+      { "name": "Standing Calf Raise", "sets": 3, "reps": 15, "restSeconds": 45 }
     ]}
   ],
-  "notes": "Generic 2-day upper/lower split for hypertrophy."
+  "notes": "4-day upper/lower hypertrophy split. Run as Upper A / Lower A / rest / Upper B / Lower B across the week."
 }

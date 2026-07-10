@@ -10,10 +10,16 @@ const OnboardingSchema = z.object({
   targetWeightKg: z.number().min(30).max(300).optional(),
   goal: z.enum(GOALS),
   activityLevel: z.enum(ACTIVITY_LEVELS),
-  injuries: z.string().optional().default(''),
-  dietaryRestrictions: z.string().optional().default(''),
+  injuries: z.string().max(500, 'keep injuries under 500 characters').optional().default(''),
+  dietaryRestrictions: z.string().max(500, 'keep dietary restrictions under 500 characters').optional().default(''),
   equipment: z.enum(['gym', 'home', 'minimal']).optional().default('gym'),
   gymAvailability: z.string().optional(),
+  // How many days a week the user can actually train — their number, not a
+  // heuristic's. The AI builds the split to exactly this frequency.
+  trainingDaysPerWeek: z.number().int().min(1).max(7).optional(),
+  // Free text: "yoga and powerlifting", "calisthenics, some cardio" — the
+  // plan is designed around whatever the user writes here.
+  trainingStyle: z.string().max(500, 'keep training style under 500 characters').optional().default(''),
   sex: z.enum(['male', 'female', 'other']).optional().default('other'),
   // How fast the user wants to get there. Out-of-range values are accepted
   // here and clamped by paceTracking.resolveTimeframeWeeks with an
@@ -45,10 +51,6 @@ const PlanUpdateSchema = z
   .refine((body) => body.days || body.diet || body.notes !== undefined, {
     message: 'Provide days, diet, or notes to update.',
   });
-
-const WeightLogSchema = z.object({
-  weightKg: z.number().min(30).max(300),
-});
 
 // Profile edits: any subset of the onboarding fields, at least one.
 const ProfileUpdateSchema = OnboardingSchema.partial().refine(
@@ -86,6 +88,28 @@ const ChecklistPatchSchema = z.object({
   value: z.boolean(),
 });
 
+// Manual "Today's Mission" value entry — any subset, at least one. Bounds are
+// sanity ceilings; entering a value auto-completes its checklist item.
+const ChecklistValuesSchema = z.object({
+  protein_grams: z.number().min(0).max(1000).optional(),
+  water_ml: z.number().int().min(0).max(20000).optional(),
+  sleep_hours: z.number().min(0).max(24).optional(),
+  steps_count: z.number().int().min(0).max(100000).optional(),
+  weight_kg: z.number().min(30).max(300).optional(),
+  notes: z.string().max(1000).optional(),
+}).refine((body) => Object.values(body).some((v) => v !== undefined), {
+  message: 'Provide at least one value to log.',
+});
+
+// User-authored mission items — free text, capped at a label length that
+// still renders as one checklist row.
+const CustomItemAddSchema = z.object({
+  label: z.string().trim().min(1, 'Write what you want to do.').max(120, 'Keep it under 120 characters.'),
+});
+const CustomItemPatchSchema = z.object({
+  done: z.boolean(),
+});
+
 const LogSetSchema = z.object({
   exerciseName: z.string().min(1).max(120),
   weightKg: z.number().min(0).max(500),
@@ -99,8 +123,10 @@ module.exports = {
   TutorRequestSchema,
   ChecklistPatchSchema,
   LogSetSchema,
+  ChecklistValuesSchema,
+  CustomItemAddSchema,
+  CustomItemPatchSchema,
   PlanUpdateSchema,
-  WeightLogSchema,
   MealSchema,
   ProfileUpdateSchema,
 };

@@ -22,8 +22,11 @@ export default function PublicShell({ children }) {
           </NavLink>
         ))}
         <span style={{ flex: 1 }} />
-        <NavLink to="/login" className="nav-link">Log in</NavLink>
-        <NavLink to="/signup" className="nav-link" style={{ color: 'var(--blue)' }}>Get started</NavLink>
+        <NavLink to="/login" className="nav-link">Sign in</NavLink>
+        {/* The site's primary CTA is a button, not tinted text. */}
+        <Link to="/signup" className="btn btn-primary" style={{ minHeight: 36, padding: '0.3rem 1.1rem', fontSize: '0.86rem' }}>
+          Get started
+        </Link>
       </nav>
       <main style={{ flex: 1 }}>{children}</main>
       <Footer />

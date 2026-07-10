@@ -1,0 +1,3 @@
+# Local AI-assistant tooling — machine-specific, not app code
+.claude/
+.kilocode/

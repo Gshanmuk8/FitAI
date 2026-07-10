@@ -9,7 +9,8 @@
  * poor sleep, perfect day) — and freezes it into the day's row. Every
  * step is deterministic: no AI call sits on this path.
  */
-const { getToday, insertToday, getYesterday } = require('../../models/DailyChecklist');
+const crypto = require('crypto');
+const { getToday, insertToday, getYesterday, updateChecklistFields, setCustomItems } = require('../../models/DailyChecklist');
 const { getProfile } = require('../../models/UserProfile');
 const { localDateInZone } = require('../../utils/userDate');
 const { todaysPlanEntry } = require('../../../../shared/calculations/schedule');
@@ -91,6 +92,95 @@ async function buildTodaySnapshot(userId, profile, userDate) {
   };
 }
 
+// Manual value entry. The user types the real figure; we store it AND derive
+// the matching *_completed boolean from the day's frozen targets, so the
+// checkbox and the number can never disagree. A value with no target on file
+// counts as done once it's a positive number.
+const VALUE_TO_TARGET = {
+  protein_grams: 'proteinGrams',
+  water_ml: 'waterMl',
+  sleep_hours: 'sleepHours',
+  steps_count: 'stepsTarget',
+};
+const VALUE_TO_COMPLETION = {
+  protein_grams: 'protein_completed',
+  water_ml: 'water_completed',
+  sleep_hours: 'sleep_completed',
+  steps_count: 'steps_completed',
+};
+
+async function setChecklistValues(userId, values) {
+  // getTodayEnriched guarantees today's row exists and carries the plan
+  // snapshot (targets) we compare against, plus the user's local date.
+  const current = await getTodayEnriched(userId);
+  const targets = current.plan_snapshot?.targets || {};
+  const fields = {};
+
+  for (const [col, targetKey] of Object.entries(VALUE_TO_TARGET)) {
+    if (values[col] == null) continue;
+    fields[col] = values[col];
+    const target = targets[targetKey];
+    fields[VALUE_TO_COMPLETION[col]] = target != null ? values[col] >= target : values[col] > 0;
+  }
+  if (values.weight_kg != null) fields.weight_kg = values.weight_kg;
+  if (values.notes !== undefined) fields.notes = values.notes;
+
+  const updated = await updateChecklistFields(userId, fields, current.userDate);
+  return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
+}
+
+// User-authored mission items: free text, owned entirely by the user, and
+// part of the same day-row so they show up in history the AI reads. Kept
+// separate from the five plan-derived items — a custom "20 min yoga" must
+// never overwrite the plan's own workout adherence signal.
+const MAX_CUSTOM_ITEMS = 12;
+
+function parseCustomItems(row) {
+  const raw = row?.custom_items;
+  const items = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  return Array.isArray(items) ? items : [];
+}
+
+async function addCustomItem(userId, label) {
+  const current = await getTodayEnriched(userId);
+  const items = parseCustomItems(current);
+  if (items.length >= MAX_CUSTOM_ITEMS) {
+    const err = new Error(`Today's list is full (${MAX_CUSTOM_ITEMS} custom items max).`);
+    err.status = 400;
+    throw err;
+  }
+  items.push({ id: crypto.randomUUID(), label, done: false });
+  const updated = await setCustomItems(userId, items, current.userDate);
+  return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
+}
+
+async function setCustomItemDone(userId, itemId, done) {
+  const current = await getTodayEnriched(userId);
+  const items = parseCustomItems(current);
+  const item = items.find((i) => i.id === itemId);
+  if (!item) {
+    const err = new Error('Checklist item not found for today.');
+    err.status = 404;
+    throw err;
+  }
+  item.done = done;
+  const updated = await setCustomItems(userId, items, current.userDate);
+  return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
+}
+
+async function removeCustomItem(userId, itemId) {
+  const current = await getTodayEnriched(userId);
+  const items = parseCustomItems(current);
+  const next = items.filter((i) => i.id !== itemId);
+  if (next.length === items.length) {
+    const err = new Error('Checklist item not found for today.');
+    err.status = 404;
+    throw err;
+  }
+  const updated = await setCustomItems(userId, next, current.userDate);
+  return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
+}
+
 // The five boolean columns stay exactly as they were (backwards compat) —
 // this just decorates each with what it concretely means today.
 function itemsFromSnapshot(snapshot) {
@@ -112,4 +202,12 @@ function itemsFromSnapshot(snapshot) {
   ];
 }
 
-module.exports = { getTodayEnriched, buildTodaySnapshot, itemsFromSnapshot };
+module.exports = {
+  getTodayEnriched,
+  setChecklistValues,
+  buildTodaySnapshot,
+  itemsFromSnapshot,
+  addCustomItem,
+  setCustomItemDone,
+  removeCustomItem,
+};

@@ -1,8 +1,8 @@
 /**
  * Resolves "today" in the user's timezone. Every date-keyed table
- * (daily_checklists, meals, body_weight_logs, progress_snapshots) keys on
- * this instead of the server's CURRENT_DATE, so a user in IST rolls over
- * at their midnight, not the server's.
+ * (daily_checklists, meals, daily_briefings) keys on this instead of the
+ * server's CURRENT_DATE, so a user in IST rolls over at their midnight,
+ * not the server's.
  *
  * Returns a YYYY-MM-DD string, or null when the user has no stored
  * timezone — models COALESCE null to CURRENT_DATE, which is exactly the

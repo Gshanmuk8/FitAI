@@ -1,7 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Learn() {
+  // Learn is useful both pre-signup and in-app — but "create your plan"
+  // makes no sense to someone who already has one.
+  const { user } = useAuth();
   return (
     <div className="page page-mid page-enter prose">
       <h2 className="page-title">How to use FitAI effectively</h2>
@@ -29,8 +33,8 @@ export default function Learn() {
       <h2>3. Weigh in a few times a week</h2>
       <p>
         Pace tracking needs data. Two or three weigh-ins a week (same time of day, ideally morning)
-        is enough — FitAI uses a 7-day average, so daily fluctuations don't scare anyone. Without
-        weigh-ins, the Progress page can't tell you if you're ahead or behind.
+        is enough — type it into Today's Mission on the dashboard. Without weigh-ins, your coach's
+        daily briefing can't tell you whether you're ahead or behind.
       </p>
 
       <h2>4. Log workouts from the plan</h2>
@@ -61,15 +65,18 @@ export default function Learn() {
         facts from your chats land on the Memory page where you can see exactly what it remembers.
       </p>
 
-      <h2>8. Check Progress weekly, not hourly</h2>
+      <h2>8. Read the briefing daily, judge weekly</h2>
       <p>
-        The Progress page recomputes once a day. Look at the weekly review, the pace card, and the
-        trend line — direction over days matters; single data points don't. When life changes
-        (injury, new goal, new schedule), update your Profile and hit "Regenerate plan".
+        Your coach's briefing on the dashboard refreshes once a day — it measures your actual pace
+        against the plan and picks today's focus. Direction over days matters; single data points
+        don't. When life changes (injury, new goal, new schedule), update your Profile and hit
+        "Regenerate plan".
       </p>
 
       <p style={{ marginTop: '2rem' }}>
-        Ready? <Link to="/signup">Create your plan →</Link>
+        {user
+          ? <Link to="/dashboard">Open Today →</Link>
+          : <>Ready? <Link to="/signup">Create your plan →</Link></>}
       </p>
     </div>
   );

@@ -11,7 +11,9 @@ async function suggestNextLoad(userId, exerciseName, targetReps) {
   }
   const last = lastSessions[0];
   return nextWorkoutLoad({
-    lastWeightKg: last.weight_kg,
+    // pg returns NUMERIC columns as strings — coerce before the rules
+    // engine does arithmetic ("80.0" + 2.5 would concatenate, then throw).
+    lastWeightKg: last.weight_kg != null ? Number(last.weight_kg) : null,
     lastReps: last.reps,
     targetReps,
     completedAllSets: last.completed_all_reps,

@@ -6,7 +6,7 @@
  * user's manual toggles always survive.
  */
 const Meal = require('../../models/Meal');
-const { updateChecklistItem } = require('../../models/DailyChecklist');
+const { updateChecklistItem, updateChecklistFields } = require('../../models/DailyChecklist');
 const { getTodayEnriched } = require('../checklist/checklistService');
 const { getUserToday } = require('../../utils/userDate');
 const logger = require('../../utils/logger');
@@ -44,6 +44,10 @@ async function getTodaySummary(userId) {
 }
 
 async function syncChecklist(userId, summary) {
+  // The diary total IS the day's protein figure — write it into the
+  // checklist's protein_grams so the dashboard field fills itself and the
+  // user never types the same number twice. One source of truth: meals.
+  await updateChecklistFields(userId, { protein_grams: summary.protein }, summary.userDate);
   if (summary.proteinTargetHit && !summary.proteinCompleted) {
     await updateChecklistItem(userId, 'protein_completed', true, summary.userDate);
   }

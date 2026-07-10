@@ -1,5 +1,6 @@
-const { logSet, getLastSessionForExercise } = require('../models/WorkoutLog');
+const { logSet, getLastSessionForExercise, todaySetCounts } = require('../models/WorkoutLog');
 const { suggestNextLoad } = require('../services/workout/progressionService');
+const { getUserToday } = require('../utils/userDate');
 
 async function postLogSet(req, res, next) {
   try {
@@ -38,4 +39,14 @@ async function getExerciseHistory(req, res, next) {
   }
 }
 
-module.exports = { postLogSet, getProgression, getExerciseHistory };
+// { "Bench Press": 3, ... } — sets logged today, for session rehydration.
+async function getTodaySets(req, res, next) {
+  try {
+    const rows = await todaySetCounts(req.user.id, await getUserToday(req.user.id));
+    res.json(Object.fromEntries(rows.map((r) => [r.exercise_name, r.sets])));
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { postLogSet, getProgression, getExerciseHistory, getTodaySets };

@@ -1,88 +1,117 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
-import { getProgressReport, logWeight, getAchievements, getReview } from '../../services/progressService';
-import { apiFetch } from '../../utils/apiClient';
+import { getProgress } from '../../services/progressService';
 import Button from '../../components/ui/Button';
 
-// Semantic tones per docs/design-system.md — emerald means on-pace,
-// amber means attention, never decorative.
-const PACE_TONES = { ahead: 'emerald', on_track: 'emerald', behind: 'amber', no_data: 'muted' };
-const PACE_LABELS = { ahead: 'Ahead of schedule', on_track: 'On track', behind: 'Behind schedule', no_data: 'Not enough data yet' };
-// Porcelain pigments (see styles/theme.css): anchor blue for the raw
-// line, anchor emerald for the smoothed truth, saffron target rule.
-const CHART = { line: '#3b82f6', avg: '#10b981', target: '#cd853a', axis: '#8d96a0' };
+const STATUS_TONE = { ahead: 'emerald', on_track: 'emerald', behind: 'amber', no_data: 'cyan' };
+const STATUS_LABEL = { ahead: 'Ahead of schedule', on_track: 'On track', behind: 'Needs attention', no_data: 'Building your picture' };
 
-function Stat({ label, value, sub }) {
+const pct = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+
+/**
+ * Weigh-in trend as a plain SVG — no chart dependency for one line. The
+ * viewBox keeps it responsive; a dashed rule marks the target weight when
+ * the goal has one.
+ */
+function WeightChart({ weighIns, targetKg }) {
+  if (!weighIns || weighIns.length < 2) {
+    return (
+      <p className="small muted">
+        {weighIns?.length === 1
+          ? 'One weigh-in so far — log a few more on the dashboard and the trend appears here.'
+          : 'No weigh-ins yet — log today\'s weight on the dashboard\'s Today\'s Mission.'}
+      </p>
+    );
+  }
+
+  const W = 640, H = 220, PAD = { top: 14, right: 14, bottom: 26, left: 44 };
+  const kgs = weighIns.map((p) => p.kg);
+  const lo = Math.min(...kgs, targetKg ?? Infinity);
+  const hi = Math.max(...kgs, targetKg ?? -Infinity);
+  const span = Math.max(hi - lo, 1);
+  const yMin = lo - span * 0.1;
+  const yMax = hi + span * 0.1;
+
+  const x = (i) => PAD.left + (i / (weighIns.length - 1)) * (W - PAD.left - PAD.right);
+  const y = (kg) => PAD.top + (1 - (kg - yMin) / (yMax - yMin)) * (H - PAD.top - PAD.bottom);
+  const path = weighIns.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.kg).toFixed(1)}`).join(' ');
+
+  const first = weighIns[0], last = weighIns[weighIns.length - 1];
+  const gridKgs = [yMin + (yMax - yMin) * 0.25, yMin + (yMax - yMin) * 0.5, yMin + (yMax - yMin) * 0.75];
+
   return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value ?? '—'}</div>
-      {sub && <div className="stat-sub">{sub}</div>}
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Weight trend chart" style={{ width: '100%', height: 'auto' }}>
+      {gridKgs.map((kg) => (
+        <g key={kg}>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(kg)} y2={y(kg)} stroke="currentColor" opacity="0.08" />
+          <text x={PAD.left - 6} y={y(kg) + 4} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">
+            {kg.toFixed(1)}
+          </text>
+        </g>
+      ))}
+      {targetKg != null && (
+        <g>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--accent, #cd853a)" strokeDasharray="5 4" opacity="0.7" />
+          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--accent, #cd853a)">
+            target {targetKg}kg
+          </text>
+        </g>
+      )}
+      <path d={path} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {weighIns.map((p, i) => (
+        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="#3b82f6" />
+      ))}
+      <text x={PAD.left} y={H - 8} fontSize="11" fill="currentColor" opacity="0.5">{first.date}</text>
+      <text x={W - PAD.right} y={H - 8} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">{last.date}</text>
+    </svg>
+  );
+}
+
+function AnalysisList({ title, items, tone }) {
+  if (!items?.length) return null;
+  return (
+    <div style={{ marginTop: '0.6rem' }}>
+      <span className="stat-label">{title}</span>
+      <ul className={`small ${tone || 'muted'}`} style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
+        {items.map((s, i) => <li key={i}>{s}</li>)}
+      </ul>
     </div>
   );
 }
 
-const pct = (v) => (v == null ? null : `${Math.round(v * 100)}%`);
-
 export default function Progress() {
   const [report, setReport] = useState(null);
-  const [achievements, setAchievements] = useState([]);
-  const [review, setReview] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [weightInput, setWeightInput] = useState('');
   const [error, setError] = useState('');
-  const [logging, setLogging] = useState(false);
 
-  async function loadAll() {
-    const results = await Promise.allSettled([
-      getProgressReport(),
-      getAchievements(),
-      getReview('weekly'),
-      apiFetch('/api/checklist/history?days=28'),
-    ]);
-    if (results[0].status === 'fulfilled') setReport(results[0].value);
-    else setError(results[0].reason?.message || 'Could not load progress');
-    if (results[1].status === 'fulfilled') setAchievements(results[1].value);
-    if (results[2].status === 'fulfilled') setReview(results[2].value);
-    if (results[3].status === 'fulfilled') setHistory(results[3].value);
-  }
+  useEffect(() => {
+    getProgress()
+      .then(setReport)
+      .catch((err) => setError(err.message));
+  }, []);
 
-  useEffect(() => { loadAll(); }, []);
-
-  async function handleLogWeight(e) {
-    e.preventDefault();
-    setLogging(true);
-    setError('');
-    try {
-      await logWeight(Number(weightInput));
-      setWeightInput('');
-      await loadAll(); // a new weigh-in invalidates today's snapshot server-side
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLogging(false);
-    }
-  }
-
-  if (!report && !error) return <div className="page-loading">Computing your progress…</div>;
-  if (!report) {
+  if (error) {
+    const notOnboarded = /no profile found/i.test(error);
     return (
       <div className="page page-mid page-enter">
         <h2 className="page-title">Progress</h2>
-        <p className="muted">{error}</p>
-        <Link to="/onboarding"><Button>Complete onboarding</Button></Link>
+        <p className="muted">{notOnboarded ? 'Complete onboarding first — progress tracking starts with your plan.' : error}</p>
+        {notOnboarded
+          ? <Link to="/onboarding"><Button>Complete onboarding</Button></Link>
+          : <Button onClick={() => window.location.reload()}>Try again</Button>}
       </div>
     );
   }
+  if (!report) {
+    // First view of the day runs the AI over the full history — set that
+    // expectation so the wait reads as analysis, not a hang.
+    return <div className="page-loading">Your coach is reading your whole journey…</div>;
+  }
 
-  const { goal, timeline, weight, expected, actual, pace, adherence, streaks, progressPercent } = report;
-  const tone = PACE_TONES[pace.status] || 'muted';
-  const chartData = (weight?.trend || []).map((p) => ({
-    date: typeof p.date === 'string' ? p.date.slice(5, 10) : p.date,
-    weight: p.weightKg,
-    avg: p.avg7,
-  }));
+  const { data, analysis } = report;
+  const { goal, weighIns, adherence, training } = data;
+  const tone = STATUS_TONE[analysis.status] || 'cyan';
+  const latestWeight = weighIns.length ? weighIns[weighIns.length - 1].kg : null;
+  const totalVolume = training.reduce((sum, t) => sum + (t.volumeKg || 0), 0);
 
   return (
     <div className="page page-wide page-enter">
@@ -91,7 +120,7 @@ export default function Progress() {
         <Link to="/plan">Edit plan →</Link>
       </header>
 
-      {/* ---- The plan & pace card ---- */}
+      {/* ---- The coach's analysis — the heart of the page ---- */}
       <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
         <div className="page-header">
           <div>
@@ -99,130 +128,67 @@ export default function Progress() {
               {goal.type?.replace(/_/g, ' ')}
               {goal.targetWeightKg ? <span className="mono"> → {goal.targetWeightKg}kg</span> : ''}
             </h3>
-            <p className="muted small" style={{ margin: '0.25rem 0' }}>
-              {goal.timeframeWeeks}-week plan · week {Math.max(1, Math.ceil(timeline.weeksElapsed))} of {goal.timeframeWeeks}
-              {goal.targetDate ? ` · target ${goal.targetDate}` : ''}
-            </p>
+            {goal.timeframeWeeks && (
+              <p className="muted small" style={{ margin: '0.25rem 0' }}>
+                {goal.timeframeWeeks}-week plan{goal.weeksElapsed != null ? ` · week ${Math.max(1, Math.ceil(goal.weeksElapsed))}` : ''}
+              </p>
+            )}
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div className={`tone-${tone === 'muted' ? 'cyan' : tone}-text`} style={{ fontWeight: 700 }}>
-              {PACE_LABELS[pace.status]}
+          <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>{STATUS_LABEL[analysis.status] || ''}</span>
+        </div>
+        <p className="small" style={{ margin: '0.5rem 0' }}>{analysis.summary}</p>
+        <AnalysisList title="Going well" items={analysis.wins} />
+        <AnalysisList title="Watch out" items={analysis.risks} />
+        <AnalysisList title="Do next" items={analysis.recommendations} />
+        {analysis.source === 'fallback' && (
+          <p className="tiny faint" style={{ marginTop: '0.5rem' }}>AI coach unreachable right now — the analysis will refresh on your next visit.</p>
+        )}
+      </div>
+
+      {/* ---- Weight trend: the raw truth the analysis was read from ---- */}
+      <section className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+        <div className="page-header">
+          <h3 style={{ margin: 0 }}>Weight trend</h3>
+          {latestWeight != null && <span className="chip">{latestWeight}kg now</span>}
+        </div>
+        <WeightChart weighIns={weighIns} targetKg={goal.targetWeightKg} />
+        <p className="small muted" style={{ margin: '0.5rem 0 0' }}>{analysis.weightTrend}</p>
+        <p className="tiny faint" style={{ margin: '0.25rem 0 0' }}>
+          Weigh in each morning on <Link to="/dashboard">Today's Mission</Link> — the analysis updates as soon as new data lands.
+        </p>
+      </section>
+
+      {/* ---- Training & nutrition, data + the coach's read ---- */}
+      <div className="grid-cards" style={{ marginBottom: '1rem' }}>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Training</h3>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <div className="stat-label">Sessions (28d)</div>
+              <div className="stat-value">{training.length}</div>
             </div>
-            <div className="tiny faint mono">risk: {pace.riskLevel}</div>
+            <div className="stat-card">
+              <div className="stat-label">Volume lifted</div>
+              <div className="stat-value">{totalVolume ? `${Math.round(totalVolume / 1000)}t` : '—'}</div>
+            </div>
           </div>
+          <p className="small muted" style={{ marginBottom: 0 }}>{analysis.trainingAnalysis}</p>
         </div>
-        <p className="small" style={{ marginBottom: '0.5rem' }}>{pace.message}</p>
-        {pace.explanations?.length > 0 && (
-          <ul className="small muted" style={{ margin: '0.25rem 0', paddingLeft: '1.25rem' }}>
-            {pace.explanations.map((x, i) => <li key={i}>{x}</li>)}
-          </ul>
-        )}
-        {pace.recommendations?.length > 0 && (
-          <p className="small"><strong>Coach suggests:</strong> <span className="muted">{pace.recommendations.join(' ')}</span></p>
-        )}
-        <div className="progress-track" style={{ marginTop: '0.5rem' }}>
-          <div className={`progress-fill tone-${tone === 'muted' ? 'emerald' : tone}`} style={{ width: `${timeline.percentTimeElapsed}%` }} />
-        </div>
-        <div className="progress-meta">
-          <span>{timeline.percentTimeElapsed}% of time elapsed</span>
-          <span>{progressPercent != null ? `${progressPercent}% of goal covered` : ''}</span>
-          <span>{timeline.weeksRemaining} wks left</span>
-        </div>
-      </div>
-
-      {/* ---- Stat grid ---- */}
-      <div className="stat-grid">
-        <Stat label="Current weight" value={weight.currentKg ? `${weight.currentKg}kg` : null} sub={weight.totalChangeKg != null ? `${weight.totalChangeKg > 0 ? '+' : ''}${weight.totalChangeKg}kg since start` : 'log a weigh-in below'} />
-        <Stat label="Expected now" value={expected.weightNowKg ? `${expected.weightNowKg}kg` : null} sub={`plan pace ${expected.weeklyRateKg}kg/wk`} />
-        <Stat label="Your pace" value={actual.weeklyRateKg != null ? `${actual.weeklyRateKg}kg/wk` : null} sub={pace.projectedWeeksToTarget != null ? `~${pace.projectedWeeksToTarget} wks to target at this rate` : null} />
-        <Stat label="Streak" value={<span className={streaks.current > 0 ? 'tone-lime-text' : ''}>{streaks.current}d</span>} sub={`best ${streaks.best}d`} />
-      </div>
-      <div className="stat-grid">
-        <Stat label="Adherence (7d)" value={pct(adherence.last7)} sub={`28d: ${pct(adherence.last28) ?? '—'}`} />
-        <Stat label="Workout consistency" value={pct(adherence.workoutConsistency)} />
-        <Stat label="Nutrition consistency" value={pct(adherence.nutritionConsistency)} />
-        <Stat label="Recovery score" value={pct(adherence.recoveryScore)} sub={`sleep ${pct(adherence.sleepScore) ?? '—'}`} />
-      </div>
-
-      {/* ---- Weight logging + trend chart ---- */}
-      <section className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ marginTop: 0 }}>Body weight</h3>
-        <form onSubmit={handleLogWeight} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <input type="number" step="0.1" min="30" max="300" placeholder="Today's weight (kg)" value={weightInput} onChange={(e) => setWeightInput(e.target.value)} required style={{ flex: 1 }} />
-          <Button type="submit" disabled={logging}>{logging ? 'Saving…' : 'Log weigh-in'}</Button>
-        </form>
-        {chartData.length >= 2 ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chartData}>
-              <XAxis dataKey="date" fontSize={11} stroke={CHART.axis} tickLine={false} axisLine={false} />
-              <YAxis domain={['dataMin - 1', 'dataMax + 1']} fontSize={11} width={40} stroke={CHART.axis} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid rgba(42,52,64,0.15)', borderRadius: 12, color: '#212b36', boxShadow: '0 12px 32px -12px rgba(42,52,64,0.3)' }} />
-              {goal.targetWeightKg && <ReferenceLine y={goal.targetWeightKg} stroke={CHART.target} strokeDasharray="4 4" label={{ value: 'target', fontSize: 10, fill: CHART.target }} />}
-              <Line type="monotone" dataKey="weight" stroke={CHART.line} dot={{ r: 2, fill: CHART.line }} name="weight (kg)" strokeWidth={1.5} />
-              <Line type="monotone" dataKey="avg" stroke={CHART.avg} dot={false} strokeWidth={2} name="7-day avg" />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="faint small">Log at least two weigh-ins to see your trend against the plan.</p>
-        )}
-      </section>
-
-      {/* ---- Weekly review ---- */}
-      {review?.narrative && (
-        <section className="card card-accent tone-cyan" style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ marginTop: 0 }}>
-            Weekly review <span className="tiny faint mono">{review.period_start} → {review.period_end}</span>
-          </h3>
-          <p style={{ fontWeight: 600 }}>{review.narrative.headline}</p>
-          {review.narrative.wins?.length > 0 && (
-            <>
-              <span className="stat-label">Wins</span>
-              <ul className="small" style={{ marginTop: '0.25rem' }}>{review.narrative.wins.map((w, i) => <li key={i}>{w}</li>)}</ul>
-            </>
-          )}
-          {review.narrative.focusNext?.length > 0 && (
-            <>
-              <span className="stat-label">Focus next week</span>
-              <ul className="small" style={{ marginTop: '0.25rem' }}>{review.narrative.focusNext.map((w, i) => <li key={i}>{w}</li>)}</ul>
-            </>
-          )}
-          <p className="small muted">{review.narrative.recommendation}</p>
-        </section>
-      )}
-
-      {/* ---- Achievements ---- */}
-      <section style={{ marginBottom: '1.5rem' }}>
-        <h3 className="section-title">Achievements {achievements.length ? `(${achievements.length})` : ''}</h3>
-        {achievements.length === 0 && <p className="faint small">None yet — log workouts and weigh-ins to start unlocking.</p>}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {achievements.map((a) => (
-            <div key={a.code} className="badge-card" title={a.description}>
-              🏅 <strong>{a.name}</strong>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Consistency</h3>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <div className="stat-label">Last 7 days</div>
+              <div className="stat-value">{pct(adherence.last7)}</div>
             </div>
-          ))}
+            <div className="stat-card">
+              <div className="stat-label">Last 28 days</div>
+              <div className="stat-value">{pct(adherence.last28)}</div>
+            </div>
+          </div>
+          <p className="small muted" style={{ marginBottom: 0 }}>{analysis.nutritionAnalysis}</p>
         </div>
-      </section>
-
-      {/* ---- Daily consistency (28d) ---- */}
-      <section>
-        <h3 className="section-title">Daily consistency (last 28 days)</h3>
-        <div className="heat-strip">
-          {[...history].reverse().map((day) => {
-            const done = Object.values(day).filter((v) => v === true).length;
-            const dateLabel = typeof day.date === 'string' ? day.date.slice(0, 10) : day.date;
-            return (
-              <div
-                key={dateLabel}
-                title={`${dateLabel}: ${done}/5`}
-                className="heat-cell"
-                style={done > 0 ? { background: `rgba(16, 185, 129, ${0.18 + (done / 5) * 0.75})`, borderColor: 'transparent' } : undefined}
-              />
-            );
-          })}
-        </div>
-      </section>
-
-      {error && <p className="error-text">{error}</p>}
+      </div>
     </div>
   );
 }

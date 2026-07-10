@@ -42,4 +42,21 @@ async function deleteMeal(userId, mealId, date = null) {
   return rowCount > 0;
 }
 
-module.exports = { insertMeal, listToday, todayTotals, deleteMeal };
+// Per-day diary totals for the progress analysis — what the user actually
+// logged, day by day, not just today.
+async function dailyTotalsRecent(userId, days = 14) {
+  const { rows } = await queryAs(userId,
+    `SELECT date,
+            COALESCE(SUM(calories), 0)::int AS calories,
+            COALESCE(SUM(protein), 0)::float AS protein,
+            COUNT(*)::int AS meals
+     FROM meals
+     WHERE user_id = $1 AND date >= CURRENT_DATE - $2::int
+     GROUP BY date
+     ORDER BY date`,
+    [userId, days]
+  );
+  return rows;
+}
+
+module.exports = { insertMeal, listToday, todayTotals, deleteMeal, dailyTotalsRecent };
