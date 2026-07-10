@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import ThemeToggle from '../ui/ThemeToggle';
 
@@ -18,14 +18,36 @@ const LINKS = [
 ];
 
 export default function NavBar() {
+  // Mobile-only disclosure state; on desktop the links list renders inline
+  // (display: contents) and the hamburger is hidden, so this never applies.
+  const [open, setOpen] = useState(false);
+
   return (
     <nav className="app-nav">
       <span className="nav-brand">Fit<em>AI</em></span>
-      {LINKS.map(({ to, label }) => (
-        <NavLink key={to} to={to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          {label}
-        </NavLink>
-      ))}
+      <button
+        type="button"
+        className={`nav-hamburger${open ? ' open' : ''}`}
+        aria-label={open ? 'Close menu' : 'Open menu'}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+      <div className={`nav-links${open ? ' open' : ''}`}>
+        {LINKS.map(({ to, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+            onClick={() => setOpen(false)}
+          >
+            {label}
+          </NavLink>
+        ))}
+      </div>
       <ThemeToggle />
     </nav>
   );

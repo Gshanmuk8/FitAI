@@ -57,9 +57,9 @@ function WeightChart({ weighIns, targetKg }) {
           </text>
         </g>
       )}
-      <path d={path} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={path} fill="none" stroke="var(--gold, #cfa752)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       {weighIns.map((p, i) => (
-        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="#3b82f6" />
+        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold, #cfa752)" />
       ))}
       <text x={PAD.left} y={H - 8} fontSize="11" fill="currentColor" opacity="0.5">{first.date}</text>
       <text x={W - PAD.right} y={H - 8} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">{last.date}</text>
