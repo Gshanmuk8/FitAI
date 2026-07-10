@@ -7,7 +7,7 @@
  * keys): bump it whenever a template changes materially, so stale cached
  * answers from an older prompt generation don't outlive the change.
  */
-const PROMPT_VERSION = 'v4';
+const PROMPT_VERSION = 'v5';
 
 /**
  * Anything user-typed or user-derived that gets interpolated into a prompt
@@ -101,7 +101,64 @@ function formatActivityBlock(activity) {
       ? `Nutrition last 7 days: logged on ${n.daysLogged} day(s), averaging ~${n.avgCalories} kcal and ~${n.avgProtein}g protein per logged day.`
       : 'No meals logged in the last 7 days.',
   ];
-  return `\n--- Their recent activity (measured from their logs — ground answers in this) ---\n${lines.join('\n')}`;
+  return `\n--- Their recent activity (measured from their logs — ground answers in this) ---\n${lines.join('\n')}${formatTodayBlock(activity.today)}`;
+}
+
+// The live layer: the user's day AS IT STANDS at this message. Rebuilt on
+// every send and part of the answer cache key, so the coach always speaks
+// from the user's current state — never yesterday's memory of it. Every
+// user-typed string (meal names, notes, their own items) is sanitized.
+function formatTodayBlock(today) {
+  if (!today) return '';
+  const c = today.checklist || {};
+  const t = today.targets || {};
+  const lines = [];
+
+  if (today.plannedWorkout) {
+    const pw = today.plannedWorkout;
+    lines.push(
+      pw.type === 'rest'
+        ? `Planned: rest day.${c.workoutCompleted ? ' Marked done.' : ''}`
+        : `Planned workout: ${pw.dayName || 'session'}${pw.intensity === 'reduced' ? ' (reduced intensity)' : ''}${
+            pw.exercises?.length ? ` — ${sanitizeList(pw.exercises, 300)}` : ''
+          }. ${c.workoutCompleted ? 'Marked DONE.' : 'Not done yet.'}`
+    );
+  }
+  if (today.setsLoggedToday?.length) {
+    lines.push(`Sets logged today: ${today.setsLoggedToday.map((s) => `${sanitizeUserText(s.exercise, 60)} ×${s.sets}`).join(', ')}.`);
+  }
+
+  if (today.meals?.length) {
+    const tot = today.mealTotals || {};
+    const vs = t.calorieTarget ? ` of ${t.calorieTarget} kcal target` : '';
+    const vp = t.proteinGrams ? ` of ${t.proteinGrams}g target` : '';
+    lines.push(
+      `Eaten today (${today.meals.length} item(s)): ${today.meals
+        .map((m) => `${sanitizeUserText(m.name, 60)} (${m.calories} kcal, ${m.protein}g protein)`)
+        .join(', ')}. Totals so far: ${tot.calories} kcal${vs}, ${tot.protein}g protein${vp}.`
+    );
+  } else {
+    lines.push('No meals logged yet today.');
+  }
+
+  const vals = [
+    c.waterMl != null ? `water ${(c.waterMl / 1000).toFixed(1)}L${t.waterMl ? `/${(t.waterMl / 1000).toFixed(1)}L` : ''}` : null,
+    c.sleepHours != null ? `sleep ${c.sleepHours}h${t.sleepHours ? `/${t.sleepHours}h` : ''}` : null,
+    c.stepsCount != null ? `steps ${c.stepsCount}${t.stepsTarget ? `/${t.stepsTarget}` : ''}` : null,
+    c.weightKg != null ? `weighed in at ${c.weightKg}kg` : null,
+  ].filter(Boolean);
+  if (vals.length) lines.push(`Logged today: ${vals.join(', ')}.`);
+
+  if (c.customItems?.length) {
+    lines.push(
+      `Their own items today: ${c.customItems
+        .map((i) => `${sanitizeUserText(i.label, 80)} (${i.done ? 'done' : 'not done'})`)
+        .join(', ')}.`
+    );
+  }
+  if (c.notes) lines.push(`Their note today: "${sanitizeUserText(c.notes, 200)}"`);
+
+  return `\n--- TODAY (${today.date || 'current day'}) — live as of THIS message; it already reflects anything they just logged. When they say "today", this is the truth; trust it over older context above ---\n${lines.join('\n')}`;
 }
 
 function buildTutorPrompt({ mode, profile, recentMemorySummaries, question, history, activity }) {
