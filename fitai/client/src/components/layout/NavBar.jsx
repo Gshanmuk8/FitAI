@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import ThemeToggle from '../ui/ThemeToggle';
 
 // One persistent nav for every authenticated page, in the order of the
 // daily flow: check the mission, train, eat, see the journey, talk to the
@@ -25,6 +26,7 @@ export default function NavBar() {
           {label}
         </NavLink>
       ))}
+      <ThemeToggle />
     </nav>
   );
 }

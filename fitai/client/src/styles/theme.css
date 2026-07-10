@@ -65,6 +65,19 @@
   --ease: cubic-bezier(0.22, 0.61, 0.2, 1);
   --ease-soft: cubic-bezier(0.25, 0.8, 0.3, 1);
 
+  /* strong tone inks (chips, tone text) — one token per hue, both modes */
+  --tone-emerald-ink: #0b9268;
+  --tone-amber-ink: #b06b21;
+  --tone-red-ink: #c14e3e;
+  --tone-cyan-ink: #1e8b9b;
+  --tone-lime-ink: #a37b0a;
+  --tone-blue-ink: #2563cd;
+
+  /* glass + glow */
+  --nav-glass: rgba(255, 255, 255, 0.82);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --glow-ai: 0 0 0 rgba(47, 163, 180, 0);
+
   /* older aliases */
   --slate: var(--muted);
   --ink: var(--text);
@@ -73,6 +86,77 @@
 
   color-scheme: light;
 }
+
+/* ---------- dark mode — "Obsidian" ----------
+   Same design language, lit from within: near-OLED slate, the pigments
+   turned luminous, shadows traded for glow. Every token adapts; no
+   component references a raw color. */
+:root[data-theme='dark'] {
+  --bg0: #0c1017;
+  --bg1: #0a0d13;
+  --surface: #131a26;
+  --surface2: #0f1520;
+  --inkline: #cdd8e4;
+  --border: rgba(205, 216, 228, 0.1);
+  --border2: rgba(205, 216, 228, 0.2);
+
+  --text: #e8edf4;
+  --muted: #9aa7b5;
+  --faint: #647080;
+
+  --blue: #5c9dff;
+  --cyan: #43c4d8;
+  --emerald: #2ed3a2;
+  --lime: #e3b93a;
+  --amber: #e0a55e;
+  --red: #e37a67;
+  --navy: #82a3cc;
+
+  --blue-dim: rgba(92, 157, 255, 0.16);
+  --cyan-dim: rgba(67, 196, 216, 0.15);
+  --emerald-dim: rgba(46, 211, 162, 0.14);
+  --amber-dim: rgba(224, 165, 94, 0.14);
+  --red-dim: rgba(227, 122, 103, 0.15);
+  --lime-dim: rgba(227, 185, 58, 0.13);
+  --seafoam: rgba(67, 196, 216, 0.08);
+  --eucalyptus: rgba(46, 211, 162, 0.07);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.45), 0 20px 48px -16px rgba(0, 0, 0, 0.65);
+  --shadow-lift: 0 3px 6px rgba(0, 0, 0, 0.4), 0 24px 56px -16px rgba(92, 157, 255, 0.28);
+
+  --tone-emerald-ink: #57e6b8;
+  --tone-amber-ink: #eebc7f;
+  --tone-red-ink: #f0937f;
+  --tone-cyan-ink: #6fd6e6;
+  --tone-lime-ink: #ecd06a;
+  --tone-blue-ink: #8cbaff;
+
+  --nav-glass: rgba(12, 16, 23, 0.78);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --glow-ai: 0 0 24px -6px rgba(67, 196, 216, 0.35);
+
+  color-scheme: dark;
+}
+
+/* ---------- theme transition — the switch itself is the show ----------
+   The toggle stamps .theme-morph on <html> for the duration of the swap:
+   every color-bearing property crossfades in sync, then the class comes
+   off so normal interactions stay snappy. Paired with the View Transitions
+   crossfade where the browser supports it. */
+html.theme-morph,
+html.theme-morph *,
+html.theme-morph *::before,
+html.theme-morph *::after {
+  transition:
+    background 600ms var(--ease-soft),
+    background-color 600ms var(--ease-soft),
+    color 600ms var(--ease-soft),
+    border-color 600ms var(--ease-soft),
+    box-shadow 600ms var(--ease-soft),
+    fill 600ms var(--ease-soft) !important;
+}
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 500ms; }
 
 /* ---------- base ---------- */
 * { box-sizing: border-box; }
@@ -170,7 +254,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .field { width: 100%; margin-bottom: 0.4rem; }
 .hint { font-family: var(--font-hand); font-size: 1rem; color: var(--muted); margin: 0.3rem 0 0; }
 .error-text { color: var(--red); font-size: 0.88rem; font-weight: 600; }
-.success-text { color: #0b9268; font-size: 0.88rem; font-weight: 600; }
+.success-text { color: var(--tone-emerald-ink); font-size: 0.88rem; font-weight: 600; }
 
 /* ---------- buttons — lacquered, with a light sweep ---------- */
 .btn {
@@ -227,7 +311,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   gap: 0.3rem;
   flex-wrap: wrap;
   padding: 0.7rem 2rem;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--nav-glass);
   backdrop-filter: blur(14px) saturate(1.4);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   border-bottom: 1px solid var(--border);
@@ -265,6 +349,30 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   background: var(--blue-dim);
   box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
 }
+
+/* the sun/moon switch — quiet until touched */
+.theme-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease), box-shadow var(--normal) var(--ease);
+}
+.theme-toggle:hover {
+  color: var(--amber);
+  border-color: var(--border2);
+  transform: translateY(-1px) rotate(8deg);
+  box-shadow: var(--shadow-2);
+}
+.theme-toggle:active { transform: scale(0.94); }
 
 /* ---------- layout ---------- */
 .page { margin: 3rem auto; padding: 0 2rem; }
@@ -319,21 +427,41 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   font-size: 0.65rem;
 }
 
-/* ---------- cards — porcelain panels ---------- */
+/* ---------- cards — layered panels with an inner light ---------- */
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 1.3rem 1.45rem;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1), var(--card-highlight);
   transition: box-shadow var(--normal) var(--ease), transform var(--normal) var(--ease), border-color var(--normal) var(--ease);
 }
-.card-hover:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); border-color: rgba(59, 130, 246, 0.3); }
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lift), var(--card-highlight);
+  border-color: rgba(59, 130, 246, 0.3);
+}
 .card-accent { border-left: 4px solid var(--blue); }
 .card-accent.tone-emerald { border-left-color: var(--emerald); }
 .card-accent.tone-amber { border-left-color: var(--amber); }
 .card-accent.tone-red { border-left-color: var(--red); }
-.card-accent.tone-cyan { border-left-color: var(--cyan); }
+/* Robin's-egg cyan = AI presence: the coach's cards carry a faint living
+   glow (dark mode) and a diffused corner light — the AI feels present,
+   never loud. */
+.card-accent.tone-cyan {
+  border-left-color: var(--cyan);
+  box-shadow: var(--shadow-1), var(--card-highlight), var(--glow-ai);
+  overflow: hidden;
+}
+.card-accent.tone-cyan::before {
+  content: '';
+  position: absolute;
+  top: -40%; right: -12%;
+  width: 55%; height: 120%;
+  background: radial-gradient(closest-side, var(--cyan-dim), transparent 75%);
+  pointer-events: none;
+}
 .card-accent.tone-muted { border-left-color: var(--border2); }
 .card h3 { font-family: var(--font-display); font-size: 1.12rem; font-weight: 700; }
 
@@ -351,7 +479,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 0.95rem 1.1rem 0.85rem;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1), var(--card-highlight);
   position: relative;
   overflow: hidden;
   transition: box-shadow var(--normal) var(--ease), transform var(--normal) var(--ease);
@@ -387,11 +515,11 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .stat-sub { font-family: var(--font-hand); font-size: 0.95rem; color: var(--muted); margin-top: 0.15rem; }
 
 /* ---------- tones, chips, notices ---------- */
-.tone-emerald-text { color: #0b9268; }
-.tone-amber-text { color: #b06b21; }
-.tone-red-text { color: var(--red); }
-.tone-cyan-text { color: #1e8b9b; }
-.tone-lime-text { color: #a37b0a; }
+.tone-emerald-text { color: var(--tone-emerald-ink); }
+.tone-amber-text { color: var(--tone-amber-ink); }
+.tone-red-text { color: var(--tone-red-ink); }
+.tone-cyan-text { color: var(--tone-cyan-ink); }
+.tone-lime-text { color: var(--tone-lime-ink); }
 
 .chip {
   display: inline-flex;
@@ -406,11 +534,11 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   color: var(--muted);
   box-shadow: 0 1px 2px rgba(42, 52, 64, 0.06);
 }
-.chip.tone-emerald { background: var(--emerald-dim); color: #0b7a58; border-color: transparent; }
-.chip.tone-amber { background: var(--amber-dim); color: #a3611c; border-color: transparent; }
-.chip.tone-red { background: var(--red-dim); color: var(--red); border-color: transparent; }
-.chip.tone-cyan { background: var(--cyan-dim); color: #17727f; border-color: transparent; }
-.chip.tone-blue { background: var(--blue-dim); color: #2563cd; border-color: transparent; }
+.chip.tone-emerald { background: var(--emerald-dim); color: var(--tone-emerald-ink); border-color: transparent; }
+.chip.tone-amber { background: var(--amber-dim); color: var(--tone-amber-ink); border-color: transparent; }
+.chip.tone-red { background: var(--red-dim); color: var(--tone-red-ink); border-color: transparent; }
+.chip.tone-cyan { background: var(--cyan-dim); color: var(--tone-cyan-ink); border-color: transparent; }
+.chip.tone-blue { background: var(--blue-dim); color: var(--tone-blue-ink); border-color: transparent; }
 
 .notice {
   font-size: 0.88rem;
@@ -463,7 +591,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 1.3rem 1.45rem;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1), var(--card-highlight);
 }
 .daily-checklist h3 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
 .daily-checklist ul { list-style: none; margin: 0.6rem 0; padding: 0; }

@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#F5F5F5" />
     <title>FitAI — Your AI Fitness Coach</title>
+    <script>
+      // Apply the saved (or OS-preferred) theme BEFORE first paint — a
+      // dark-mode user must never see a white flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('fitai.theme');
+          if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = t;
+          if (t === 'dark') {
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) m.setAttribute('content', '#0c1017');
+          }
+        } catch (e) { /* default light */ }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

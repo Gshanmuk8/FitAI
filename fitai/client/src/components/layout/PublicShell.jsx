@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import Footer from './Footer';
+import ThemeToggle from '../ui/ThemeToggle';
 
 // Shell for logged-out pages: marketing nav on top, footer below.
 const LINKS = [
@@ -22,6 +23,7 @@ export default function PublicShell({ children }) {
           </NavLink>
         ))}
         <span style={{ flex: 1 }} />
+        <ThemeToggle />
         <NavLink to="/login" className="nav-link">Sign in</NavLink>
         {/* The site's primary CTA is a button, not tinted text. */}
         <Link to="/signup" className="btn btn-primary" style={{ minHeight: 36, padding: '0.3rem 1.1rem', fontSize: '0.86rem' }}>
