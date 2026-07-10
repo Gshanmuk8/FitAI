@@ -1,4 +1,4 @@
--- FitAI: all migrations combined (000-005), in order. Idempotent —
+-- FitAI: all migrations combined (000-007), in order. Idempotent —
 -- safe to run more than once. On hosted Supabase the auth-schema shim
 -- is guarded by an existence check, so it executes nothing there.
 
@@ -261,3 +261,54 @@ alter table public.achievements               enable row level security;
 alter table public.reviews                    enable row level security;
 alter table public.user_exercise_preferences  enable row level security;
 alter table public.meals                      enable row level security;
+
+-- ============================================================
+-- 006_daily_values_and_briefing.sql
+-- ============================================================
+-- (1) "Today's Mission" stops being tick-only: the user types actual numbers
+--     (protein, water, sleep, steps), a daily weigh-in, and a free-text note.
+--     Entering a value auto-completes the matching boolean item server-side.
+alter table public.daily_checklists
+  add column if not exists protein_grams numeric(6,1),
+  add column if not exists water_ml       integer,
+  add column if not exists sleep_hours    numeric(4,1),
+  add column if not exists steps_count    integer,
+  add column if not exists weight_kg      numeric(5,1),
+  add column if not exists notes          text;
+
+-- (2) The AI-authored progress briefing, at most once per user per local day.
+create table if not exists public.daily_briefings (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  date       date not null default current_date,
+  briefing   jsonb not null,
+  created_at timestamptz default now(),
+  primary key (user_id, date)
+);
+
+alter table public.daily_briefings enable row level security;
+
+-- ============================================================
+-- 007_training_prefs_custom_items_progress.sql
+-- ============================================================
+-- (1) Onboarding: the user states how many days they can train and describes
+--     their training style in free text; both drive AI plan generation.
+alter table public.users_profile
+  add column if not exists training_days_per_week integer,
+  add column if not exists training_style text;
+
+-- (2) User-authored "Today's Mission" items: jsonb array of {id, label, done}.
+alter table public.daily_checklists
+  add column if not exists custom_items jsonb not null default '[]'::jsonb;
+
+-- (3) The AI-authored progress analysis (Progress page), one row per user per
+--     local day; input_hash triggers a recompute when new data lands.
+create table if not exists public.progress_analyses (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  date       date not null default current_date,
+  input_hash text not null,
+  analysis   jsonb not null,
+  created_at timestamptz default now(),
+  primary key (user_id, date)
+);
+
+alter table public.progress_analyses enable row level security;
