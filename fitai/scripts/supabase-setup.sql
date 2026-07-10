@@ -312,3 +312,7 @@ create table if not exists public.progress_analyses (
 );
 
 alter table public.progress_analyses enable row level security;
+
+-- (4) The progress analysis summarizes workout_logs by day for one user.
+create index if not exists idx_workout_logs_user_logged_at
+  on public.workout_logs(user_id, logged_at desc);

@@ -32,3 +32,9 @@ create table if not exists public.progress_analyses (
 -- Same posture as migration 005: RLS on, no policies = deny-all for the
 -- anon/authenticated REST surface; the Express server connects as owner.
 alter table public.progress_analyses enable row level security;
+
+-- (4) The progress analysis summarizes workout_logs by day for one user.
+--     The existing (user_id, exercise_name, logged_at) index serves the
+--     progression lookups; this one serves the time-window scan.
+create index if not exists idx_workout_logs_user_logged_at
+  on public.workout_logs(user_id, logged_at desc);
