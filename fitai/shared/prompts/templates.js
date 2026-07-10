@@ -240,7 +240,11 @@ function buildProgressAnalysisPrompt({ profile, data }) {
     `- status: ahead | on_track | behind | no_data (no_data only when there is genuinely too little to judge).`,
     `IMPORTANT: if goal.timeframeComplete is true, the plan's window is over — never call them "behind"; frame it as reviewing the completed journey and setting the next goal.`,
     '',
-    `Respond ONLY with JSON matching: { status, summary: string, weightTrend: string, trainingAnalysis: string, nutritionAnalysis: string, wins: string[], risks: string[], recommendations: string[] }`,
+    `You also author the page's numbers and graphs — YOU compute every figure from the raw data above; the app displays them verbatim and does no math of its own:`,
+    `- stats: up to 6 headline tiles { label, value, detail?, tone }. Only numbers you judge meaningful and TRUSTWORTHY: exclude the entries you flagged as probable logging errors from the arithmetic, and when you exclude one, say so in that stat's detail (e.g. "excludes 1 implausible session"). Your stats must agree with your written analysis — never show a total your own text disowns. Format values for humans ("12,400 kg", "57%", "3/wk"). tone: emerald = going well, amber = needs attention, red = off track, cyan = informational, neutral = plain fact.`,
+    `- charts: up to 3 graphs { title, type: "line"|"bar", unit?, points: [{ label, value }], targetValue?, note? } — choose the series that best SHOW this user's progress (weight over time, daily calories vs target, protein per day, volume per session, weekly consistency…). Every point's value must come from the data above (aggregating is fine — weekly averages, per-session totals — but never invent points); skip missing days rather than inventing zeros; exclude implausible entries here too so the graphs match your words. Labels short (dates as "MM-DD" or "wk N"); 2–40 points per chart; targetValue only when the plan defines one (target weight, calorie target); note = one honest sentence on what the chart shows.`,
+    '',
+    `Respond ONLY with JSON matching: { status, summary: string, weightTrend: string, trainingAnalysis: string, nutritionAnalysis: string, wins: string[], risks: string[], recommendations: string[], stats: [{ label: string, value: string, detail?: string, tone: "emerald"|"amber"|"red"|"cyan"|"neutral" }], charts: [{ title: string, type: "line"|"bar", unit?: string, points: [{ label: string, value: number }], targetValue?: number, note?: string }] }`,
   ].filter(Boolean).join('\n');
 }
 

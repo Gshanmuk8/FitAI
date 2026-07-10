@@ -76,6 +76,10 @@ function fallbackProgressAnalysis() {
     wins: [],
     risks: [],
     recommendations: ['Keep logging weigh-ins, meals and workouts — the analysis reads everything when it\'s back.'],
+    // Stats and charts are the coach's own arithmetic — a fallback must not
+    // fabricate numbers, so both stay empty until the AI is reachable.
+    stats: [],
+    charts: [],
     generatedBy: 'fallback_template',
   };
 }

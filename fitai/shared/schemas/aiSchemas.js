@@ -60,6 +60,32 @@ const BriefingSchema = z.object({
 // journey (weigh-ins, training, nutrition, their own habits) and writes the
 // assessment ITSELF — trend, pace, wins, risks, what to change. There is no
 // deterministic pace/risk rule engine behind this; the reasoning is the AI's.
+//
+// The stats and charts are the AI's too: every headline number and every
+// plotted series is authored by the coach from the raw logs (implausible
+// entries excluded by its own judgment), so a stat tile can never
+// contradict the written analysis the way client-side arithmetic could.
+const ProgressStatSchema = z.object({
+  label: z.string().min(1).max(40),                  // e.g. "Sessions (28d)"
+  value: z.string().min(1).max(24),                  // e.g. "2" / "1.2t" / "57%"
+  detail: z.string().max(140).optional().nullable(), // e.g. "excludes 1 implausible entry"
+  tone: z.enum(['emerald', 'amber', 'red', 'cyan', 'neutral']).default('neutral'),
+});
+
+const ProgressChartPointSchema = z.object({
+  label: z.string().min(1).max(20),                  // short x label, e.g. "07-05" or "wk 2"
+  value: z.number(),
+});
+
+const ProgressChartSchema = z.object({
+  title: z.string().min(1).max(80),
+  type: z.enum(['line', 'bar']),
+  unit: z.string().max(20).optional().nullable(),    // e.g. "kg", "kcal", "g", "%"
+  points: z.array(ProgressChartPointSchema).min(2).max(40),
+  targetValue: z.number().optional().nullable(),     // dashed rule when a target applies
+  note: z.string().max(300).optional().nullable(),   // one-line read of the chart
+});
+
 const ProgressAnalysisSchema = z.object({
   status: z.enum(['ahead', 'on_track', 'behind', 'no_data']),
   summary: z.string().min(1).max(1000),              // the journey so far, plainly
@@ -69,6 +95,8 @@ const ProgressAnalysisSchema = z.object({
   wins: z.array(z.string().min(1).max(200)).max(5).default([]),
   risks: z.array(z.string().min(1).max(200)).max(5).default([]),
   recommendations: z.array(z.string().min(1).max(250)).max(5).default([]),
+  stats: z.array(ProgressStatSchema).max(6).default([]),
+  charts: z.array(ProgressChartSchema).max(3).default([]),
 });
 
 // One-line durable memory extracted from a chat exchange.

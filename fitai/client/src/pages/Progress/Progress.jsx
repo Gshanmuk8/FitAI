@@ -6,12 +6,19 @@ import Button from '../../components/ui/Button';
 const STATUS_TONE = { ahead: 'emerald', on_track: 'emerald', behind: 'amber', no_data: 'cyan' };
 const STATUS_LABEL = { ahead: 'Ahead of schedule', on_track: 'On track', behind: 'Needs attention', no_data: 'Building your picture' };
 
-const pct = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+// Tone → text class. Everything the page shows as a number is the coach's
+// own arithmetic (analysis.stats / analysis.charts) — this file only
+// renders; it deliberately computes nothing from the raw data.
+const toneClass = (tone) => (tone && tone !== 'neutral' ? `tone-${tone}-text` : '');
+
+const fmtAxis = (v) =>
+  Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : Number.isInteger(v) ? String(v) : v.toFixed(1);
 
 /**
  * Weigh-in trend as a plain SVG — no chart dependency for one line. The
  * viewBox keeps it responsive; a dashed rule marks the target weight when
- * the goal has one.
+ * the goal has one. This is the one raw-data plot on the page: the exact
+ * series the coach was given, shown unedited under its interpretation.
  */
 function WeightChart({ weighIns, targetKg }) {
   if (!weighIns || weighIns.length < 2) {
@@ -51,8 +58,8 @@ function WeightChart({ weighIns, targetKg }) {
       ))}
       {targetKg != null && (
         <g>
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--accent, #cd853a)" strokeDasharray="5 4" opacity="0.7" />
-          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--accent, #cd853a)">
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--amber, #cd853a)" strokeDasharray="5 4" opacity="0.7" />
+          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #cd853a)">
             target {targetKg}kg
           </text>
         </g>
@@ -64,6 +71,102 @@ function WeightChart({ weighIns, targetKg }) {
       <text x={PAD.left} y={H - 8} fontSize="11" fill="currentColor" opacity="0.5">{first.date}</text>
       <text x={W - PAD.right} y={H - 8} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">{last.date}</text>
     </svg>
+  );
+}
+
+/**
+ * Renders one coach-authored chart ({ title, type, unit, points, targetValue,
+ * note }) as an SVG. Line and bar, nothing else — the coach picks the series
+ * and computed every value; this component is pure presentation.
+ */
+function CoachChart({ chart }) {
+  const points = Array.isArray(chart.points) ? chart.points : [];
+  if (points.length < 2) return null;
+
+  const W = 640, H = 230, PAD = { top: 16, right: 14, bottom: 28, left: 48 };
+  const values = points.map((p) => p.value);
+  const lo = Math.min(...values, chart.targetValue ?? Infinity, chart.type === 'bar' ? 0 : Infinity);
+  const hi = Math.max(...values, chart.targetValue ?? -Infinity);
+  const span = Math.max(hi - lo, 1e-9);
+  const yMin = chart.type === 'bar' ? Math.min(lo, 0) : lo - span * 0.1;
+  const yMax = hi + span * 0.1;
+
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+  const x = (i) => PAD.left + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
+  const y = (v) => PAD.top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
+
+  // At most ~6 x-labels so dense series stay readable.
+  const step = Math.max(1, Math.ceil(points.length / 6));
+  const showLabel = (i) => i % step === 0 || i === points.length - 1;
+
+  const gridVals = [0.25, 0.5, 0.75].map((t) => yMin + (yMax - yMin) * t);
+  const barW = (plotW / points.length) * 0.62;
+  const barX = (i) => PAD.left + (i + 0.5) * (plotW / points.length) - barW / 2;
+  const linePath = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
+
+  return (
+    <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+      <div className="page-header">
+        <h3 style={{ margin: 0 }}>{chart.title}</h3>
+        {chart.unit && <span className="chip">{chart.unit}</span>}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chart.title} style={{ width: '100%', height: 'auto', marginTop: '0.4rem' }}>
+        {gridVals.map((v) => (
+          <g key={v}>
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="currentColor" opacity="0.08" />
+            <text x={PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">
+              {fmtAxis(v)}
+            </text>
+          </g>
+        ))}
+        {chart.targetValue != null && (
+          <g>
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--amber, #cd853a)" strokeDasharray="5 4" opacity="0.7" />
+            <text x={W - PAD.right} y={y(chart.targetValue) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #cd853a)">
+              target {fmtAxis(chart.targetValue)}{chart.unit ? ` ${chart.unit}` : ''}
+            </text>
+          </g>
+        )}
+        {chart.type === 'bar' ? (
+          points.map((p, i) => (
+            <rect
+              key={`${p.label}-${i}`}
+              x={barX(i)}
+              y={Math.min(y(p.value), y(0))}
+              width={barW}
+              height={Math.max(1.5, Math.abs(y(p.value) - y(0)))}
+              rx="3"
+              fill="var(--gold, #cfa752)"
+              opacity="0.85"
+            />
+          ))
+        ) : (
+          <>
+            <path d={linePath} fill="none" stroke="var(--gold, #cfa752)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            {points.map((p, i) => (
+              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.6" fill="var(--gold, #cfa752)" />
+            ))}
+          </>
+        )}
+        {points.map((p, i) =>
+          showLabel(i) ? (
+            <text
+              key={`lbl-${p.label}-${i}`}
+              x={chart.type === 'bar' ? barX(i) + barW / 2 : x(i)}
+              y={H - 8}
+              textAnchor="middle"
+              fontSize="11"
+              fill="currentColor"
+              opacity="0.5"
+            >
+              {p.label}
+            </text>
+          ) : null
+        )}
+      </svg>
+      {chart.note && <p className="small muted" style={{ margin: '0.5rem 0 0' }}>{chart.note}</p>}
+    </div>
   );
 }
 
@@ -108,16 +211,11 @@ export default function Progress() {
   }
 
   const { data, analysis } = report;
-  const { goal, weighIns, adherence, training } = data;
+  const { goal, weighIns } = data;
   const tone = STATUS_TONE[analysis.status] || 'cyan';
   const latestWeight = weighIns.length ? weighIns[weighIns.length - 1].kg : null;
-  const totalVolume = training.reduce((sum, t) => sum + (t.volumeKg || 0), 0);
-  // Readable units: "12,400 kg" until tonnes actually mean something.
-  const volumeLabel = !totalVolume
-    ? '—'
-    : totalVolume >= 10000
-      ? `${(totalVolume / 1000).toFixed(1)}t`
-      : `${Math.round(totalVolume).toLocaleString()} kg`;
+  const stats = Array.isArray(analysis.stats) ? analysis.stats : [];
+  const charts = Array.isArray(analysis.charts) ? analysis.charts : [];
 
   return (
     <div className="page page-wide page-enter">
@@ -147,9 +245,24 @@ export default function Progress() {
         <AnalysisList title="Watch out" items={analysis.risks} />
         <AnalysisList title="Do next" items={analysis.recommendations} />
         {analysis.source === 'fallback' && (
-          <p className="tiny faint" style={{ marginTop: '0.5rem' }}>AI coach unreachable right now — the analysis will refresh on your next visit.</p>
+          <p className="tiny faint" style={{ marginTop: '0.5rem' }}>AI coach unreachable right now — the analysis, stats and charts will refresh on your next visit.</p>
         )}
       </div>
+
+      {/* ---- The coach's numbers — every figure computed by the AI from the
+              logs (implausible entries excluded by its own judgment), so a
+              tile can never contradict the analysis above ---- */}
+      {stats.length > 0 && (
+        <div className="stat-grid" style={{ marginBottom: '1rem' }}>
+          {stats.map((s, i) => (
+            <div key={`${s.label}-${i}`} className="stat-card">
+              <div className="stat-label">{s.label}</div>
+              <div className={`stat-value ${toneClass(s.tone)}`}>{s.value}</div>
+              {s.detail && <div className="stat-sub">{s.detail}</div>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ---- Weight trend: the raw truth the analysis was read from ---- */}
       <section className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
@@ -164,34 +277,19 @@ export default function Progress() {
         </p>
       </section>
 
-      {/* ---- Training & nutrition, data + the coach's read ---- */}
+      {/* ---- The coach's charts — series it chose and computed itself ---- */}
+      {charts.map((chart, i) => (
+        <CoachChart key={`${chart.title}-${i}`} chart={chart} />
+      ))}
+
+      {/* ---- Training & nutrition — the coach's read, in words ---- */}
       <div className="grid-cards" style={{ marginBottom: '1rem' }}>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Training</h3>
-          <div className="stat-grid">
-            <div className="stat-card">
-              <div className="stat-label">Sessions (28d)</div>
-              <div className="stat-value">{training.length}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Volume lifted (28d)</div>
-              <div className="stat-value">{volumeLabel}</div>
-            </div>
-          </div>
           <p className="small muted" style={{ marginBottom: 0 }}>{analysis.trainingAnalysis}</p>
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Consistency</h3>
-          <div className="stat-grid">
-            <div className="stat-card">
-              <div className="stat-label">Last 7 days</div>
-              <div className="stat-value">{pct(adherence.last7)}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Last 28 days</div>
-              <div className="stat-value">{pct(adherence.last28)}</div>
-            </div>
-          </div>
+          <h3 style={{ marginTop: 0 }}>Nutrition</h3>
           <p className="small muted" style={{ marginBottom: 0 }}>{analysis.nutritionAnalysis}</p>
         </div>
       </div>

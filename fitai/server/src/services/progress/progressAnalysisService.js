@@ -76,8 +76,13 @@ async function assembleData(userId, profileRow, userDate) {
 
 // Fingerprint of everything the AI reasons over. Any new data point (weigh-in,
 // set, meal, habit tick) changes it and invalidates today's stored analysis.
+// ANALYSIS_VERSION is part of the fingerprint: bump it when the analysis
+// contract grows (e.g. v2 added AI-authored stats + charts) so a same-day
+// cached row from the old shape regenerates instead of being served without
+// the new fields.
+const ANALYSIS_VERSION = 2;
 function hashData(data) {
-  return crypto.createHash('sha1').update(JSON.stringify(data)).digest('hex');
+  return crypto.createHash('sha1').update(JSON.stringify({ v: ANALYSIS_VERSION, data })).digest('hex');
 }
 
 async function computeProgress(userId) {
