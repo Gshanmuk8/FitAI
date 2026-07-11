@@ -48,6 +48,24 @@ async function assembleData(userId, profileRow, userDate) {
     return items.map((i) => ({ date: ymd(r.date), label: String(i.label || ''), done: Boolean(i.done) }));
   });
 
+  // The user's own typed daily figures (protein/water/sleep/steps), oldest
+  // first — the AI compares ACTUALS against the plan targets instead of only
+  // seeing pass/fail checkmarks. Because these sit in the fingerprinted data,
+  // editing a value (190g instead of 150g) regenerates the analysis even when
+  // the completion boolean didn't move.
+  const num = (v) => (v == null ? null : Number(v));
+  const dailyValues = history
+    .slice(0, 28)
+    .filter((r) => r.protein_grams != null || r.water_ml != null || r.sleep_hours != null || r.steps_count != null)
+    .map((r) => ({
+      date: ymd(r.date),
+      proteinGrams: num(r.protein_grams),
+      waterMl: num(r.water_ml),
+      sleepHours: num(r.sleep_hours),
+      stepsCount: num(r.steps_count),
+    }))
+    .reverse();
+
   const timeframeWeeks = plan?.timeframe?.weeks || profileRow.timeframe_weeks || null;
   const planStartedAt = profileRow.plan_started_at || profileRow.updated_at || null;
   const weeksElapsed = planStartedAt
@@ -70,6 +88,7 @@ async function assembleData(userId, profileRow, userDate) {
     adherence: adherenceFrom(history, userDate),
     training: training.map((t) => ({ date: ymd(t.date), sets: t.sets, exercises: t.exercises, volumeKg: Math.round(t.volume_kg) })),
     nutrition: nutrition.map((n) => ({ date: ymd(n.date), calories: n.calories, protein: Math.round(n.protein), meals: n.meals })),
+    dailyValues,
     customItems,
   };
 }
@@ -77,10 +96,10 @@ async function assembleData(userId, profileRow, userDate) {
 // Fingerprint of everything the AI reasons over. Any new data point (weigh-in,
 // set, meal, habit tick) changes it and invalidates today's stored analysis.
 // ANALYSIS_VERSION is part of the fingerprint: bump it when the analysis
-// contract grows (e.g. v2 added AI-authored stats + charts) so a same-day
-// cached row from the old shape regenerates instead of being served without
-// the new fields.
-const ANALYSIS_VERSION = 2;
+// contract grows (e.g. v2 added AI-authored stats + charts; v3 added the
+// user's self-logged daily values) so a same-day cached row from the old
+// shape regenerates instead of being served without the new fields.
+const ANALYSIS_VERSION = 3;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: ANALYSIS_VERSION, data })).digest('hex');
 }

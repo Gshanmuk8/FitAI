@@ -14,13 +14,14 @@ const DEFAULT_ITEMS = [
 ];
 
 // The four measurable items accept a typed value. Each maps to its storage
-// column and how the number is shown vs. stored (water is entered in litres
-// but persisted in millilitres to match the plan targets).
+// column, the plan-snapshot target it is measured against, and how the
+// number is shown vs. stored (water is entered in litres but persisted in
+// millilitres to match the plan targets).
 const MEASURE = {
-  protein_completed: { col: 'protein_grams', unit: 'g', step: '1', toInput: (v) => v, fromInput: (n) => n },
-  water_completed: { col: 'water_ml', unit: 'L', step: '0.1', toInput: (v) => v / 1000, fromInput: (n) => Math.round(n * 1000) },
-  sleep_completed: { col: 'sleep_hours', unit: 'h', step: '0.5', toInput: (v) => v, fromInput: (n) => n },
-  steps_completed: { col: 'steps_count', unit: 'steps', step: '100', toInput: (v) => v, fromInput: (n) => Math.round(n) },
+  protein_completed: { col: 'protein_grams', targetKey: 'proteinGrams', unit: 'g', step: '1', toInput: (v) => v, fromInput: (n) => n, fmtTarget: (t) => String(t) },
+  water_completed: { col: 'water_ml', targetKey: 'waterMl', unit: 'L', step: '0.1', toInput: (v) => v / 1000, fromInput: (n) => Math.round(n * 1000), fmtTarget: (t) => (t / 1000).toFixed(1) },
+  sleep_completed: { col: 'sleep_hours', targetKey: 'sleepHours', unit: 'h', step: '0.5', toInput: (v) => v, fromInput: (n) => n, fmtTarget: (t) => String(t) },
+  steps_completed: { col: 'steps_count', targetKey: 'stepsTarget', unit: 'steps', step: '100', toInput: (v) => v, fromInput: (n) => Math.round(n), fmtTarget: (t) => Number(t).toLocaleString() },
 };
 
 function ValueInput({ field, checklist, onSave, onError, onSaved }) {
@@ -36,14 +37,21 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
     setVal(stored != null ? String(cfg.toInput(Number(stored))) : '');
   }, [stored]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The planned figure this value is measured against — read from the day's
+  // frozen plan snapshot (never hardcoded). Shown as "actual / target".
+  const target = checklist?.plan_snapshot?.targets?.[cfg.targetKey];
+
+  // Nothing is saved until the user says so: the input only becomes dirty
+  // (Save enabled) when it holds a number different from the server's.
+  const dirty = val !== '' && !(stored != null && String(cfg.toInput(Number(stored))) === String(Number(val)));
+
   async function commit() {
-    if (val === '') return;
+    if (!dirty || saving) return;
     const num = Number(val);
     if (Number.isNaN(num) || num < 0) {
       onError('Enter a positive number.');
       return;
     }
-    if (stored != null && cfg.toInput(Number(stored)) === num) return; // unchanged
     setSaving(true);
     try {
       const updated = await onSave({ [cfg.col]: cfg.fromInput(num) });
@@ -59,7 +67,7 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
   }
 
   return (
-    <span className="check-value">
+    <span className="check-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
       <input
         type="number"
         inputMode="decimal"
@@ -69,12 +77,22 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
         disabled={saving}
         placeholder="—"
         onChange={(e) => setVal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
         style={{ width: '5rem' }}
         aria-label={`Log ${cfg.col}`}
       />
-      {cfg.unit && <span className="tiny faint">{cfg.unit}</span>}
+      <span className="tiny faint" style={{ whiteSpace: 'nowrap' }}>
+        {target != null ? `/ ${cfg.fmtTarget(Number(target))} ${cfg.unit}` : cfg.unit}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={!dirty || saving}
+        onClick={commit}
+        style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+      >
+        {saving ? 'Saving…' : 'Save'}
+      </Button>
     </span>
   );
 }
@@ -83,35 +101,46 @@ function WeighInAndNotes({ checklist, onSave, onError }) {
   const [weight, setWeight] = useState('');
   const [notes, setNotes] = useState('');
   const [savedFlash, setSavedFlash] = useState('');
+  const [savingWeight, setSavingWeight] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => { setWeight(checklist?.weight_kg != null ? String(checklist.weight_kg) : ''); }, [checklist?.weight_kg]);
   useEffect(() => { setNotes(checklist?.notes || ''); }, [checklist?.notes]);
 
   const flash = (msg) => { setSavedFlash(msg); setTimeout(() => setSavedFlash(''), 1500); };
 
+  // Explicit save only — typing never persists anything on its own.
+  const weightDirty = weight !== '' && !(checklist?.weight_kg != null && Number(checklist.weight_kg) === Number(weight));
+  const notesDirty = (checklist?.notes || '') !== notes;
+
   async function saveWeight() {
-    if (weight === '') return;
+    if (!weightDirty || savingWeight) return;
     const num = Number(weight);
     if (Number.isNaN(num) || num < 30 || num > 300) {
       onError('Weight must be between 30 and 300 kg.');
       return;
     }
-    if (checklist?.weight_kg != null && Number(checklist.weight_kg) === num) return;
+    setSavingWeight(true);
     try {
       await onSave({ weight_kg: num });
       flash('Weigh-in saved');
     } catch (err) {
       onError(`Couldn't save weigh-in: ${err.message}`);
+    } finally {
+      setSavingWeight(false);
     }
   }
 
   async function saveNotes() {
-    if ((checklist?.notes || '') === notes) return;
+    if (!notesDirty || savingNotes) return;
+    setSavingNotes(true);
     try {
       await onSave({ notes });
       flash('Note saved');
     } catch (err) {
       onError(`Couldn't save note: ${err.message}`);
+    } finally {
+      setSavingNotes(false);
     }
   }
 
@@ -127,24 +156,44 @@ function WeighInAndNotes({ checklist, onSave, onError }) {
           min="30"
           max="300"
           value={weight}
+          disabled={savingWeight}
           placeholder="kg"
           onChange={(e) => setWeight(e.target.value)}
-          onBlur={saveWeight}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveWeight(); } }}
           style={{ width: '6rem' }}
         />
         <span className="tiny faint">kg</span>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={!weightDirty || savingWeight}
+          onClick={saveWeight}
+          style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+        >
+          {savingWeight ? 'Saving…' : 'Save'}
+        </Button>
       </div>
       <textarea
         value={notes}
         placeholder="Notes for today — how you felt, energy, anything the coach should know…"
         onChange={(e) => setNotes(e.target.value)}
-        onBlur={saveNotes}
         maxLength={1000}
         rows={2}
+        disabled={savingNotes}
         style={{ width: '100%', marginTop: '0.5rem', resize: 'vertical' }}
       />
-      {savedFlash && <span className="tiny tone-emerald-text">{savedFlash}</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={!notesDirty || savingNotes}
+          onClick={saveNotes}
+          style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+        >
+          {savingNotes ? 'Saving…' : 'Save note'}
+        </Button>
+        {savedFlash && <span className="tiny tone-emerald-text">{savedFlash}</span>}
+      </div>
     </div>
   );
 }
