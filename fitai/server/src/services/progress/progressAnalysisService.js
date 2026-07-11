@@ -66,6 +66,15 @@ async function assembleData(userId, profileRow, userDate) {
     }))
     .reverse();
 
+  // The user's own daily notes (last 14 days) — subjective context the coach
+  // should weigh (energy, soreness, life events). In the fingerprint too, so
+  // saving a note refreshes the analysis like any other logged fact.
+  const dailyNotes = history
+    .slice(0, 14)
+    .filter((r) => r.notes)
+    .map((r) => ({ date: ymd(r.date), note: String(r.notes).slice(0, 500) }))
+    .reverse();
+
   const timeframeWeeks = plan?.timeframe?.weeks || profileRow.timeframe_weeks || null;
   const planStartedAt = profileRow.plan_started_at || profileRow.updated_at || null;
   const weeksElapsed = planStartedAt
@@ -89,6 +98,7 @@ async function assembleData(userId, profileRow, userDate) {
     training: training.map((t) => ({ date: ymd(t.date), sets: t.sets, exercises: t.exercises, volumeKg: Math.round(t.volume_kg) })),
     nutrition: nutrition.map((n) => ({ date: ymd(n.date), calories: n.calories, protein: Math.round(n.protein), meals: n.meals })),
     dailyValues,
+    dailyNotes,
     customItems,
   };
 }
@@ -97,9 +107,10 @@ async function assembleData(userId, profileRow, userDate) {
 // set, meal, habit tick) changes it and invalidates today's stored analysis.
 // ANALYSIS_VERSION is part of the fingerprint: bump it when the analysis
 // contract grows (e.g. v2 added AI-authored stats + charts; v3 added the
-// user's self-logged daily values) so a same-day cached row from the old
-// shape regenerates instead of being served without the new fields.
-const ANALYSIS_VERSION = 3;
+// user's self-logged daily values; v4 added their daily notes) so a same-day
+// cached row from the old shape regenerates instead of being served without
+// the new fields.
+const ANALYSIS_VERSION = 4;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: ANALYSIS_VERSION, data })).digest('hex');
 }
