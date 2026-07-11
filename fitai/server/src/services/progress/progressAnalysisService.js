@@ -130,10 +130,10 @@ async function computeProgress(userId) {
   }
 
   // Provider-outage memo: don't re-run the cascade for every page load
-  // while the last attempt's fallback is still warm.
+  // while the last attempt's fallback is still warm (60s — see below).
   const memo = fallbackMemo.get(userId);
   if (memo && memo.until > Date.now() && memo.inputHash === inputHash) {
-    return { date: userDate, data, analysis: memo.analysis, fresh: false };
+    return { ...memo.result, data };
   }
 
   const { profile } = await buildContextForUser(userId);
@@ -145,13 +145,25 @@ async function computeProgress(userId) {
     await ProgressAnalysis.upsertToday(userId, { analysis, inputHash }, userDate);
     return { date: userDate, data, analysis, fresh: true };
   }
-  fallbackMemo.set(userId, { until: Date.now() + FALLBACK_MEMO_MS, inputHash, analysis });
-  return { date: userDate, data, analysis, fresh: true };
+
+  // Provider outage. NEVER show a template while a real analysis exists:
+  // serve the newest stored one (even yesterday's) marked stale — real
+  // words about real data beat placeholder text every time. The template
+  // fallback is only for accounts that have never had an analysis at all.
+  const latest = await ProgressAnalysis.getLatest(userId).catch(() => null);
+  const result = latest
+    ? { date: userDate, data, analysis: latest.analysis, fresh: false, stale: true, staleDate: ymd(latest.date) }
+    : { date: userDate, data, analysis, fresh: true };
+  fallbackMemo.set(userId, { until: Date.now() + FALLBACK_MEMO_MS, inputHash, result });
+  return result;
 }
 
 const inFlight = new Map();
 const fallbackMemo = new Map();
-const FALLBACK_MEMO_MS = 10 * 60 * 1000;
+// Short on purpose: it only has to absorb burst loads (double mounts, two
+// tabs), NOT block a human's deliberate reload — a reload after a minute
+// must retry the AI, exactly as the page's own copy promises.
+const FALLBACK_MEMO_MS = 60 * 1000;
 
 // In-flight dedup: concurrent first-of-day loads share one generation.
 async function getProgress(userId) {

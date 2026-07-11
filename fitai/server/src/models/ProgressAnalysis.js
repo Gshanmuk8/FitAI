@@ -12,6 +12,17 @@ async function getToday(userId, date = null) {
   return rows[0] || null;
 }
 
+// Newest stored analysis regardless of day — the "last known good" served
+// (marked stale) when a provider outage blocks today's regeneration. A real
+// analysis from yesterday beats a template every time.
+async function getLatest(userId) {
+  const { rows } = await queryAs(userId,
+    `SELECT * FROM progress_analyses WHERE user_id = $1 ORDER BY date DESC LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
 async function upsertToday(userId, { analysis, inputHash }, date = null) {
   const { rows } = await queryAs(userId,
     `INSERT INTO progress_analyses (user_id, date, input_hash, analysis)
@@ -24,4 +35,4 @@ async function upsertToday(userId, { analysis, inputHash }, date = null) {
   return rows[0];
 }
 
-module.exports = { getToday, upsertToday };
+module.exports = { getToday, getLatest, upsertToday };

@@ -52,6 +52,11 @@ function BriefingCard({ briefing, loading }) {
       {briefing.source === 'fallback' && (
         <p className="tiny faint" style={{ marginTop: '0.5rem' }}>AI coach unreachable right now — this will refresh on the next visit.</p>
       )}
+      {briefing.stale && (
+        <p className="tiny tone-amber-text" style={{ marginTop: '0.5rem' }}>
+          This is the day's earlier briefing — your latest changes fold in as soon as the coach is reachable again.
+        </p>
+      )}
     </div>
   );
 }

@@ -234,6 +234,26 @@ async function run(epg) {
   assert.equal(analysisRows.length, 0, 'fallback analysis is NOT persisted (must refresh when AI is back)');
   step('progress: AI-analysis pipeline assembles the full journey; keyless degrades honestly');
 
+  // ---- last-known-good: once ANY real analysis exists, an outage serves
+  // it marked stale — the template fallback must never shadow real words ----
+  const ProgressAnalysis = require('../server/src/models/ProgressAnalysis');
+  await ProgressAnalysis.upsertToday(userId, {
+    analysis: {
+      status: 'on_track', summary: 'REAL WORDS from the last reachable run',
+      weightTrend: 'w', trainingAnalysis: 't', nutritionAnalysis: 'n',
+      wins: [], risks: [], recommendations: [], stats: [], charts: [], source: 'ai',
+    },
+    inputHash: 'outdated-hash',
+  });
+  // New data -> new hash, bypassing the outage memo — steps, NOT weight,
+  // because later steps assert today's 89.4 weigh-in survives untouched.
+  await setChecklistValues(userId, { steps_count: 4321 });
+  const progressStale = await getProgress(userId);
+  assert.equal(progressStale.stale, true, 'outage + stored analysis -> served stale, not template');
+  assert.equal(progressStale.analysis.summary, 'REAL WORDS from the last reachable run', 'the stored analysis is what renders');
+  assert.ok(progressStale.staleDate, 'stale result says which day it came from');
+  step('provider outage serves the last REAL analysis marked stale — never a template');
+
   // ---- memory: system rows exist, retrieval is importance-first ----
   const { getRecentConversationalMemory } = require('../server/src/services/memory/memoryRetriever');
   const memories = await getRecentConversationalMemory(userId);

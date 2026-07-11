@@ -185,12 +185,40 @@ function AnalysisList({ title, items, tone }) {
 export default function Progress() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
+  const [retrying, setRetrying] = useState(false);
 
+  async function load() {
+    try {
+      setReport(await getProgress());
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Anything logged in another tab (or a long-open tab crossing new data)
+  // must show here without a manual reload — same pattern as the checklist.
+  // Server-side this is cheap: unchanged data serves the stored analysis.
   useEffect(() => {
-    getProgress()
-      .then(setReport)
-      .catch((err) => setError(err.message));
-  }, []);
+    function onVisible() {
+      if (document.visibilityState === 'visible') load();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function retry() {
+    setRetrying(true);
+    load();
+  }
 
   if (error) {
     const notOnboarded = /no profile found/i.test(error);
@@ -217,12 +245,57 @@ export default function Progress() {
   const stats = Array.isArray(analysis.stats) ? analysis.stats : [];
   const charts = Array.isArray(analysis.charts) ? analysis.charts : [];
 
+  // Coach unreachable AND this account has never had a real analysis: show
+  // ONE honest state — real logged data, no template filler dressed up as
+  // analysis. (When a past analysis exists, the server serves it instead,
+  // marked stale, and we render it in full below.)
+  if (analysis.source === 'fallback') {
+    return (
+      <div className="page page-wide page-enter">
+        <header className="page-header">
+          <h2 className="page-title">Progress</h2>
+          <Link to="/plan">Edit plan →</Link>
+        </header>
+        <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ marginTop: 0 }}>Your coach couldn't be reached</h3>
+          <p className="small" style={{ margin: '0.5rem 0' }}>
+            Nothing here is made up while the AI is away — your logged data below is safe, and the full
+            analysis, stats and charts are generated the moment the coach is back.
+          </p>
+          <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Try again now'}</Button>
+        </div>
+        <section className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+          <div className="page-header">
+            <h3 style={{ margin: 0 }}>Weight trend</h3>
+            {latestWeight != null && <span className="chip">{latestWeight}kg now</span>}
+          </div>
+          <WeightChart weighIns={weighIns} targetKg={goal.targetWeightKg} />
+          <p className="tiny faint" style={{ margin: '0.5rem 0 0' }}>
+            Weigh in each morning on <Link to="/dashboard">Today's Mission</Link> — every entry lands in the coach's next analysis.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="page page-wide page-enter">
       <header className="page-header">
         <h2 className="page-title">Progress</h2>
         <Link to="/plan">Edit plan →</Link>
       </header>
+
+      {/* ---- Stale: a REAL past analysis served while a refresh is blocked
+              by a provider outage — say so plainly and offer the retry ---- */}
+      {report.stale && (
+        <div className="notice tone-amber" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <span className="small" style={{ flex: 1 }}>
+            Showing your last analysis{report.staleDate ? ` (${report.staleDate})` : ''} — the coach couldn't be
+            reached to fold in your latest changes yet.
+          </span>
+          <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Refresh now'}</Button>
+        </div>
+      )}
 
       {/* ---- The coach's analysis — the heart of the page ---- */}
       <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
@@ -244,9 +317,6 @@ export default function Progress() {
         <AnalysisList title="Going well" items={analysis.wins} />
         <AnalysisList title="Watch out" items={analysis.risks} />
         <AnalysisList title="Do next" items={analysis.recommendations} />
-        {analysis.source === 'fallback' && (
-          <p className="tiny faint" style={{ marginTop: '0.5rem' }}>AI coach unreachable right now — the analysis, stats and charts will refresh on your next visit.</p>
-        )}
       </div>
 
       {/* ---- The coach's numbers — every figure computed by the AI from the

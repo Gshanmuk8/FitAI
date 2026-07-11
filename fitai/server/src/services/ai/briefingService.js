@@ -162,7 +162,18 @@ async function computeTodayBriefing(userId) {
     const stored = await DailyBriefing.upsertToday(userId, { ...result, inputHash }, userDate);
     return { ...result, date: stored?.date || userDate, fresh: true };
   }
-  const briefing = { ...result, date: userDate, fresh: true };
+
+  // Provider outage. If today already HAS a real briefing (we're here
+  // because new data made its hash stale), serve that marked stale — the
+  // morning's real words beat placeholder text. Template only when the
+  // day has no briefing at all.
+  let briefing;
+  if (existing?.briefing?.summary) {
+    const { inputHash: _ignored, ...real } = existing.briefing;
+    briefing = { ...real, date: existing.date, fresh: false, stale: true };
+  } else {
+    briefing = { ...result, date: userDate, fresh: true };
+  }
   fallbackMemo.set(userId, { until: Date.now() + FALLBACK_MEMO_MS, inputHash, briefing });
   return briefing;
 }
@@ -171,7 +182,9 @@ async function computeTodayBriefing(userId) {
 // dashboard, two tabs) share ONE generation instead of each paying an AI call.
 const inFlight = new Map();
 const fallbackMemo = new Map();
-const FALLBACK_MEMO_MS = 10 * 60 * 1000;
+// Short on purpose: absorbs burst loads, never blocks a deliberate reload —
+// a reload after a minute retries the AI.
+const FALLBACK_MEMO_MS = 60 * 1000;
 
 async function getTodayBriefing(userId) {
   if (inFlight.has(userId)) return inFlight.get(userId);
