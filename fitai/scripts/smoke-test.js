@@ -163,7 +163,13 @@ async function run(epg) {
   let mealRow = await getTodayEnriched(userId);
   assert.equal(Number(mealRow.calories_kcal), 1550, 'diary calories synced into the checklist as a value');
   assert.equal(mealRow.calories_completed, true, '1550 kcal is within a 2414 kcal cut budget -> on track');
-  step('meal diary tallies and auto-checks protein + calories');
+  // manual toggle parity: calories is a first-class checklist field — the
+  // model whitelist must accept it like the original five.
+  const { updateChecklistItem: toggleField } = require('../server/src/models/DailyChecklist');
+  const toggledOff = await toggleField(userId, 'calories_completed', false, mealRow.userDate ?? null);
+  assert.equal(toggledOff.calories_completed, false, 'calories tick toggles off by hand');
+  await toggleField(userId, 'calories_completed', true, mealRow.userDate ?? null);
+  step('meal diary tallies and auto-checks protein + calories (tick toggles by hand too)');
 
   // deleting a meal re-syncs DOWNWARD: totals drop and a no-longer-met
   // target's checkmark comes off — number and checkbox never disagree.

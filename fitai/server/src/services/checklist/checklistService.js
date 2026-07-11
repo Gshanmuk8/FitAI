@@ -38,6 +38,17 @@ async function getTodayEnriched(userId) {
       return null;
     });
     checklist = await insertToday(userId, snapshot, userDate);
+  } else if (checklist.plan_snapshot && Number(checklist.plan_snapshot.version || 1) < SNAPSHOT_VERSION) {
+    // Self-heal a day frozen under an older snapshot contract (e.g. a row
+    // created before the snapshot carried `goal`): rebuild it from the live
+    // plan and re-derive value completions, exactly like a plan edit does.
+    // Deploying mid-day must not leave TODAY judging calories by the wrong
+    // rule until midnight. Failure degrades to serving the stale snapshot.
+    const healed = await refreshTodaySnapshot(userId).catch((err) => {
+      logger.error('stale snapshot self-heal failed, serving as-is', { error: err.message });
+      return null;
+    });
+    if (healed) return healed;
   }
   return { ...checklist, items: itemsFromSnapshot(checklist.plan_snapshot), userDate };
 }

@@ -39,7 +39,7 @@ async function getYesterday(userId, date = null) {
 }
 
 async function updateChecklistItem(userId, field, value, date = null) {
-  const allowed = ['workout_completed', 'protein_completed', 'water_completed', 'sleep_completed', 'steps_completed'];
+  const allowed = ['workout_completed', 'protein_completed', 'calories_completed', 'water_completed', 'sleep_completed', 'steps_completed'];
   if (!allowed.includes(field)) throw new Error(`Invalid checklist field: ${field}`);
 
   const { rows } = await queryAs(userId,
