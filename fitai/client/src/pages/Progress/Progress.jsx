@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { getProgress } from '../../services/progressService';
 import Button from '../../components/ui/Button';
 
+// status → CSS tone is the only mapping this file owns, and it's pure
+// presentation (which accent color a status gets). The words next to it —
+// headline, statusLabel, every number, every chart — are the coach's.
 const STATUS_TONE = { ahead: 'emerald', on_track: 'emerald', behind: 'amber', no_data: 'cyan' };
-const STATUS_LABEL = { ahead: 'Ahead of schedule', on_track: 'On track', behind: 'Needs attention', no_data: 'Building your picture' };
 
 // Tone → text class. Everything the page shows as a number is the coach's
 // own arithmetic (analysis.stats / analysis.charts) — this file only
@@ -15,10 +17,10 @@ const fmtAxis = (v) =>
   Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : Number.isInteger(v) ? String(v) : v.toFixed(1);
 
 /**
- * Weigh-in trend as a plain SVG — no chart dependency for one line. The
- * viewBox keeps it responsive; a dashed rule marks the target weight when
- * the goal has one. This is the one raw-data plot on the page: the exact
- * series the coach was given, shown unedited under its interpretation.
+ * Weigh-in trend as a plain SVG — no chart dependency for one line. Used
+ * ONLY in the coach-unreachable-and-never-analyzed state, where AI content
+ * doesn't exist by definition: it shows the raw logged series, labeled as
+ * raw data. On the real page every graph is coach-authored (CoachChart).
  */
 function WeightChart({ weighIns, targetKg }) {
   if (!weighIns || weighIns.length < 2) {
@@ -58,15 +60,15 @@ function WeightChart({ weighIns, targetKg }) {
       ))}
       {targetKg != null && (
         <g>
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--amber, #cd853a)" strokeDasharray="5 4" opacity="0.7" />
-          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #cd853a)">
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--amber, #d97706)" strokeDasharray="5 4" opacity="0.7" />
+          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #d97706)">
             target {targetKg}kg
           </text>
         </g>
       )}
-      <path d={path} fill="none" stroke="var(--gold, #cfa752)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={path} fill="none" stroke="var(--gold, #5a5ce0)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       {weighIns.map((p, i) => (
-        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold, #cfa752)" />
+        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold, #5a5ce0)" />
       ))}
       <text x={PAD.left} y={H - 8} fontSize="11" fill="currentColor" opacity="0.5">{first.date}</text>
       <text x={W - PAD.right} y={H - 8} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">{last.date}</text>
@@ -122,8 +124,8 @@ function CoachChart({ chart }) {
         ))}
         {chart.targetValue != null && (
           <g>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--amber, #cd853a)" strokeDasharray="5 4" opacity="0.7" />
-            <text x={W - PAD.right} y={y(chart.targetValue) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #cd853a)">
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--amber, #d97706)" strokeDasharray="5 4" opacity="0.7" />
+            <text x={W - PAD.right} y={y(chart.targetValue) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #d97706)">
               target {fmtAxis(chart.targetValue)}{chart.unit ? ` ${chart.unit}` : ''}
             </text>
           </g>
@@ -137,15 +139,15 @@ function CoachChart({ chart }) {
               width={barW}
               height={Math.max(1.5, Math.abs(y(p.value) - y(0)))}
               rx="3"
-              fill="var(--gold, #cfa752)"
+              fill="var(--gold, #5a5ce0)"
               opacity="0.85"
             />
           ))
         ) : (
           <>
-            <path d={linePath} fill="none" stroke="var(--gold, #cfa752)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            <path d={linePath} fill="none" stroke="var(--gold, #5a5ce0)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
             {points.map((p, i) => (
-              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.6" fill="var(--gold, #cfa752)" />
+              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.6" fill="var(--gold, #5a5ce0)" />
             ))}
           </>
         )}
@@ -241,7 +243,6 @@ export default function Progress() {
   const { data, analysis } = report;
   const { goal, weighIns } = data;
   const tone = STATUS_TONE[analysis.status] || 'cyan';
-  const latestWeight = weighIns.length ? weighIns[weighIns.length - 1].kg : null;
   const stats = Array.isArray(analysis.stats) ? analysis.stats : [];
   const charts = Array.isArray(analysis.charts) ? analysis.charts : [];
 
@@ -250,6 +251,7 @@ export default function Progress() {
   // analysis. (When a past analysis exists, the server serves it instead,
   // marked stale, and we render it in full below.)
   if (analysis.source === 'fallback') {
+    const latestWeight = weighIns.length ? weighIns[weighIns.length - 1].kg : null;
     return (
       <div className="page page-wide page-enter">
         <header className="page-header">
@@ -297,21 +299,16 @@ export default function Progress() {
         </div>
       )}
 
-      {/* ---- The coach's analysis — the heart of the page ---- */}
+      {/* ---- The coach's analysis — the heart of the page. Headline and
+              status label are its words too; the only non-AI text on this
+              path is the raw goal type shown while a pre-headline stored
+              analysis is served stale during an outage. ---- */}
       <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
         <div className="page-header">
-          <div>
-            <h3 style={{ margin: 0 }}>
-              {goal.type?.replace(/_/g, ' ')}
-              {goal.targetWeightKg ? <span className="mono"> → {goal.targetWeightKg}kg</span> : ''}
-            </h3>
-            {goal.timeframeWeeks && (
-              <p className="muted small" style={{ margin: '0.25rem 0' }}>
-                {goal.timeframeWeeks}-week plan{goal.weeksElapsed != null ? ` · week ${Math.max(1, Math.ceil(goal.weeksElapsed))}` : ''}
-              </p>
-            )}
-          </div>
-          <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>{STATUS_LABEL[analysis.status] || ''}</span>
+          <h3 style={{ margin: 0 }}>{analysis.headline || goal.type?.replace(/_/g, ' ')}</h3>
+          {analysis.statusLabel && (
+            <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>{analysis.statusLabel}</span>
+          )}
         </div>
         <p className="small" style={{ margin: '0.5rem 0' }}>{analysis.summary}</p>
         <AnalysisList title="Going well" items={analysis.wins} />
@@ -334,26 +331,19 @@ export default function Progress() {
         </div>
       )}
 
-      {/* ---- Weight trend: the raw truth the analysis was read from ---- */}
-      <section className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-        <div className="page-header">
-          <h3 style={{ margin: 0 }}>Weight trend</h3>
-          {latestWeight != null && <span className="chip">{latestWeight}kg now</span>}
-        </div>
-        <WeightChart weighIns={weighIns} targetKg={goal.targetWeightKg} />
-        <p className="small muted" style={{ margin: '0.5rem 0 0' }}>{analysis.weightTrend}</p>
-        <p className="tiny faint" style={{ margin: '0.25rem 0 0' }}>
-          Weigh in each morning on <Link to="/dashboard">Today's Mission</Link> — the analysis updates as soon as new data lands.
-        </p>
-      </section>
-
-      {/* ---- The coach's charts — series it chose and computed itself ---- */}
+      {/* ---- The coach's charts — the page's ONLY graphs: series it chose,
+              values it computed. The weight line (with the target rule) is
+              chart #1 by the prompt's contract. ---- */}
       {charts.map((chart, i) => (
         <CoachChart key={`${chart.title}-${i}`} chart={chart} />
       ))}
 
-      {/* ---- Training & nutrition — the coach's read, in words ---- */}
+      {/* ---- Weight, training & nutrition — the coach's read, in words ---- */}
       <div className="grid-cards" style={{ marginBottom: '1rem' }}>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Weight</h3>
+          <p className="small muted" style={{ marginBottom: 0 }}>{analysis.weightTrend}</p>
+        </div>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Training</h3>
           <p className="small muted" style={{ marginBottom: 0 }}>{analysis.trainingAnalysis}</p>
@@ -363,6 +353,10 @@ export default function Progress() {
           <p className="small muted" style={{ marginBottom: 0 }}>{analysis.nutritionAnalysis}</p>
         </div>
       </div>
+      <p className="tiny faint" style={{ margin: '0 0 1rem' }}>
+        Everything above is your coach's own read of your logs. Weigh in each morning on{' '}
+        <Link to="/dashboard">Today's Mission</Link> — the analysis regenerates as soon as new data lands.
+      </p>
     </div>
   );
 }

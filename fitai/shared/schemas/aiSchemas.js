@@ -120,7 +120,12 @@ const ProgressChartSchema = z.object({
 });
 
 const ProgressAnalysisSchema = z.object({
+  // The page's title line and status chip are the coach's words too — the
+  // frontend has no goal-formatting or week math of its own. Optional so a
+  // stored pre-v6 analysis (served stale during an outage) still validates.
+  headline: clippedOpt(120),                         // e.g. "Cutting to 78kg — week 3 of 12"
   status: z.enum(['ahead', 'on_track', 'behind', 'no_data']),
+  statusLabel: clippedOpt(40),                       // e.g. "Ahead of pace"
   summary: clipped(1000),                            // the journey so far, plainly
   weightTrend: clipped(500),                         // what the scale data actually shows
   trainingAnalysis: clipped(500),                    // consistency, volume, patterns

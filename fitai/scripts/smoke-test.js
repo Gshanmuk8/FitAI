@@ -227,7 +227,8 @@ async function run(epg) {
   assert.ok(progress.data.weighIns.length >= 1 && progress.data.weighIns[0].kg === 89.4, 'weigh-in flows from checklist into progress data');
   assert.ok(progress.data.training.length >= 1, 'logged sets appear in training summary');
   assert.ok(progress.data.nutrition.length >= 1, 'meals appear in nutrition summary');
-  assert.ok(progress.data.adherence.daysLogged >= 1, 'adherence computed');
+  assert.ok(progress.data.checklist.length >= 1, 'raw checklist log feeds the analysis (no precomputed adherence)');
+  assert.ok(progress.data.checklist.every((d) => typeof d.workout === 'boolean'), 'checklist rows carry raw per-item booleans');
   assert.ok(progress.data.customItems.some((i) => i.label === '20 min yoga' && i.done), 'custom habits feed the analysis data');
   assert.ok(!JSON.stringify(progress.analysis).match(/gemini|groq|cerebras|openrouter|cloudflare/i), 'provider names never leak');
   const { rows: analysisRows } = await pool.query(`SELECT * FROM progress_analyses WHERE user_id = $1`, [userId]);

@@ -1,10 +1,11 @@
 /**
  * The Progress page's engine. Assembles the user's whole logged journey —
- * weigh-in series, per-day training volume, per-day nutrition, adherence,
- * their own habit items — as ground-truth DATA, and hands ALL interpretation
- * to the AI (progressAnalysis task). There is deliberately no rule engine
- * here: no pace formulas, no threshold-based "risk levels", no canned
- * recommendations. The numbers are facts; the reasoning is the coach's.
+ * weigh-in series, the raw day-by-day checklist log, per-day training
+ * volume, per-day nutrition, their own habit items — as ground-truth DATA,
+ * and hands ALL interpretation to the AI (progressAnalysis task). There is
+ * deliberately no rule engine here: no adherence percentages, no pace
+ * formulas, no threshold-based "risk levels", no canned recommendations.
+ * The rows are facts; every derived number is the coach's own arithmetic.
  *
  * Economics: at most one AI analysis per user per local day, stored in
  * progress_analyses. input_hash fingerprints the assembled data, so new
@@ -22,7 +23,7 @@ const { dailyTotalsRecent } = require('../../models/Meal');
 const { buildContextForUser } = require('../memory/contextBuilder');
 const { buildProgressAnalysisPrompt } = require('../../../../shared/prompts/templates');
 const { analyzeProgress } = require('../ai/aiOrchestrator');
-const { adherenceFrom, ymd, DAY_MS } = require('../analytics/adherence');
+const { ymd, DAY_MS } = require('../analytics/adherence');
 const { localDateInZone } = require('../../utils/userDate');
 
 async function assembleData(userId, profileRow, userDate) {
@@ -41,6 +42,26 @@ async function assembleData(userId, profileRow, userDate) {
   const weighIns = history
     .filter((r) => r.weight_kg != null)
     .map((r) => ({ date: ymd(r.date), kg: Number(r.weight_kg) }))
+    .reverse();
+
+  // The raw plan-item log, day by day — NOT precomputed percentages. The AI
+  // is the page's only analytics engine, so it receives the same facts a
+  // human coach would read off the calendar and measures adherence itself.
+  // Days with no row are days the app was never opened; firstLoggedDate and
+  // asOfDate let it reason over calendar days, not just logged days.
+  const checklist = history
+    .slice(0, 28)
+    .map((r) => ({
+      date: ymd(r.date),
+      workout: Boolean(r.workout_completed),
+      protein: Boolean(r.protein_completed),
+      // Column added later (008): null on old rows means "not trackable that
+      // day", which is different from false ("tracked, missed").
+      calories: r.calories_completed == null ? null : Boolean(r.calories_completed),
+      water: Boolean(r.water_completed),
+      sleep: Boolean(r.sleep_completed),
+      steps: Boolean(r.steps_completed),
+    }))
     .reverse();
 
   const customItems = history.slice(0, 14).flatMap((r) => {
@@ -83,6 +104,8 @@ async function assembleData(userId, profileRow, userDate) {
     : null;
 
   return {
+    asOfDate: userDate,
+    firstLoggedDate: history.length ? ymd(history[history.length - 1].date) : null,
     goal: {
       type: profileRow.goal,
       startWeightKg: profileRow.weight_kg != null ? Number(profileRow.weight_kg) : null,
@@ -95,7 +118,7 @@ async function assembleData(userId, profileRow, userDate) {
       roadmap: plan?.roadmap || [],
     },
     weighIns,
-    adherence: adherenceFrom(history, userDate),
+    checklist,
     training: training.map((t) => ({ date: ymd(t.date), sets: t.sets, exercises: t.exercises, volumeKg: Math.round(t.volume_kg) })),
     nutrition: nutrition.map((n) => ({ date: ymd(n.date), calories: n.calories, protein: Math.round(n.protein), meals: n.meals })),
     dailyValues,
@@ -109,9 +132,10 @@ async function assembleData(userId, profileRow, userDate) {
 // ANALYSIS_VERSION is part of the fingerprint: bump it when the analysis
 // contract grows (e.g. v2 added AI-authored stats + charts; v3 added the
 // user's self-logged daily values; v4 added their daily notes; v5 added
-// calories) so a same-day cached row from the old shape regenerates instead
-// of being served without the new fields.
-const ANALYSIS_VERSION = 5;
+// calories; v6 replaced precomputed adherence with the raw checklist log and
+// added the AI-authored headline/statusLabel) so a same-day cached row from
+// the old shape regenerates instead of being served without the new fields.
+const ANALYSIS_VERSION = 6;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: ANALYSIS_VERSION, data })).digest('hex');
 }

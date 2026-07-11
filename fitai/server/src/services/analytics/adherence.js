@@ -1,7 +1,9 @@
 /**
  * Adherence math over daily_checklists rows — shared by the daily briefing
- * and the progress analysis so the two AI surfaces can never disagree about
- * what "70% adherence" means.
+ * and the chat activity snapshot so those AI surfaces can never disagree
+ * about what "70% adherence" means. The Progress page deliberately does NOT
+ * use this: its AI receives the raw day-by-day checklist log and measures
+ * adherence itself — nothing on that page is precomputed.
  *
  * Windows are CALENDAR days, not last-N-rows: a day the app was never opened
  * has no row, and counting only logged days would feed the AI systematically
