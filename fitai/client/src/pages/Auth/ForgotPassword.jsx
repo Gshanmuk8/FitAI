@@ -37,9 +37,10 @@ export default function ForgotPassword() {
   return (
     <form onSubmit={handleSubmit} className="page page-form page-enter">
       <h2 className="page-title">Reset password</h2>
-      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required style={{ width: '100%', marginBottom: '0.75rem' }} />
+      <label className="label" htmlFor="forgot-email">Email</label>
+      <input id="forgot-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required style={{ width: '100%' }} />
       {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send reset link'}</Button>
+      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Sending…' : 'Send reset link'}</Button>
       <p style={{ marginTop: '1rem' }}><Link to="/login">Back to sign in</Link></p>
     </form>
   );

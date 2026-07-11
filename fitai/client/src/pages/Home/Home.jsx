@@ -7,7 +7,6 @@ import ButtonLink from '../../components/ui/ButtonLink';
 // the row reads as an arranged still life, not a component grid.
 const PANELS = [
   {
-    numeral: 'I',
     title: 'It remembers',
     body: 'Injuries, preferences, wins — a coach you never have to re-brief.',
     wash: 'var(--cyan-dim)',
@@ -15,15 +14,13 @@ const PANELS = [
     drift: '0',
   },
   {
-    numeral: 'II',
     title: 'It tells the truth',
     body: 'Ahead, on track, or behind — your coach measures your pace from your own logged days, and says it straight.',
-    wash: 'var(--lime-dim)',
-    edge: 'var(--gold)',
+    wash: 'var(--blue-dim)',
+    edge: 'var(--blue)',
     drift: '2.2rem',
   },
   {
-    numeral: 'III',
     title: 'It adapts daily',
     body: 'Missed a session? Slept badly? Tomorrow’s plan already knows.',
     wash: 'var(--emerald-dim)',
@@ -47,14 +44,14 @@ export default function Home() {
       <section style={{ padding: '12vh 0 6vh', position: 'relative' }}>
         <div className="aurora" aria-hidden="true" />
 
-        <p className="eyebrow reveal">Chapter one · your goal</p>
+        <p className="eyebrow reveal">Your goal · measured daily</p>
         <h1
           className="font-display reveal"
           style={{
-            fontSize: 'clamp(2.9rem, 8.5vw, 5.6rem)',
-            fontWeight: 420,
-            letterSpacing: '-0.015em',
-            lineHeight: 1.02,
+            fontSize: 'clamp(2.8rem, 8vw, 5.2rem)',
+            fontWeight: 600,
+            letterSpacing: '-0.035em',
+            lineHeight: 1.04,
             maxWidth: '16ch',
             margin: '1rem 0 1.4rem',
             animationDelay: '90ms',
@@ -63,9 +60,8 @@ export default function Home() {
           Train like the{' '}
           <em
             style={{
-              fontStyle: 'italic',
-              fontWeight: 520,
-              background: 'linear-gradient(120deg, var(--gold-deep), var(--gold) 55%, var(--gold-hi))',
+              fontStyle: 'normal',
+              background: 'linear-gradient(120deg, var(--blue), var(--cyan))',
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
               color: 'transparent',
@@ -105,7 +101,12 @@ export default function Home() {
         >
           {MANIFESTO.map((line, i) => (
             <span key={line} style={{ display: 'inline-flex', alignItems: 'center', gap: '1.1rem' }}>
-              {i > 0 && <span aria-hidden="true" style={{ color: 'var(--gold-deep)', fontSize: '0.55rem' }}>✦</span>}
+              {i > 0 && (
+                <span
+                  aria-hidden="true"
+                  style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--blue)', display: 'inline-block' }}
+                />
+              )}
               {line}
             </span>
           ))}
@@ -129,17 +130,17 @@ export default function Home() {
             style={{
               background: `linear-gradient(180deg, ${p.wash}, var(--surface) 62%)`,
               marginTop: p.drift,
-              borderTop: `3px solid ${p.edge}`,
+              borderTop: `2px solid ${p.edge}`,
               animationDelay: `${380 + i * 120}ms`,
             }}
           >
             <div
-              className="font-display"
-              style={{ fontStyle: 'italic', fontWeight: 430, fontSize: '1.5rem', color: p.edge, lineHeight: 1 }}
+              className="mono"
+              style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.18em', color: p.edge, lineHeight: 1 }}
             >
-              {p.numeral}
+              {String(i + 1).padStart(2, '0')}
             </div>
-            <h3 style={{ margin: '0.55rem 0 0.35rem', fontSize: '1.3rem' }}>{p.title}</h3>
+            <h3 style={{ margin: '0.7rem 0 0.35rem', fontSize: '1.25rem' }}>{p.title}</h3>
             <p className="muted small" style={{ margin: 0 }}>{p.body}</p>
           </article>
         ))}

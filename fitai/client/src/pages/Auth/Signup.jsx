@@ -56,10 +56,12 @@ export default function Signup() {
   return (
     <form onSubmit={handleSubmit} className="page page-form page-enter">
       <h2 className="page-title">Sign up</h2>
-      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required style={{ width: '100%', marginBottom: '0.75rem' }} />
-      <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min 8 characters)" type="password" minLength={8} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+      <label className="label" htmlFor="signup-email">Email</label>
+      <input id="signup-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required style={{ width: '100%' }} />
+      <label className="label" htmlFor="signup-password">Password</label>
+      <input id="signup-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required style={{ width: '100%' }} />
       {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Sign up'}</Button>
+      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Creating account…' : 'Sign up'}</Button>
       <p style={{ marginTop: '1rem' }}><Link to="/login">Already have an account?</Link></p>
     </form>
   );

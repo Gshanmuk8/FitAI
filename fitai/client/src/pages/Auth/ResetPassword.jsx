@@ -42,9 +42,10 @@ export default function ResetPassword() {
   return (
     <form onSubmit={handleSubmit} className="page page-form page-enter">
       <h2 className="page-title">Choose a new password</h2>
-      <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" type="password" minLength={8} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+      <label className="label" htmlFor="reset-password">New password</label>
+      <input id="reset-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required style={{ width: '100%' }} />
       {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>
+      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Saving…' : 'Set new password'}</Button>
     </form>
   );
 }

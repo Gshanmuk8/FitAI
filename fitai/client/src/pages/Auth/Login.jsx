@@ -40,10 +40,12 @@ export default function Login() {
     <form onSubmit={handleSubmit} className="page page-form page-enter">
       <h2 className="page-title">Sign in</h2>
       {notice && <p className="notice">{notice}</p>}
-      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required style={{ width: '100%', marginBottom: '0.75rem' }} />
-      <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" required style={{ width: '100%', marginBottom: '0.75rem' }} />
+      <label className="label" htmlFor="login-email">Email</label>
+      <input id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required style={{ width: '100%' }} />
+      <label className="label" htmlFor="login-password">Password</label>
+      <input id="login-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" type="password" autoComplete="current-password" required style={{ width: '100%' }} />
       {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</Button>
+      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Signing in…' : 'Sign in'}</Button>
       <p style={{ marginTop: '1rem' }}>
         <Link to="/signup">Need an account?</Link> · <Link to="/forgot-password">Forgot password?</Link>
       </p>

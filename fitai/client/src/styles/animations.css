@@ -1,56 +1,57 @@
-/* Atelier motion — content develops like a photograph: a soft rise out of
-   blur, panels dealt one after another. Idle animation only where waiting
-   is real; everything honors prefers-reduced-motion via the global kill. */
+/* Meridian motion — machined, expo-out: content settles like a needle
+   finding its mark. Transform + opacity only; idle animation only where
+   waiting is real; everything honors prefers-reduced-motion via the
+   global kill. */
 
-.page-enter { animation: rise-in var(--slow, 520ms) var(--ease-soft, ease) both; }
+.page-enter { animation: rise-in var(--slow, 450ms) var(--ease, ease) both; }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
-/* Panels deal onto the page one after another. */
-.grid-cards > *, .stat-grid > * { animation: deal-in 480ms var(--ease, ease) both; }
-.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 90ms; }
-.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 180ms; }
-.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 270ms; }
+/* Panels settle onto the page one after another. */
+.grid-cards > *, .stat-grid > * { animation: deal-in 420ms var(--ease, ease) both; }
+.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 60ms; }
+.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 120ms; }
+.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 180ms; }
 
 @keyframes deal-in {
-  from { opacity: 0; transform: translateY(18px) scale(0.985); filter: blur(4px); }
-  to { opacity: 1; filter: none; }
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  to { opacity: 1; transform: none; }
 }
 
-/* Aurora — the landing hero's slow volumetric light. One element, three
-   radial pools, drifting on a loop far below anyone's attention. */
+/* Aurora — the landing hero's slow volumetric light: an iris beam, an ion
+   pool, a green undertone, drifting far below anyone's attention. */
 .aurora {
   position: absolute;
   inset: -20% -10%;
   z-index: -1;
   pointer-events: none;
-  filter: blur(60px);
-  opacity: 0.85;
+  filter: blur(70px);
+  opacity: 0.9;
   background:
-    radial-gradient(38% 42% at 22% 28%, var(--lime-dim), transparent 70%),
-    radial-gradient(34% 38% at 78% 22%, var(--cyan-dim), transparent 70%),
-    radial-gradient(44% 48% at 58% 82%, var(--emerald-dim), transparent 70%);
-  animation: aurora-drift 26s var(--ease-soft, ease) infinite alternate;
+    radial-gradient(40% 44% at 26% 24%, var(--blue-dim), transparent 70%),
+    radial-gradient(34% 38% at 76% 20%, var(--cyan-dim), transparent 70%),
+    radial-gradient(46% 50% at 56% 84%, var(--emerald-dim), transparent 70%);
+  animation: aurora-drift 30s var(--ease-soft, ease) infinite alternate;
 }
 
 @keyframes aurora-drift {
   from { transform: translate3d(-2%, -1%, 0) scale(1); }
-  to { transform: translate3d(2%, 2%, 0) scale(1.06); }
+  to { transform: translate3d(2%, 2%, 0) scale(1.05); }
 }
 
 /* Editorial reveal — staggered lines for the hero (used via inline delays). */
-.reveal { animation: reveal-up 700ms var(--ease-soft, ease) both; }
+.reveal { animation: reveal-up 600ms var(--ease, ease) both; }
 @keyframes reveal-up {
-  from { opacity: 0; transform: translateY(22px); filter: blur(8px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* A slow float for ornaments that should feel suspended, not parked. */
 .float-slow { animation: float-slow 7s ease-in-out infinite alternate; }
 @keyframes float-slow {
   from { transform: translateY(0); }
-  to { transform: translateY(-10px); }
+  to { transform: translateY(-8px); }
 }

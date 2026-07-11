@@ -20,7 +20,7 @@ function applyTheme(theme) {
   try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* private mode */ }
   // Browser chrome (mobile address bar) follows the surface.
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c1017' : '#F5F5F5');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b0d13' : '#F4F5F8');
 }
 
 export default function ThemeToggle() {
