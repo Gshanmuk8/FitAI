@@ -8,6 +8,10 @@
  * inflated numbers. The window is clamped to the account's actual history
  * span so a three-day-old account isn't graded on 28 days it didn't exist for.
  */
+// calories_completed (008) is deliberately NOT in this list: rows from
+// before the column existed can never score it, so including it would
+// systematically deflate every historical window. The AI still sees
+// calories day-by-day via dailyValues and the live today block.
 const ADHERENCE_FIELDS = ['workout_completed', 'protein_completed', 'water_completed', 'sleep_completed', 'steps_completed'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const round2 = (n) => Math.round(n * 100) / 100;

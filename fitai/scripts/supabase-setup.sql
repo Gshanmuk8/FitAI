@@ -1,4 +1,4 @@
--- FitAI: all migrations combined (000-007), in order. Idempotent —
+-- FitAI: all migrations combined (000-008), in order. Idempotent —
 -- safe to run more than once. On hosted Supabase the auth-schema shim
 -- is guarded by an existence check, so it executes nothing there.
 
@@ -316,3 +316,15 @@ alter table public.progress_analyses enable row level security;
 -- (4) The progress analysis summarizes workout_logs by day for one user.
 create index if not exists idx_workout_logs_user_logged_at
   on public.workout_logs(user_id, logged_at desc);
+
+-- ============================================================
+-- 008_calories_tracking.sql
+-- ============================================================
+-- Calories join the daily mission as a first-class tracked value, same
+-- shape as protein (006): the user types (or the meal diary syncs) the
+-- day's actual kcal, and a boolean completion is derived from the plan's
+-- calorie target — directionally per goal (lose_fat: stay at or under;
+-- build_muscle: reach it; otherwise: within ±10%).
+alter table public.daily_checklists
+  add column if not exists calories_kcal      integer,
+  add column if not exists calories_completed boolean not null default false;

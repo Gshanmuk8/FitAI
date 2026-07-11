@@ -19,7 +19,7 @@ const { adaptTodaysPlan } = require('../../../../shared/calculations/adaptivePla
 const { FLAGS } = require('../../config/featureFlags');
 const logger = require('../../utils/logger');
 
-const SNAPSHOT_VERSION = 1;
+const SNAPSHOT_VERSION = 2; // v2: snapshot carries the user's goal (calorie direction)
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Noon avoids UTC-parse/local-format boundary shifts when turning a
@@ -89,6 +89,9 @@ async function buildTodaySnapshot(userId, profile, userDate) {
     },
     adaptations: adapted.adaptations,
     targets,
+    // The goal decides which DIRECTION the calorie target cuts (see
+    // caloriesCompleted) and how its mission label reads.
+    goal: profile.goal || null,
   };
 }
 
@@ -98,29 +101,50 @@ async function buildTodaySnapshot(userId, profile, userDate) {
 // counts as done once it's a positive number.
 const VALUE_TO_TARGET = {
   protein_grams: 'proteinGrams',
+  calories_kcal: 'calorieTarget',
   water_ml: 'waterMl',
   sleep_hours: 'sleepHours',
   steps_count: 'stepsTarget',
 };
 const VALUE_TO_COMPLETION = {
   protein_grams: 'protein_completed',
+  calories_kcal: 'calories_completed',
   water_ml: 'water_completed',
   sleep_hours: 'sleep_completed',
   steps_count: 'steps_completed',
 };
 
+// Calories are the one target that cuts in a goal-dependent DIRECTION:
+// hitting 190/180g protein is a win everywhere, but 2600/2414 kcal is a
+// win on a bulk and a miss on a cut. lose_fat: at or under (5% grace);
+// build_muscle: reach it (5% grace); everything else: within ±10%.
+function caloriesCompleted(value, target, goal) {
+  if (value == null || value <= 0) return false;
+  if (target == null) return true;
+  if (goal === 'lose_fat') return value <= target * 1.05;
+  if (goal === 'build_muscle') return value >= target * 0.95;
+  return value >= target * 0.9 && value <= target * 1.1;
+}
+
+// One derivation for every path that writes a value (manual save, meal-diary
+// sync, plan-edit refresh) — the checkbox always means the same thing.
+function valueCompletion(col, value, targets, goal) {
+  const target = targets?.[VALUE_TO_TARGET[col]];
+  if (col === 'calories_kcal') return caloriesCompleted(Number(value), target != null ? Number(target) : null, goal);
+  return target != null ? Number(value) >= Number(target) : Number(value) > 0;
+}
+
 async function setChecklistValues(userId, values) {
   // getTodayEnriched guarantees today's row exists and carries the plan
-  // snapshot (targets) we compare against, plus the user's local date.
+  // snapshot (targets + goal) we compare against, plus the user's local date.
   const current = await getTodayEnriched(userId);
-  const targets = current.plan_snapshot?.targets || {};
+  const snapshot = current.plan_snapshot || {};
   const fields = {};
 
-  for (const [col, targetKey] of Object.entries(VALUE_TO_TARGET)) {
+  for (const col of Object.keys(VALUE_TO_TARGET)) {
     if (values[col] == null) continue;
     fields[col] = values[col];
-    const target = targets[targetKey];
-    fields[VALUE_TO_COMPLETION[col]] = target != null ? values[col] >= target : values[col] > 0;
+    fields[VALUE_TO_COMPLETION[col]] = valueCompletion(col, values[col], snapshot.targets, snapshot.goal);
   }
   if (values.weight_kg != null) fields.weight_kg = values.weight_kg;
   if (values.notes !== undefined) fields.notes = values.notes;
@@ -144,12 +168,10 @@ async function refreshTodaySnapshot(userId) {
   const snapshot = await buildTodaySnapshot(userId, profile, userDate);
   await setPlanSnapshot(userId, snapshot, userDate);
 
-  const targets = snapshot?.targets || {};
   const completions = {};
-  for (const [col, targetKey] of Object.entries(VALUE_TO_TARGET)) {
+  for (const col of Object.keys(VALUE_TO_TARGET)) {
     if (existing[col] == null) continue;
-    const target = targets[targetKey];
-    completions[VALUE_TO_COMPLETION[col]] = target != null ? Number(existing[col]) >= target : Number(existing[col]) > 0;
+    completions[VALUE_TO_COMPLETION[col]] = valueCompletion(col, existing[col], snapshot?.targets, snapshot?.goal);
   }
   const updated = Object.keys(completions).length
     ? await updateChecklistFields(userId, completions, userDate)
@@ -209,11 +231,12 @@ async function removeCustomItem(userId, itemId) {
   return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
 }
 
-// The five boolean columns stay exactly as they were (backwards compat) —
+// The boolean columns stay exactly as they were (backwards compat) —
 // this just decorates each with what it concretely means today.
 function itemsFromSnapshot(snapshot) {
   const t = snapshot?.targets;
   const w = snapshot?.workout;
+  const goal = snapshot?.goal;
   const workoutLabel =
     w?.type === 'rest'
       ? 'Rest day — easy walk & mobility'
@@ -221,9 +244,15 @@ function itemsFromSnapshot(snapshot) {
         ? `Workout: ${w.dayName}${w.intensity === 'reduced' ? ' (reduced intensity)' : ''}`
         : 'Workout completed';
 
+  // The calorie label states the direction the goal implies — "≤" on a cut
+  // is a different instruction than "≥" on a bulk.
+  const kcalSign = goal === 'lose_fat' ? '≤' : goal === 'build_muscle' ? '≥' : '~';
+  const kcalDetail = goal === 'lose_fat' ? 'stay at or under' : goal === 'build_muscle' ? 'fuel the build — reach it' : 'stay within ±10%';
+
   return [
     { field: 'workout_completed', label: workoutLabel, detail: w?.exercises?.length ? `${w.exercises.length} exercises` : null },
-    { field: 'protein_completed', label: t?.proteinGrams ? `Protein: ${t.proteinGrams}g` : 'Protein target', detail: t?.calorieTarget ? `within ~${t.calorieTarget} kcal` : null },
+    { field: 'protein_completed', label: t?.proteinGrams ? `Protein: ${t.proteinGrams}g` : 'Protein target', detail: null },
+    { field: 'calories_completed', label: t?.calorieTarget ? `Calories: ${kcalSign}${t.calorieTarget.toLocaleString()} kcal` : 'Calorie target', detail: t?.calorieTarget ? kcalDetail : null },
     { field: 'water_completed', label: t?.waterMl ? `Water: ${(t.waterMl / 1000).toFixed(1)}L` : 'Water target', detail: null },
     { field: 'sleep_completed', label: t?.sleepHours ? `Sleep: ${t.sleepHours}h+` : 'Sleep target', detail: null },
     { field: 'steps_completed', label: t?.stepsTarget ? `Steps: ${t.stepsTarget.toLocaleString()}` : 'Steps target', detail: null },
@@ -239,4 +268,5 @@ module.exports = {
   addCustomItem,
   setCustomItemDone,
   removeCustomItem,
+  valueCompletion,
 };

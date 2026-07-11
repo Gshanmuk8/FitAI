@@ -1,6 +1,5 @@
 const Meal = require('../models/Meal');
-const { addMealAndSync, getTodaySummary } = require('../services/nutrition/mealDiaryService');
-const { getUserToday } = require('../utils/userDate');
+const { addMealAndSync, removeMealAndSync, getTodaySummary } = require('../services/nutrition/mealDiaryService');
 
 async function postMeal(req, res, next) {
   try {
@@ -28,9 +27,11 @@ async function deleteMeal(req, res, next) {
     if (!UUID_RE.test(req.params.id)) {
       return res.status(404).json({ error: 'Meal not found (only today\'s meals can be removed).' });
     }
-    const removed = await Meal.deleteMeal(req.user.id, req.params.id, await getUserToday(req.user.id));
-    if (!removed) return res.status(404).json({ error: 'Meal not found (only today\'s meals can be removed).' });
-    res.json({ status: 'deleted', summary: await getTodaySummary(req.user.id) });
+    // Deleting re-syncs the checklist DOWNWARD too — totals drop and, if a
+    // target is no longer met, its checkmark comes off with it.
+    const summary = await removeMealAndSync(req.user.id, req.params.id);
+    if (!summary) return res.status(404).json({ error: 'Meal not found (only today\'s meals can be removed).' });
+    res.json({ status: 'deleted', summary });
   } catch (err) {
     next(err);
   }

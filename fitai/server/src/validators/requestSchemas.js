@@ -84,7 +84,7 @@ const TutorRequestSchema = z.object({
 });
 
 const ChecklistPatchSchema = z.object({
-  field: z.enum(['workout_completed', 'protein_completed', 'water_completed', 'sleep_completed', 'steps_completed']),
+  field: z.enum(['workout_completed', 'protein_completed', 'calories_completed', 'water_completed', 'sleep_completed', 'steps_completed']),
   value: z.boolean(),
 });
 
@@ -92,6 +92,7 @@ const ChecklistPatchSchema = z.object({
 // sanity ceilings; entering a value auto-completes its checklist item.
 const ChecklistValuesSchema = z.object({
   protein_grams: z.number().min(0).max(1000).optional(),
+  calories_kcal: z.number().int().min(0).max(20000).optional(),
   water_ml: z.number().int().min(0).max(20000).optional(),
   sleep_hours: z.number().min(0).max(24).optional(),
   steps_count: z.number().int().min(0).max(100000).optional(),

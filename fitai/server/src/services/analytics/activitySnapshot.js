@@ -72,10 +72,12 @@ async function buildTodayBlock(userId) {
     checklist: {
       workoutCompleted: Boolean(checklist.workout_completed),
       proteinCompleted: Boolean(checklist.protein_completed),
+      caloriesCompleted: Boolean(checklist.calories_completed),
       waterCompleted: Boolean(checklist.water_completed),
       sleepCompleted: Boolean(checklist.sleep_completed),
       stepsCompleted: Boolean(checklist.steps_completed),
       proteinGrams: num(checklist.protein_grams),
+      caloriesKcal: num(checklist.calories_kcal),
       waterMl: num(checklist.water_ml),
       sleepHours: num(checklist.sleep_hours),
       stepsCount: num(checklist.steps_count),

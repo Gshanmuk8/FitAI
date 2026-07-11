@@ -148,20 +148,33 @@ async function run(epg) {
   await assert.rejects(() => setCustomItemDone(userId, 'not-a-real-id', true), /not found/i, 'unknown id -> 404 error');
   step('custom mission items: add, tick, remove, unknown-id rejected');
 
-  // ---- meal diary + protein auto-check ----
-  const { addMealAndSync, getTodaySummary } = require('../server/src/services/nutrition/mealDiaryService');
+  // ---- meal diary + protein/calories auto-check ----
+  const { addMealAndSync, removeMealAndSync, getTodaySummary } = require('../server/src/services/nutrition/mealDiaryService');
   await addMealAndSync(userId, { name: 'Paneer bowl', calories: 650, protein: 45, source: 'manual' });
   let summary = await getTodaySummary(userId);
   assert.equal(summary.calories, 650);
   assert.equal(summary.proteinTargetHit, false, 'target (160g = 90kg*1.8 rounded to 5) not hit yet');
 
-  await addMealAndSync(userId, { name: 'Protein shake x3', calories: 900, protein: 125, source: 'manual' });
-  // the auto-check runs fire-and-forget; give it a beat
-  await new Promise((r) => setTimeout(r, 300));
+  // sync is awaited inside addMealAndSync — the returned summary is post-sync
+  const { meal: shake } = await addMealAndSync(userId, { name: 'Protein shake x3', calories: 900, protein: 125, source: 'manual' });
   summary = await getTodaySummary(userId);
   assert.equal(summary.proteinTargetHit, true, '170g >= 165g target');
   assert.equal(summary.proteinCompleted, true, 'checklist item auto-checked');
-  step('meal diary tallies and auto-checks the protein item');
+  let mealRow = await getTodayEnriched(userId);
+  assert.equal(Number(mealRow.calories_kcal), 1550, 'diary calories synced into the checklist as a value');
+  assert.equal(mealRow.calories_completed, true, '1550 kcal is within a 2414 kcal cut budget -> on track');
+  step('meal diary tallies and auto-checks protein + calories');
+
+  // deleting a meal re-syncs DOWNWARD: totals drop and a no-longer-met
+  // target's checkmark comes off — number and checkbox never disagree.
+  summary = await removeMealAndSync(userId, shake.id);
+  assert.equal(summary.protein, 45, 'protein total re-synced down after delete');
+  mealRow = await getTodayEnriched(userId);
+  assert.equal(Number(mealRow.protein_grams), 45, 'checklist value follows the diary down');
+  assert.equal(mealRow.protein_completed, false, 'checkmark comes OFF when the total falls below target');
+  // restore the shake so the rest of the journey keeps its 170g day
+  await addMealAndSync(userId, { name: 'Protein shake x3', calories: 900, protein: 125, source: 'manual' });
+  step('deleting a meal re-syncs values and checkmarks downward');
 
   // ---- workout logging ----
   const { logSet } = require('../server/src/models/WorkoutLog');

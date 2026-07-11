@@ -8,6 +8,7 @@ import Button from '../ui/Button';
 const DEFAULT_ITEMS = [
   { field: 'workout_completed', label: 'Workout completed' },
   { field: 'protein_completed', label: 'Protein target' },
+  { field: 'calories_completed', label: 'Calorie target' },
   { field: 'water_completed', label: 'Water target' },
   { field: 'sleep_completed', label: 'Sleep target' },
   { field: 'steps_completed', label: 'Steps target' },
@@ -19,6 +20,7 @@ const DEFAULT_ITEMS = [
 // millilitres to match the plan targets).
 const MEASURE = {
   protein_completed: { col: 'protein_grams', targetKey: 'proteinGrams', unit: 'g', step: '1', toInput: (v) => v, fromInput: (n) => n, fmtTarget: (t) => String(t) },
+  calories_completed: { col: 'calories_kcal', targetKey: 'calorieTarget', unit: 'kcal', step: '10', toInput: (v) => v, fromInput: (n) => Math.round(n), fmtTarget: (t) => Number(t).toLocaleString() },
   water_completed: { col: 'water_ml', targetKey: 'waterMl', unit: 'L', step: '0.1', toInput: (v) => v / 1000, fromInput: (n) => Math.round(n * 1000), fmtTarget: (t) => (t / 1000).toFixed(1) },
   sleep_completed: { col: 'sleep_hours', targetKey: 'sleepHours', unit: 'h', step: '0.5', toInput: (v) => v, fromInput: (n) => n, fmtTarget: (t) => String(t) },
   steps_completed: { col: 'steps_count', targetKey: 'stepsTarget', unit: 'steps', step: '100', toInput: (v) => v, fromInput: (n) => Math.round(n), fmtTarget: (t) => Number(t).toLocaleString() },

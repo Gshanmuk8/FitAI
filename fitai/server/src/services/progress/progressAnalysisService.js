@@ -56,10 +56,11 @@ async function assembleData(userId, profileRow, userDate) {
   const num = (v) => (v == null ? null : Number(v));
   const dailyValues = history
     .slice(0, 28)
-    .filter((r) => r.protein_grams != null || r.water_ml != null || r.sleep_hours != null || r.steps_count != null)
+    .filter((r) => r.protein_grams != null || r.calories_kcal != null || r.water_ml != null || r.sleep_hours != null || r.steps_count != null)
     .map((r) => ({
       date: ymd(r.date),
       proteinGrams: num(r.protein_grams),
+      caloriesKcal: num(r.calories_kcal),
       waterMl: num(r.water_ml),
       sleepHours: num(r.sleep_hours),
       stepsCount: num(r.steps_count),
@@ -107,10 +108,10 @@ async function assembleData(userId, profileRow, userDate) {
 // set, meal, habit tick) changes it and invalidates today's stored analysis.
 // ANALYSIS_VERSION is part of the fingerprint: bump it when the analysis
 // contract grows (e.g. v2 added AI-authored stats + charts; v3 added the
-// user's self-logged daily values; v4 added their daily notes) so a same-day
-// cached row from the old shape regenerates instead of being served without
-// the new fields.
-const ANALYSIS_VERSION = 4;
+// user's self-logged daily values; v4 added their daily notes; v5 added
+// calories) so a same-day cached row from the old shape regenerates instead
+// of being served without the new fields.
+const ANALYSIS_VERSION = 5;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: ANALYSIS_VERSION, data })).digest('hex');
 }

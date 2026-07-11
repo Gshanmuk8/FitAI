@@ -55,8 +55,8 @@ async function updateChecklistItem(userId, field, value, date = null) {
 // fixed whitelist before it reaches the SQL, so the column list is never
 // user-controlled even though it's interpolated.
 const WRITABLE_FIELDS = new Set([
-  'workout_completed', 'protein_completed', 'water_completed', 'sleep_completed', 'steps_completed',
-  'protein_grams', 'water_ml', 'sleep_hours', 'steps_count', 'weight_kg', 'notes',
+  'workout_completed', 'protein_completed', 'calories_completed', 'water_completed', 'sleep_completed', 'steps_completed',
+  'protein_grams', 'calories_kcal', 'water_ml', 'sleep_hours', 'steps_count', 'weight_kg', 'notes',
 ]);
 
 async function updateChecklistFields(userId, fields, date = null) {

@@ -31,9 +31,10 @@ const { localDateInZone } = require('../../utils/userDate');
 const { adherenceFrom, ymd, DAY_MS } = require('../analytics/adherence');
 
 // BRIEFING_VERSION is part of the fingerprint: bump it when the briefing's
-// data contract grows (v2 added the live "today" block) so a same-day cached
-// row written against the old shape regenerates instead of being served.
-const BRIEFING_VERSION = 2;
+// data contract grows (v2 added the live "today" block; v3 added calories)
+// so a same-day cached row written against the old shape regenerates
+// instead of being served.
+const BRIEFING_VERSION = 3;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: BRIEFING_VERSION, data })).digest('hex');
 }
@@ -60,6 +61,7 @@ async function buildTodayBlock(userId) {
       : null,
     logged: {
       proteinGrams: num(checklist.protein_grams),
+      caloriesKcal: num(checklist.calories_kcal),
       waterMl: num(checklist.water_ml),
       sleepHours: num(checklist.sleep_hours),
       stepsCount: num(checklist.steps_count),
@@ -68,6 +70,7 @@ async function buildTodayBlock(userId) {
     completed: {
       workout: Boolean(checklist.workout_completed),
       protein: Boolean(checklist.protein_completed),
+      calories: Boolean(checklist.calories_completed),
       water: Boolean(checklist.water_completed),
       sleep: Boolean(checklist.sleep_completed),
       steps: Boolean(checklist.steps_completed),

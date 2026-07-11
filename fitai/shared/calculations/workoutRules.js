@@ -17,6 +17,7 @@ function checklistScore(checklist) {
   const keys = [
     'workout_completed',
     'protein_completed',
+    'calories_completed',
     'water_completed',
     'sleep_completed',
     'steps_completed',
