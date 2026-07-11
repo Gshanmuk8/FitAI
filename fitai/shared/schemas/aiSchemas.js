@@ -44,16 +44,37 @@ const TutorResponseSchema = z.object({
   recommendSeeProfessional: z.boolean().default(false),
 });
 
+// --- salvage helpers for model-authored display fields -----------------
+// A hard max on a model-authored string must degrade to truncation, not
+// rejection: a 594-char nutrition paragraph is a good answer 94 chars too
+// long, and rejecting the WHOLE analysis over it turns a healthy provider
+// into "coach unreachable". min(1) stays strict — empty means broken.
+const clipped = (max) => z.preprocess(
+  (v) => (typeof v === 'string' && v.length > max ? `${v.slice(0, max - 1).trimEnd()}…` : v),
+  z.string().min(1).max(max)
+);
+const clippedOpt = (max) => z.preprocess(
+  (v) => (typeof v === 'string' && v.length > max ? `${v.slice(0, max - 1).trimEnd()}…` : v),
+  z.string().max(max).optional().nullable()
+);
+// Arrays of model-authored entries keep what validates and drop the rest
+// (capped at maxLen) — one malformed chart or overlong bullet must never
+// invalidate an otherwise sound analysis.
+const salvagedArray = (entrySchema, maxLen) => z.preprocess(
+  (v) => (Array.isArray(v) ? v.filter((e) => entrySchema.safeParse(e).success).slice(0, maxLen) : v),
+  z.array(entrySchema).max(maxLen).default([])
+);
+
 // The AI's once-per-day progress briefing shown on the dashboard. The coach
 // reads the plan + logged history and MEASURES the pace itself (both the
 // planned/current pace and the actual measured pace are its words), then
 // writes a short narrative — no deterministic math sits on this path.
 const BriefingSchema = z.object({
   status: z.enum(['ahead', 'on_track', 'behind', 'no_data']),
-  currentPace: z.string().min(1).max(200),   // the pace the plan expects
-  actualPace: z.string().min(1).max(200),    // the pace the user is actually on
-  summary: z.string().min(1).max(800),       // the daily narrative
-  focus: z.array(z.string().min(1).max(200)).max(3).default([]),
+  currentPace: clipped(200),                 // the pace the plan expects
+  actualPace: clipped(200),                  // the pace the user is actually on
+  summary: clipped(800),                     // the daily narrative
+  focus: salvagedArray(clipped(200), 3),
 });
 
 // The Progress page's analysis: the coach reads the user's whole logged
@@ -66,37 +87,49 @@ const BriefingSchema = z.object({
 // entries excluded by its own judgment), so a stat tile can never
 // contradict the written analysis the way client-side arithmetic could.
 const ProgressStatSchema = z.object({
-  label: z.string().min(1).max(40),                  // e.g. "Sessions (28d)"
-  value: z.string().min(1).max(24),                  // e.g. "2" / "1.2t" / "57%"
-  detail: z.string().max(140).optional().nullable(), // e.g. "excludes 1 implausible entry"
-  tone: z.enum(['emerald', 'amber', 'red', 'cyan', 'neutral']).default('neutral'),
+  label: clipped(40),                                // e.g. "Sessions (28d)"
+  value: clipped(24),                                // e.g. "2" / "1.2t" / "57%"
+  detail: clippedOpt(140),                           // e.g. "excludes 1 implausible entry"
+  // An off-palette tone ("green") degrades to neutral instead of costing
+  // the whole stat tile.
+  tone: z.preprocess(
+    (v) => (['emerald', 'amber', 'red', 'cyan', 'neutral'].includes(v) ? v : 'neutral'),
+    z.enum(['emerald', 'amber', 'red', 'cyan', 'neutral'])
+  ),
 });
 
 const ProgressChartPointSchema = z.object({
-  label: z.string().min(1).max(20),                  // short x label, e.g. "07-05" or "wk 2"
+  label: clipped(20),                                // short x label, e.g. "07-05" or "wk 2"
   value: z.number(),
 });
 
+// min(2) points stays a hard rule per chart — a one-point "trend" is not a
+// chart. salvagedArray() below turns that from "reject the whole analysis"
+// (what a week-1 account with a single weigh-in used to hit every time)
+// into "drop that chart, keep the rest".
 const ProgressChartSchema = z.object({
-  title: z.string().min(1).max(80),
+  title: clipped(80),
   type: z.enum(['line', 'bar']),
-  unit: z.string().max(20).optional().nullable(),    // e.g. "kg", "kcal", "g", "%"
-  points: z.array(ProgressChartPointSchema).min(2).max(40),
+  unit: clippedOpt(20),                              // e.g. "kg", "kcal", "g", "%"
+  points: z.preprocess(
+    (v) => (Array.isArray(v) ? v.slice(0, 40) : v),
+    z.array(ProgressChartPointSchema).min(2).max(40)
+  ),
   targetValue: z.number().optional().nullable(),     // dashed rule when a target applies
-  note: z.string().max(300).optional().nullable(),   // one-line read of the chart
+  note: clippedOpt(300),                             // one-line read of the chart
 });
 
 const ProgressAnalysisSchema = z.object({
   status: z.enum(['ahead', 'on_track', 'behind', 'no_data']),
-  summary: z.string().min(1).max(1000),              // the journey so far, plainly
-  weightTrend: z.string().min(1).max(500),           // what the scale data actually shows
-  trainingAnalysis: z.string().min(1).max(500),      // consistency, volume, patterns
-  nutritionAnalysis: z.string().min(1).max(500),     // logging habits, protein/calorie reality
-  wins: z.array(z.string().min(1).max(200)).max(5).default([]),
-  risks: z.array(z.string().min(1).max(200)).max(5).default([]),
-  recommendations: z.array(z.string().min(1).max(250)).max(5).default([]),
-  stats: z.array(ProgressStatSchema).max(6).default([]),
-  charts: z.array(ProgressChartSchema).max(3).default([]),
+  summary: clipped(1000),                            // the journey so far, plainly
+  weightTrend: clipped(500),                         // what the scale data actually shows
+  trainingAnalysis: clipped(500),                    // consistency, volume, patterns
+  nutritionAnalysis: clipped(500),                   // logging habits, protein/calorie reality
+  wins: salvagedArray(clipped(200), 5),
+  risks: salvagedArray(clipped(200), 5),
+  recommendations: salvagedArray(clipped(250), 5),
+  stats: salvagedArray(ProgressStatSchema, 6),
+  charts: salvagedArray(ProgressChartSchema, 3),
 });
 
 // One-line durable memory extracted from a chat exchange.
