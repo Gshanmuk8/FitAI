@@ -4,20 +4,46 @@ import Button from '../../components/ui/Button';
 
 const emptyManual = { name: '', calories: '', protein: '' };
 
-function ProgressBar({ value, target, unit }) {
+// tone: which color the bar takes once the target line is crossed —
+// emerald is right for protein everywhere and calories on a bulk, but a
+// blown cut budget must read amber/red, never like a win. The % shown is
+// the TRUE figure (108%), only the bar width caps at 100.
+function ProgressBar({ value, target, unit, fullTone = 'emerald' }) {
   if (!target) return null;
-  const pctNum = Math.min(100, Math.round((value / target) * 100));
+  const pct = Math.round((value / target) * 100);
   return (
     <div style={{ marginBottom: '0.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-        <span>{value} / {target} {unit}</span>
-        <span>{pctNum}%</span>
+        <span>{Number(value).toLocaleString()} / {Number(target).toLocaleString()} {unit}</span>
+        <span className={pct > 100 && fullTone !== 'emerald' ? `tone-${fullTone}-text` : ''}>{pct}%</span>
       </div>
       <div className="progress-track">
-        <div className={`progress-fill${pctNum >= 100 ? ' tone-emerald' : ''}`} style={{ width: `${pctNum}%` }} />
+        <div className={`progress-fill${pct >= 100 ? ` tone-${fullTone}` : ''}`} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
     </div>
   );
+}
+
+// What the calorie total means for THIS user's goal — mirrors the server's
+// completion rule (checklistService.caloriesCompleted) so page and mission
+// can never tell different stories.
+function calorieStatus(summary) {
+  const target = summary?.targets?.calorieTarget;
+  if (!target || !summary.calories) return { tone: 'emerald', note: null };
+  const v = summary.calories;
+  const goal = summary.goal;
+  const over = Math.round(v - target);
+  if (goal === 'lose_fat') {
+    if (v > target * 1.05) return { tone: 'red', note: `⚠ ${over.toLocaleString()} kcal over your cut budget — shown on today's mission too.` };
+    if (v > target) return { tone: 'amber', note: `${over.toLocaleString()} kcal over target — still inside the 5% grace, but stop here.` };
+    return { tone: 'emerald', note: summary.caloriesCompleted ? "✓ On budget — synced to today's mission." : null };
+  }
+  if (goal === 'build_muscle') {
+    if (v >= target * 0.95) return { tone: 'emerald', note: "✓ Fuel target reached — checked off on today's mission." };
+    return { tone: 'emerald', note: `${Math.round(target - v).toLocaleString()} kcal still to eat to fuel the build.` };
+  }
+  if (v > target * 1.1) return { tone: 'amber', note: `⚠ ${over.toLocaleString()} kcal over your maintenance band.` };
+  return { tone: 'emerald', note: summary.caloriesCompleted ? "✓ Within your maintenance band — synced to today's mission." : null };
 }
 
 // Pending photo analysis survives a refresh — losing it would force the
@@ -177,20 +203,30 @@ export default function Nutrition() {
     <div className="page page-narrow page-enter">
       <h2 className="page-title">Nutrition</h2>
 
-      {/* ---- Today so far ---- */}
-      {summary && (
-        <section className="card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
-          <h3 style={{ marginTop: 0 }}>Today so far</h3>
-          <ProgressBar value={summary.calories} target={summary.targets?.calorieTarget} unit="kcal" />
-          <ProgressBar value={summary.protein} target={summary.targets?.proteinGrams} unit="g protein" />
-          {!summary.targets && (
-            <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Complete onboarding to get calorie and protein targets.</p>
-          )}
-          {summary.proteinTargetHit && (
-            <p className="success-text tiny">✓ Protein target hit — checked off on today's mission.</p>
-          )}
-        </section>
-      )}
+      {/* ---- Today so far — every save/delete here re-syncs these same
+              numbers into the dashboard's mission rows ---- */}
+      {summary && (() => {
+        const cal = calorieStatus(summary);
+        const proteinOver = summary.targets?.proteinGrams != null && summary.protein > summary.targets.proteinGrams
+          ? Math.round((summary.protein - summary.targets.proteinGrams) * 10) / 10
+          : null;
+        return (
+          <section className="card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
+            <h3 style={{ marginTop: 0 }}>Today so far</h3>
+            <ProgressBar value={summary.calories} target={summary.targets?.calorieTarget} unit="kcal" fullTone={cal.tone} />
+            <ProgressBar value={summary.protein} target={summary.targets?.proteinGrams} unit="g protein" />
+            {!summary.targets && (
+              <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Complete onboarding to get calorie and protein targets.</p>
+            )}
+            {cal.note && <p className={`tiny tone-${cal.tone}-text`} style={{ margin: '0.15rem 0' }}>{cal.note}</p>}
+            {summary.proteinTargetHit && (
+              <p className="success-text tiny" style={{ margin: '0.15rem 0' }}>
+                ✓ Protein target hit{proteinOver ? ` (+${proteinOver}g)` : ''} — checked off on today's mission.
+              </p>
+            )}
+          </section>
+        );
+      })()}
 
       {/* ---- Photo analysis ---- */}
       <section style={{ marginBottom: '1.25rem' }}>

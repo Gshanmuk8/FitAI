@@ -43,6 +43,29 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
   // frozen plan snapshot (never hardcoded). Shown as "actual / target".
   const target = checklist?.plan_snapshot?.targets?.[cfg.targetKey];
 
+  // Over/hit chip for the two directional nutrition rows. Color follows the
+  // SERVER's completion verdict, so this can never contradict the checkbox:
+  // calories over target reads amber while still inside the goal's grace
+  // (checkbox on) and red once it's a genuine miss; protein over target is
+  // always a win. Water/sleep/steps overshoot is neutral — no chip.
+  let chip = null;
+  if (stored != null && target != null) {
+    const v = Number(stored);
+    const t = Number(target);
+    if (cfg.col === 'calories_kcal' && v > t) {
+      const goal = checklist?.plan_snapshot?.goal;
+      chip = goal === 'build_muscle'
+        // On a bulk, past the target is the POINT — never a warning.
+        ? { text: `+${Math.round(v - t).toLocaleString()}`, cls: 'tone-emerald-text' }
+        : {
+            text: `+${Math.round(v - t).toLocaleString()} over`,
+            cls: checklist?.[field] ? 'tone-amber-text' : 'tone-red-text',
+          };
+    } else if (cfg.col === 'protein_grams' && v > t) {
+      chip = { text: `+${Math.round((v - t) * 10) / 10}g`, cls: 'tone-emerald-text' };
+    }
+  }
+
   // Nothing is saved until the user says so: the input only becomes dirty
   // (Save enabled) when it holds a number different from the server's.
   const dirty = val !== '' && !(stored != null && String(cfg.toInput(Number(stored))) === String(Number(val)));
@@ -86,6 +109,7 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
       <span className="tiny faint" style={{ whiteSpace: 'nowrap' }}>
         {target != null ? `/ ${cfg.fmtTarget(Number(target))} ${cfg.unit}` : cfg.unit}
       </span>
+      {chip && <span className={`tiny ${chip.cls}`} style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{chip.text}</span>}
       <Button
         type="button"
         variant="ghost"

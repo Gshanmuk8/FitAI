@@ -70,6 +70,9 @@ function summarize(checklist, totals) {
     calories: totals.calories,
     protein: Number(totals.protein.toFixed(1)),
     mealCount: totals.meals,
+    // The goal decides which direction the calorie bar reads (over budget
+    // on a cut vs fuel reached on a bulk) — the client colors by this.
+    goal: checklist?.plan_snapshot?.goal ?? null,
     targets: targets
       ? { calorieTarget: targets.calorieTarget ?? null, proteinGrams: targets.proteinGrams ?? null }
       : null,
