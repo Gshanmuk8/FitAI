@@ -56,7 +56,7 @@ function ExerciseCard({ exercise, initialSetsDone = 0, onSetLogged }) {
 
   return (
     <div className="card" style={{ padding: '0.9rem', marginBottom: '0.75rem', opacity: done ? 0.65 : 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 0.5rem' }}>
         <strong>{exercise.name}</strong>
         <span className="small">{setsDone}/{exercise.sets} sets · target {exercise.reps} reps</span>
       </div>

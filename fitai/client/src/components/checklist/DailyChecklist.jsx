@@ -92,7 +92,7 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
   }
 
   return (
-    <span className="check-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+    <span className="check-value">
       <input
         type="number"
         inputMode="decimal"
@@ -103,7 +103,6 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
         placeholder="—"
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
-        style={{ width: '5rem' }}
         aria-label={`Log ${cfg.col}`}
       />
       <span className="tiny faint" style={{ whiteSpace: 'nowrap' }}>
@@ -172,32 +171,33 @@ function WeighInAndNotes({ checklist, onSave, onError }) {
 
   return (
     <div className="checklist-manual">
-      <div className="check-row" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <label className="check-label" htmlFor="weighin" style={{ flex: 1 }}>Today's weight</label>
-        <input
-          id="weighin"
-          type="number"
-          inputMode="decimal"
-          step="0.1"
-          min="30"
-          max="300"
-          value={weight}
-          disabled={savingWeight}
-          placeholder="kg"
-          onChange={(e) => setWeight(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveWeight(); } }}
-          style={{ width: '6rem' }}
-        />
-        <span className="tiny faint">kg</span>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={!weightDirty || savingWeight}
-          onClick={saveWeight}
-          style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
-        >
-          {savingWeight ? 'Saving…' : 'Save'}
-        </Button>
+      <div className="check-row">
+        <label className="check-label" htmlFor="weighin">Today's weight</label>
+        <span className="check-value">
+          <input
+            id="weighin"
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            min="30"
+            max="300"
+            value={weight}
+            disabled={savingWeight}
+            placeholder="kg"
+            onChange={(e) => setWeight(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveWeight(); } }}
+          />
+          <span className="tiny faint">kg</span>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!weightDirty || savingWeight}
+            onClick={saveWeight}
+            style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+          >
+            {savingWeight ? 'Saving…' : 'Save'}
+          </Button>
+        </span>
       </div>
       <textarea
         value={notes}
@@ -276,7 +276,7 @@ export default function DailyChecklist() {
       <ul>
         {items.map(({ field, label, detail }) => (
           <li key={field} className={`check-row${checklist?.[field] ? ' done' : ''}`}>
-            <label style={{ flex: 1 }}>
+            <label>
               <input
                 type="checkbox"
                 checked={Boolean(checklist?.[field])}
@@ -292,7 +292,7 @@ export default function DailyChecklist() {
         ))}
         {customItems.map((item) => (
           <li key={item.id} className={`check-row${item.done ? ' done' : ''}`}>
-            <label style={{ flex: 1 }}>
+            <label>
               <input
                 type="checkbox"
                 checked={Boolean(item.done)}
@@ -339,7 +339,7 @@ export default function DailyChecklist() {
           maxLength={120}
           placeholder="Add your own — e.g. 20 min yoga, no sugar today…"
           onChange={(e) => setNewItem(e.target.value)}
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 0 }}
           aria-label="Add your own checklist item"
         />
         <Button type="submit" variant="ghost" disabled={addingItem || !newItem.trim()}>

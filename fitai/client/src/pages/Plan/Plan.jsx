@@ -142,7 +142,7 @@ export default function Plan() {
         {days.map((day, dayIdx) => (
           <div key={dayIdx} className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input value={day.name} onChange={(e) => updateDay(dayIdx, { name: e.target.value })} style={{ flex: 1 }} />
+              <input value={day.name} onChange={(e) => updateDay(dayIdx, { name: e.target.value })} style={{ flex: 1, minWidth: 0 }} />
               <Button variant="ghost" type="button" onClick={() => removeDay(dayIdx)}>Remove day</Button>
             </div>
             {day.exercises.map((ex, exIdx) => (

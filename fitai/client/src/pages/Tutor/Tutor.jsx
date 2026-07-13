@@ -109,7 +109,7 @@ export default function Tutor() {
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask your ${mode} coach…`}
           maxLength={1000}
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 0 }}
         />
         <Button type="submit" disabled={busy || !input.trim()}>{busy ? 'Thinking…' : 'Send'}</Button>
       </form>
