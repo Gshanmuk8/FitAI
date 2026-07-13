@@ -37,6 +37,17 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Every /api response is per-user: forbid ANY cache (browser, proxy, CDN)
+// from storing it, so one user's response can never be replayed to another.
+// ETags are disabled for the same reason — a 304 tells the client "keep the
+// copy you have", which is only safe when the copy can't be someone else's.
+app.set('etag', false);
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Vary', 'Authorization');
+  next();
+});
+
 // Liveness + readiness in one: the process is up, and (best-effort, 3s
 // budget) whether Postgres is reachable. Load balancers can key off
 // status; humans get the detail. The budget must clear the FIRST-request

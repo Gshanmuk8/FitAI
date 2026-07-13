@@ -26,6 +26,26 @@
 const { executeWithRetry, classifyError } = require('./retry');
 const { estimateTokens } = require('./usageTracker');
 
+// Counting semaphore for the provider cascade: bounds how many outbound AI
+// calls run at once per instance. Everything else in execute() (cache reads,
+// budget checks, fallbacks) stays outside the gate so a queue of AI work can
+// never delay a cache hit.
+function createSemaphore(limit) {
+  let active = 0;
+  const waiters = [];
+  return {
+    async acquire() {
+      if (active >= limit) await new Promise((resolve) => waiters.push(resolve));
+      active += 1;
+    },
+    release() {
+      active -= 1;
+      const next = waiters.shift();
+      if (next) next();
+    },
+  };
+}
+
 function createGateway({
   providers, // Map/obj name -> { name, supportsVision, isConfigured(), callText(prompt), callVision(prompt, img, mime) }
   config, // platformConfig
@@ -37,6 +57,7 @@ function createGateway({
   telemetry, // createTelemetry(...)
 }) {
   const byName = providers instanceof Map ? providers : new Map(Object.entries(providers));
+  const aiSlots = createSemaphore(config.maxConcurrentCalls || 8);
 
   function eligibleProviders({ vision = false } = {}) {
     const baseOrder = vision && config.providerOrderVision?.length
@@ -84,73 +105,78 @@ function createGateway({
     const cached = await tryCachePaths(opts, trace, { includeFresh: true, includeStale: false });
     if (cached) return cached;
 
-    // 3. Provider cascade.
-    for (const name of eligibleProviders({ vision: opts.mode === 'vision' })) {
-      const provider = byName.get(name);
-      if (!provider.isConfigured()) continue;
-      if (breaker && !breaker.canRequest(name)) {
-        trace.event('breaker_skip', { provider: name });
-        continue;
-      }
-
-      const started = Date.now();
-      try {
-        const raw = await executeWithRetry(
-          () => (opts.mode === 'vision'
-            ? provider.callVision(opts.prompt, opts.imageBase64, opts.mimeType)
-            : provider.callText(opts.prompt)),
-          {
-            ...config.retry,
-            onRetry: (attempt, delayMs, err) =>
-              trace.event('retry', { provider: name, attempt, delayMs, error: classifyError(err) }),
-          }
-        );
-
-        const { valid, data } = validate(opts.schemaName, raw);
-        if (!valid) {
-          // Malformed-but-parsed output: the provider "worked" transport-
-          // wise but produced junk — count it against health, try the next
-          // provider (a different model is the best second opinion).
-          const err = new Error(`${name} response failed schema validation`);
-          err.invalidOutput = true;
-          throw err;
+    // 3. Provider cascade — gated by the concurrency semaphore.
+    await aiSlots.acquire();
+    try {
+      for (const name of eligibleProviders({ vision: opts.mode === 'vision' })) {
+        const provider = byName.get(name);
+        if (!provider.isConfigured()) continue;
+        if (breaker && !breaker.canRequest(name)) {
+          trace.event('breaker_skip', { provider: name });
+          continue;
         }
 
-        const latencyMs = Date.now() - started;
-        health?.recordOutcome(name, { success: true, latencyMs });
-        breaker?.recordSuccess(name);
-        usage.record({
-          provider: name,
-          model: config.models[name],
-          task: opts.task,
-          userId: opts.userId,
-          promptTokens: estimateTokens(opts.prompt),
-          completionTokens: estimateTokens(JSON.stringify(raw)),
-        });
-        trace.event('provider_success', { provider: name, latencyMs });
+        const started = Date.now();
+        try {
+          const raw = await executeWithRetry(
+            () => (opts.mode === 'vision'
+              ? provider.callVision(opts.prompt, opts.imageBase64, opts.mimeType)
+              : provider.callText(opts.prompt)),
+            {
+              ...config.retry,
+              onRetry: (attempt, delayMs, err) =>
+                trace.event('retry', { provider: name, attempt, delayMs, error: classifyError(err) }),
+            }
+          );
 
-        if (opts.cacheKey) {
-          await cache.setCached(opts.cacheKey.namespace, opts.cacheKey.input, data);
-          if (opts.useLastKnownGood) {
-            await cache.setLastKnownGood(opts.cacheKey.namespace, opts.cacheKey.input, data);
+          const { valid, data } = validate(opts.schemaName, raw);
+          if (!valid) {
+            // Malformed-but-parsed output: the provider "worked" transport-
+            // wise but produced junk — count it against health, try the next
+            // provider (a different model is the best second opinion).
+            const err = new Error(`${name} response failed schema validation`);
+            err.invalidOutput = true;
+            throw err;
           }
+
+          const latencyMs = Date.now() - started;
+          health?.recordOutcome(name, { success: true, latencyMs });
+          breaker?.recordSuccess(name);
+          usage.record({
+            provider: name,
+            model: config.models[name],
+            task: opts.task,
+            userId: opts.userId,
+            promptTokens: estimateTokens(opts.prompt),
+            completionTokens: estimateTokens(JSON.stringify(raw)),
+          });
+          trace.event('provider_success', { provider: name, latencyMs });
+
+          if (opts.cacheKey) {
+            await cache.setCached(opts.cacheKey.namespace, opts.cacheKey.input, data);
+            if (opts.useLastKnownGood) {
+              await cache.setLastKnownGood(opts.cacheKey.namespace, opts.cacheKey.input, data);
+            }
+          }
+          trace.end('ai');
+          return { data, source: 'ai' };
+        } catch (err) {
+          const latencyMs = Date.now() - started;
+          const errorClass = err.invalidOutput ? 'invalid_output' : classifyError(err);
+          health?.recordOutcome(name, {
+            success: false,
+            latencyMs,
+            rateLimited: errorClass === 'rate_limited',
+          });
+          // Rate limits open the health cooldown, not the breaker — the
+          // provider is healthy, just throttling us. Everything else counts
+          // toward tripping the circuit.
+          if (breaker && errorClass !== 'rate_limited') breaker.recordFailure(name);
+          trace.event('provider_failure', { provider: name, errorClass, latencyMs, message: String(err.message).slice(0, 160) });
         }
-        trace.end('ai');
-        return { data, source: 'ai' };
-      } catch (err) {
-        const latencyMs = Date.now() - started;
-        const errorClass = err.invalidOutput ? 'invalid_output' : classifyError(err);
-        health?.recordOutcome(name, {
-          success: false,
-          latencyMs,
-          rateLimited: errorClass === 'rate_limited',
-        });
-        // Rate limits open the health cooldown, not the breaker — the
-        // provider is healthy, just throttling us. Everything else counts
-        // toward tripping the circuit.
-        if (breaker && errorClass !== 'rate_limited') breaker.recordFailure(name);
-        trace.event('provider_failure', { provider: name, errorClass, latencyMs, message: String(err.message).slice(0, 160) });
       }
+    } finally {
+      aiSlots.release();
     }
 
     // 4. Stale last-known-good beats a generic template.

@@ -25,6 +25,7 @@ const { buildContextForUser } = require('../memory/contextBuilder');
 const { buildBriefingPrompt } = require('../../../../shared/prompts/templates');
 const { generateBriefing } = require('./aiOrchestrator');
 const { localDateInZone } = require('../../utils/userDate');
+const { createExpiringMap } = require('../../utils/expiringMap');
 
 // Adherence + date math shared with the progress analysis — one definition
 // of "70% adherence" across every AI surface.
@@ -149,7 +150,7 @@ async function computeTodayBriefing(userId) {
   // Provider-outage memo: don't re-run the cascade for every dashboard load
   // while the last attempt's fallback is still warm and the data unchanged.
   const memo = fallbackMemo.get(userId);
-  if (memo && memo.until > Date.now() && memo.inputHash === inputHash) return memo.briefing;
+  if (memo && memo.inputHash === inputHash) return memo.briefing;
 
   const { profile } = await buildContextForUser(userId);
   const prompt = buildBriefingPrompt({ profile, data });
@@ -174,17 +175,17 @@ async function computeTodayBriefing(userId) {
   } else {
     briefing = { ...result, date: userDate, fresh: true };
   }
-  fallbackMemo.set(userId, { until: Date.now() + FALLBACK_MEMO_MS, inputHash, briefing });
+  fallbackMemo.set(userId, { inputHash, briefing });
   return briefing;
 }
 
 // In-flight dedup: N concurrent first-of-day requests (double-mounted
 // dashboard, two tabs) share ONE generation instead of each paying an AI call.
 const inFlight = new Map();
-const fallbackMemo = new Map();
-// Short on purpose: absorbs burst loads, never blocks a deliberate reload —
-// a reload after a minute retries the AI.
-const FALLBACK_MEMO_MS = 60 * 1000;
+// Short TTL on purpose: absorbs burst loads, never blocks a deliberate
+// reload — a reload after a minute retries the AI. Bounded so users who
+// hit one outage and never return can't grow the map for the process life.
+const fallbackMemo = createExpiringMap({ ttlMs: 60 * 1000, maxEntries: 5000 });
 
 async function getTodayBriefing(userId) {
   if (inFlight.has(userId)) return inFlight.get(userId);

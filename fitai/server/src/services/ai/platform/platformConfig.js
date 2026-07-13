@@ -64,6 +64,11 @@ function buildPlatformConfig() {
     temperature: envFloat('AI_TEMPERATURE', 0.4),
     maxTokens: envInt('AI_MAX_TOKENS', 2048),
 
+    // Ceiling on simultaneous outbound provider calls per instance. Excess
+    // requests queue (briefly) instead of opening unbounded connections and
+    // holding N vision payloads in memory during a spike.
+    maxConcurrentCalls: envInt('AI_MAX_CONCURRENT_CALLS', 8),
+
     // Per-provider timeout (ms); default applies when not listed.
     // gemini-2.5-flash is a thinking model: plan-sized outputs routinely
     // take 15-25s, so its budget must be well past that or every plan

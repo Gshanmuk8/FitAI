@@ -13,7 +13,7 @@ const OnboardingSchema = z.object({
   injuries: z.string().max(500, 'keep injuries under 500 characters').optional().default(''),
   dietaryRestrictions: z.string().max(500, 'keep dietary restrictions under 500 characters').optional().default(''),
   equipment: z.enum(['gym', 'home', 'minimal']).optional().default('gym'),
-  gymAvailability: z.string().optional(),
+  gymAvailability: z.string().max(500, 'keep gym availability under 500 characters').optional(),
   // How many days a week the user can actually train — their number, not a
   // heuristic's. The AI builds the split to exactly this frequency.
   trainingDaysPerWeek: z.number().int().min(1).max(7).optional(),

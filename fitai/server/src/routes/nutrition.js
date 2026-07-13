@@ -7,7 +7,17 @@ const { MealSchema } = require('../validators/requestSchemas');
 const { postFoodImage } = require('../controllers/nutritionController');
 const { postMeal, getTodayMeals, deleteMeal } = require('../controllers/mealController');
 
-const upload = multer({ limits: { fileSize: 8 * 1024 * 1024 } });
+// Images only, checked before the file is buffered — anything else would
+// travel the whole vision pipeline (memory, AI spend) before failing there.
+const upload = multer({
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype?.startsWith('image/')) return cb(null, true);
+    const err = new Error('That upload is not an image — please send a photo (JPEG, PNG, WebP or HEIC).');
+    err.status = 415;
+    return cb(err);
+  },
+});
 const router = express.Router();
 
 // Analysis (AI, rate-limited) and the diary (plain CRUD) are separate

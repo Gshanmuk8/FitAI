@@ -27,6 +27,12 @@ if (REDIS_URL) {
     logger.warn("Redis cache unavailable — serving AI without cache", { error: err.message });
   });
 } else {
+  // Bounded on purpose: most AI cache keys are content hashes written once
+  // and never requested again, so lazy delete-on-read never fires for them.
+  // Without a ceiling this Map grows for the life of the process. On write
+  // pressure: sweep expired entries first, then evict oldest (Map preserves
+  // insertion order) until under the cap.
+  const MAX_ENTRIES = 5000;
   const store = new Map();
   client = {
     async get(key) {
@@ -39,6 +45,14 @@ if (REDIS_URL) {
       return entry.value;
     },
     async set(key, value, _flag, ttlSeconds) {
+      if (store.size >= MAX_ENTRIES && !store.has(key)) {
+        const now = Date.now();
+        for (const [k, e] of store) {
+          if (e.expiresAt && e.expiresAt < now) store.delete(k);
+        }
+        while (store.size >= MAX_ENTRIES) store.delete(store.keys().next().value);
+      }
+      store.delete(key); // re-insert so live keys stay newest in eviction order
       store.set(key, {
         value,
         expiresAt: ttlSeconds ? Date.now() + ttlSeconds * 1000 : null,

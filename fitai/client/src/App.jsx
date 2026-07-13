@@ -34,10 +34,16 @@ function ProtectedRoute({ children, bare = false }) {
   // Send them to log in, remembering where they were headed so we can return
   // them there afterwards — a silent bounce to the marketing home reads as a bug.
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  // key={user.id}: the session can change identity UNDER a mounted page —
+  // Supabase stores it in localStorage shared across tabs, so logging into
+  // another account in tab 2 swaps tab 1's token in place. Pages fetch on
+  // mount, so without a remount they keep showing the previous account's
+  // data while new fetches run as the new account — mixed-user screens.
+  // Keying by user id forces a full unmount + refetch on any identity change.
   // bare: full-focus pages (onboarding) skip the app chrome.
-  if (bare) return children;
+  if (bare) return <React.Fragment key={user.id}>{children}</React.Fragment>;
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div key={user.id} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <NavBar />
       <div style={{ flex: 1 }}>{children}</div>
       <Footer />
