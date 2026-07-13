@@ -27,7 +27,14 @@ function BriefingCard({ briefing, loading }) {
   return (
     <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
       <div className="page-header">
-        <h3 style={{ margin: 0 }}>Coach's briefing</h3>
+        <h3 style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.55rem' }}>
+          <span
+            className="pulse-live"
+            aria-hidden="true"
+            style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cyan)', boxShadow: '0 0 10px var(--cyan)', display: 'inline-block' }}
+          />
+          Coach's briefing
+        </h3>
         <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>{STATUS_LABEL[briefing.status] || ''}</span>
       </div>
       <p className="small" style={{ margin: '0.5rem 0' }}>{briefing.summary}</p>
@@ -121,9 +128,14 @@ export default function Dashboard() {
   const weeksElapsed = planStartedAt ? (Date.now() - new Date(planStartedAt).getTime()) / (7 * 86400000) : null;
   const planComplete = Boolean(timeframeWeeks && weeksElapsed != null && weeksElapsed >= timeframeWeeks);
 
+  const dateLabel = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
   return (
-    <div className="page page-wide page-enter">
-      <h1 className="page-title">Today</h1>
+    <div className="page page-wide page-enter" style={{ position: 'relative' }}>
+      {/* The day's own light — the dashboard opens like a scene, not a form. */}
+      <div className="aurora" aria-hidden="true" style={{ opacity: 0.55 }} />
+      <p className="eyebrow reveal" style={{ margin: '0 0 0.3rem' }}>{dateLabel}</p>
+      <h1 className="page-title reveal" style={{ animationDelay: '70ms' }}>Today</h1>
 
       {planComplete && (
         <p className="notice tone-emerald">

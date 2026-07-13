@@ -1,92 +1,101 @@
-/* FitAI "Meridian" — a precision-instrument design language: cool porcelain
-   daylight by day, deep-field cinema by night, both wired with iris light.
+/* FitAI "Ion Bloom" — a bioluminescent instrument from somewhere else.
+   Deep-space violet dark by night, pearl iridescence by day; every living
+   element emits its own light instead of borrowing a shadow.
 
-   Anchors:   iris violet (interactive) · signal green (success)
-   Grounds:   porcelain / paper white · deep-field navy-black / graphite
-   Court:     ion cyan (AI presence) · solar amber (attention)
-              crimson (risk) · steel (quiet emphasis) · citron (energy)
+   Anchors:   ultraviolet (interactive) · bio-lume green (success)
+   Grounds:   void violet-black / nebula glass · pearl white / opal mist
+   Court:     plasma cyan (AI presence) · solar amber (attention)
+              ember red (risk) · citron (energy) · steel (quiet emphasis)
 
    Class and variable NAMES are the stable API — the entire app reskins
    from this file. One color, one meaning (legacy token names kept):
-     --blue    = interactive iris     --cyan  = AI presence
-     --emerald = on-track green       --amber = attention/behind
-     --red     = risk/crimson         --lime  = streaks/citron energy
-     --gold-*  = the CTA lacquer ramp (now iris, name kept)              */
+     --blue    = interactive ultraviolet   --cyan  = AI presence plasma
+     --emerald = on-track bio-lume         --amber = attention/behind
+     --red     = risk/ember                --lime  = streaks/citron energy
+     --gold-*  = the CTA plasma ramp (name kept from the gold era)        */
 
 :root {
-  /* daylight grounds */
-  --bg0: #f4f5f8;         /* cool porcelain field */
-  --bg1: #eaecf1;         /* mist well */
-  --surface: #ffffff;     /* paper panel */
-  --surface2: #f1f2f6;    /* frost inset */
-  --inkline: #191c26;     /* graphite line */
-  --border: rgba(22, 27, 45, 0.1);
-  --border2: rgba(22, 27, 45, 0.2);
+  /* pearl daylight grounds */
+  --bg0: #f4f3fa;         /* opal field */
+  --bg1: #eae8f4;         /* mist well */
+  --surface: #ffffff;     /* pearl panel */
+  --surface2: #f2f0fa;    /* frost inset */
+  --inkline: #1a1730;     /* void line */
+  --border: rgba(38, 28, 92, 0.1);
+  --border2: rgba(38, 28, 92, 0.2);
 
   /* ink */
-  --text: #14161e;        /* graphite ink */
-  --muted: #545a6d;
-  --faint: #878da0;
+  --text: #171429;        /* void ink */
+  --muted: #59547a;
+  --faint: #8d88ab;
 
   /* pigments (legacy names kept as stable API) */
-  --blue: #4f46e5;        /* iris violet — interactive anchor */
-  --cyan: #0891b2;        /* ion cyan — AI presence */
-  --emerald: #15803d;     /* signal green — success anchor */
-  --lime: #65a30d;        /* citron — streaks/energy */
+  --blue: #6d3ef2;        /* ultraviolet — interactive anchor */
+  --cyan: #0797b9;        /* plasma — AI presence */
+  --emerald: #0e9f6e;     /* bio-lume — success anchor */
+  --lime: #71a412;        /* citron — streaks/energy */
   --amber: #d97706;       /* solar amber — attention/behind */
-  --red: #dc2626;         /* crimson — risk */
-  --navy: #475569;        /* steel — quiet emphasis */
+  --red: #dc2643;         /* ember — risk */
+  --navy: #55597c;        /* steel — quiet emphasis */
 
-  /* iris lacquer — the CTA ramp, both modes (legacy gold names kept) */
-  --gold-hi: #7b7ef2;
-  --gold: #5a5ce0;
-  --gold-deep: #4438cf;
+  /* plasma ramp — the CTA, both modes (legacy gold names kept) */
+  --gold-hi: #9d6bff;
+  --gold: #7a3ff2;
+  --gold-deep: #5b21c8;
   --on-gold: #ffffff;
 
   /* rare-color washes */
-  --blue-dim: rgba(90, 92, 224, 0.12);        /* iris haze */
-  --cyan-dim: rgba(8, 145, 178, 0.11);        /* ion vapor */
-  --emerald-dim: rgba(21, 128, 61, 0.1);      /* green veil */
-  --amber-dim: rgba(217, 119, 6, 0.12);       /* solar haze */
-  --red-dim: rgba(220, 38, 38, 0.1);          /* crimson stain */
-  --lime-dim: rgba(101, 163, 13, 0.12);       /* citron light */
-  --seafoam: rgba(8, 145, 178, 0.07);
-  --eucalyptus: rgba(21, 128, 61, 0.06);
+  --blue-dim: rgba(109, 62, 242, 0.12);
+  --cyan-dim: rgba(7, 151, 185, 0.11);
+  --emerald-dim: rgba(14, 159, 110, 0.11);
+  --amber-dim: rgba(217, 119, 6, 0.12);
+  --red-dim: rgba(220, 38, 67, 0.1);
+  --lime-dim: rgba(113, 164, 18, 0.12);
+  --seafoam: rgba(7, 151, 185, 0.07);
+  --eucalyptus: rgba(14, 159, 110, 0.06);
 
-  /* atmosphere — the page's ambient light pools */
-  --atmo-1: rgba(90, 92, 224, 0.07);
-  --atmo-2: rgba(8, 145, 178, 0.05);
+  /* atmosphere — the page's ambient light pools (pearl iridescence) */
+  --atmo-1: rgba(122, 63, 242, 0.1);
+  --atmo-2: rgba(7, 151, 185, 0.08);
+  --atmo-3: rgba(236, 72, 153, 0.05);   /* a magenta whisper at the edge */
+
+  /* gradient ink — display type is lit, not printed */
+  --ink-grad-a: #3b1d99;
+  --ink-grad-b: #0e7490;
 
   /* shape */
   --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 18px;
+  --r-md: 13px;
+  --r-lg: 20px;
   --r-pill: 999px;
 
-  /* layered elevation — a tight cool key light + a wide ambient */
-  --shadow-1: 0 1px 2px rgba(18, 22, 40, 0.05), 0 8px 24px -12px rgba(18, 22, 40, 0.12);
-  --shadow-2: 0 2px 4px rgba(18, 22, 40, 0.06), 0 16px 40px -16px rgba(18, 22, 40, 0.18);
-  --shadow-lift: 0 2px 6px rgba(18, 22, 40, 0.06), 0 24px 48px -16px rgba(68, 56, 207, 0.2);
+  /* layered elevation — a violet key light + wide ambient */
+  --shadow-1: 0 1px 2px rgba(30, 20, 70, 0.06), 0 10px 28px -14px rgba(30, 20, 70, 0.16);
+  --shadow-2: 0 2px 4px rgba(30, 20, 70, 0.07), 0 18px 44px -16px rgba(30, 20, 70, 0.22);
+  --shadow-lift: 0 2px 6px rgba(30, 20, 70, 0.07), 0 26px 52px -16px rgba(91, 33, 200, 0.28);
 
-  /* motion — machined */
+  /* motion — fluid, alive */
   --fast: 140ms;
-  --normal: 240ms;
-  --slow: 450ms;
+  --normal: 260ms;
+  --slow: 480ms;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-soft: cubic-bezier(0.3, 0.9, 0.35, 1);
 
   /* strong tone inks (chips, tone text) — one token per hue, both modes */
-  --tone-emerald-ink: #14683a;
+  --tone-emerald-ink: #0b6e4e;
   --tone-amber-ink: #92500a;
-  --tone-red-ink: #b91c1c;
+  --tone-red-ink: #b91c35;
   --tone-cyan-ink: #0e7490;
   --tone-lime-ink: #4d7c0f;
-  --tone-blue-ink: #4338ca;
+  --tone-blue-ink: #5527c9;
 
   /* glass + glow */
-  --nav-glass: rgba(255, 255, 255, 0.72);
-  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --glow-ai: 0 0 0 rgba(8, 145, 178, 0);
+  --nav-glass: rgba(255, 255, 255, 0.66);
+  --card-glass: rgba(255, 255, 255, 0.86);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --glow-ai: 0 0 26px -8px rgba(7, 151, 185, 0.35);
+  --glow-cta: 0 12px 34px -10px rgba(109, 62, 242, 0.55);
+  --ring-grad: linear-gradient(135deg, rgba(109, 62, 242, 0.5), rgba(7, 151, 185, 0.35), rgba(236, 72, 153, 0.3));
 
   /* older aliases */
   --slate: var(--muted);
@@ -97,63 +106,69 @@
   color-scheme: light;
 }
 
-/* ---------- dark mode — "Deep Field" ----------
-   The same instrument at night: navy-black space, iris turned luminous,
-   ion cyan glowing like a readout. The CTA inverts to ink-on-light — a
-   lit key on a dark console. Every token adapts; no component references
-   a raw color. */
+/* ---------- dark mode — "The Bloom" ----------
+   The instrument's true habitat: void violet-black, ultraviolet turned
+   luminous, plasma cyan breathing like a readout, panels of nebula glass.
+   Every token adapts; no component references a raw color. */
 :root[data-theme='dark'] {
-  --bg0: #0b0d13;
-  --bg1: #07090f;
-  --surface: #12141d;
-  --surface2: #0e1018;
-  --inkline: #e6e8f2;
-  --border: rgba(200, 208, 240, 0.1);
-  --border2: rgba(200, 208, 240, 0.2);
+  --bg0: #0a0813;
+  --bg1: #06050d;
+  --surface: #131022;
+  --surface2: #0e0c1b;
+  --inkline: #eae7fb;
+  --border: rgba(190, 180, 255, 0.11);
+  --border2: rgba(190, 180, 255, 0.22);
 
-  --text: #e9eaf2;
-  --muted: #a3a9bd;
-  --faint: #686f85;
+  --text: #ecebfb;
+  --muted: #a9a5c9;
+  --faint: #6c688e;
 
-  --blue: #8f93ff;
-  --cyan: #38d1e0;
-  --emerald: #34d399;
-  --lime: #a3e635;
+  --blue: #a48dff;
+  --cyan: #3fd9f0;
+  --emerald: #35e0a1;
+  --lime: #b1ec3a;
   --amber: #f5a524;
-  --red: #f87171;
-  --navy: #8ea3c0;
+  --red: #fb7185;
+  --navy: #93a0c8;
 
-  --gold-hi: #c7c9ff;
-  --gold: #9fa2ff;
-  --gold-deep: #7679f0;
-  --on-gold: #14163a;
+  --gold-hi: #c1a5ff;
+  --gold: #9165ff;
+  --gold-deep: #6c34e8;
+  --on-gold: #ffffff;
 
-  --blue-dim: rgba(143, 147, 255, 0.15);
-  --cyan-dim: rgba(56, 209, 224, 0.13);
-  --emerald-dim: rgba(52, 211, 153, 0.13);
+  --blue-dim: rgba(164, 141, 255, 0.15);
+  --cyan-dim: rgba(63, 217, 240, 0.13);
+  --emerald-dim: rgba(53, 224, 161, 0.13);
   --amber-dim: rgba(245, 165, 36, 0.13);
-  --red-dim: rgba(248, 113, 113, 0.14);
-  --lime-dim: rgba(163, 230, 53, 0.11);
-  --seafoam: rgba(56, 209, 224, 0.06);
-  --eucalyptus: rgba(52, 211, 153, 0.06);
+  --red-dim: rgba(251, 113, 133, 0.14);
+  --lime-dim: rgba(177, 236, 58, 0.11);
+  --seafoam: rgba(63, 217, 240, 0.07);
+  --eucalyptus: rgba(53, 224, 161, 0.06);
 
-  --atmo-1: rgba(126, 130, 255, 0.11);
-  --atmo-2: rgba(56, 209, 224, 0.06);
+  --atmo-1: rgba(124, 82, 255, 0.17);
+  --atmo-2: rgba(63, 217, 240, 0.08);
+  --atmo-3: rgba(236, 72, 153, 0.08);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px -12px rgba(0, 0, 0, 0.55);
-  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 20px 48px -16px rgba(0, 0, 0, 0.65);
-  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 56px -16px rgba(118, 121, 240, 0.26);
+  --ink-grad-a: #cdb9ff;
+  --ink-grad-b: #6fe6f5;
 
-  --tone-emerald-ink: #7ce8bd;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px -14px rgba(0, 0, 0, 0.6);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 22px 52px -16px rgba(0, 0, 0, 0.7);
+  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 26px 60px -16px rgba(108, 52, 232, 0.4);
+
+  --tone-emerald-ink: #7df0c3;
   --tone-amber-ink: #f7c476;
-  --tone-red-ink: #fca5a5;
-  --tone-cyan-ink: #67e0ee;
-  --tone-lime-ink: #d3f37f;
-  --tone-blue-ink: #b4b7ff;
+  --tone-red-ink: #fda4b0;
+  --tone-cyan-ink: #79e7f5;
+  --tone-lime-ink: #d7f58a;
+  --tone-blue-ink: #c3b2ff;
 
-  --nav-glass: rgba(13, 15, 22, 0.68);
-  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --glow-ai: 0 0 28px -6px rgba(56, 209, 224, 0.28);
+  --nav-glass: rgba(14, 12, 26, 0.6);
+  --card-glass: rgba(19, 16, 34, 0.72);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --glow-ai: 0 0 34px -6px rgba(63, 217, 240, 0.35);
+  --glow-cta: 0 14px 40px -10px rgba(145, 101, 255, 0.6);
+  --ring-grad: linear-gradient(135deg, rgba(164, 141, 255, 0.55), rgba(63, 217, 240, 0.4), rgba(236, 72, 153, 0.35));
 
   color-scheme: dark;
 }
@@ -177,14 +192,15 @@ html.theme-morph *::after {
 }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 500ms; }
 
-/* ---------- base ---------- */
+/* ---------- base — the habitat ---------- */
 * { box-sizing: border-box; }
 html { background: var(--bg0); }
 body {
   margin: 0;
   background:
-    radial-gradient(1100px 520px at 50% -14%, var(--atmo-1), transparent 62%),
-    radial-gradient(860px 430px at 96% -4%, var(--atmo-2), transparent 58%),
+    radial-gradient(1200px 560px at 50% -16%, var(--atmo-1), transparent 62%),
+    radial-gradient(900px 460px at 100% -6%, var(--atmo-2), transparent 58%),
+    radial-gradient(760px 420px at -8% 30%, var(--atmo-3), transparent 60%),
     var(--bg0);
   background-attachment: fixed;
   color: var(--text);
@@ -193,11 +209,37 @@ body {
   min-height: 100vh;
 }
 
+/* The starfield: a fixed veil of pinprick lights, dark mode only — the one
+   ornament that never asks for attention but makes the void feel inhabited. */
+:root[data-theme='dark'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 22% 18%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(1px 1px at 68% 8%, rgba(190, 180, 255, 0.5), transparent 100%),
+    radial-gradient(1.5px 1.5px at 84% 32%, rgba(255, 255, 255, 0.35), transparent 100%),
+    radial-gradient(1px 1px at 8% 56%, rgba(63, 217, 240, 0.4), transparent 100%),
+    radial-gradient(1px 1px at 45% 42%, rgba(255, 255, 255, 0.3), transparent 100%),
+    radial-gradient(1.5px 1.5px at 92% 74%, rgba(190, 180, 255, 0.35), transparent 100%),
+    radial-gradient(1px 1px at 33% 84%, rgba(255, 255, 255, 0.28), transparent 100%),
+    radial-gradient(1px 1px at 60% 66%, rgba(63, 217, 240, 0.3), transparent 100%);
+  background-size: 720px 720px;
+  background-repeat: repeat;
+  animation: star-drift 240s linear infinite;
+}
+@keyframes star-drift {
+  from { background-position: 0 0; }
+  to { background-position: -720px 720px; }
+}
+
 a { color: var(--blue); text-decoration: none; font-weight: 600; }
 a:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
 ::selection { background: var(--blue-dim); }
 
-h1, h2, h3, h4 { line-height: 1.15; margin: 0 0 0.5rem; }
+h1, h2, h3, h4 { line-height: 1.12; margin: 0 0 0.5rem; }
 p { line-height: 1.65; }
 
 :focus-visible {
@@ -206,13 +248,19 @@ p { line-height: 1.65; }
   border-radius: var(--r-sm);
 }
 
-/* instrument scrollbar — a hairline, not a gutter */
+/* instrument scrollbar — a lit filament, not a gutter */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
-::-webkit-scrollbar-thumb:hover { background-color: var(--faint); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-deep));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  opacity: 0.7;
+}
+::-webkit-scrollbar-thumb:hover { border-width: 2px; }
 
-/* ---------- forms — milled fields ---------- */
+/* ---------- forms — lit fields ---------- */
 input, select, textarea {
   background: var(--surface);
   color: var(--text);
@@ -221,7 +269,7 @@ input, select, textarea {
   padding: 0.55rem 0.9rem;
   font: inherit;
   min-height: 44px;
-  box-shadow: inset 0 1px 2px rgba(18, 22, 40, 0.04);
+  box-shadow: inset 0 1px 2px rgba(20, 14, 50, 0.05);
   transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 :root[data-theme='dark'] input,
@@ -232,7 +280,7 @@ input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--blue);
   background: var(--surface);
-  box-shadow: 0 0 0 3px var(--blue-dim);
+  box-shadow: 0 0 0 3px var(--blue-dim), 0 0 18px -6px var(--blue-dim);
 }
 input[type='checkbox'] {
   appearance: none;
@@ -250,11 +298,11 @@ input[type='checkbox'] {
   vertical-align: middle;
   transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
-input[type='checkbox']:hover { border-color: var(--emerald); }
+input[type='checkbox']:hover { border-color: var(--emerald); box-shadow: 0 0 12px -4px var(--emerald-dim); }
 input[type='checkbox']:checked {
   background: var(--emerald);
   border-color: var(--emerald);
-  box-shadow: 0 2px 10px -2px var(--emerald-dim), 0 0 0 3px var(--emerald-dim);
+  box-shadow: 0 0 0 3px var(--emerald-dim), 0 0 16px -2px var(--emerald-dim);
   animation: check-pop var(--fast) var(--ease);
 }
 input[type='checkbox']:checked::after {
@@ -266,9 +314,9 @@ input[type='checkbox']:checked::after {
   border-width: 0 2.5px 2.5px 0;
   transform: rotate(45deg);
 }
-:root[data-theme='dark'] input[type='checkbox']:checked::after { border-color: #08130d; }
+:root[data-theme='dark'] input[type='checkbox']:checked::after { border-color: #06130c; }
 input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; border: 1.5px dashed var(--border2); box-shadow: none; }
-@keyframes check-pop { 0% { transform: scale(1); } 55% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes check-pop { 0% { transform: scale(1); } 55% { transform: scale(1.18); } 100% { transform: scale(1); } }
 
 .label {
   display: block;
@@ -285,7 +333,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .error-text { color: var(--tone-red-ink); font-size: 0.88rem; font-weight: 600; }
 .success-text { color: var(--tone-emerald-ink); font-size: 0.88rem; font-weight: 600; }
 
-/* ---------- buttons — machined keys, lit from within ---------- */
+/* ---------- buttons — plasma keys, lit from within ---------- */
 .btn {
   position: relative;
   display: inline-flex;
@@ -293,7 +341,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   justify-content: center;
   gap: 0.45rem;
   min-height: 44px;
-  padding: 0.55rem 1.4rem;
+  padding: 0.55rem 1.5rem;
   border-radius: var(--r-md);
   border: 1px solid transparent;
   font: inherit;
@@ -301,21 +349,35 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   font-size: 0.92rem;
   letter-spacing: 0.01em;
   cursor: pointer;
+  overflow: hidden;
   transition: transform var(--fast) var(--ease), box-shadow var(--normal) var(--ease), background var(--fast) var(--ease-soft), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
 }
 .btn:hover:not(:disabled) { transform: translateY(-1px); }
-.btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .btn-primary {
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, var(--gold-deep));
+  background: linear-gradient(135deg, var(--gold-hi), var(--gold) 48%, var(--gold-deep));
   color: var(--on-gold);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(18, 22, 40, 0.2), 0 10px 24px -10px var(--gold-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(20, 10, 50, 0.25), var(--glow-cta);
 }
+/* the sheen: a band of light crosses the key on hover — the button answers */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -80%;
+  width: 55%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: skewX(-18deg);
+  transition: left var(--slow) var(--ease);
+  pointer-events: none;
+}
+.btn-primary:hover:not(:disabled)::after { left: 130%; }
 .btn-primary:hover:not(:disabled) {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 4px rgba(18, 22, 40, 0.2), 0 16px 32px -10px var(--gold-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 4px rgba(20, 10, 50, 0.25), 0 16px 44px -10px var(--gold-deep);
 }
 .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border2); box-shadow: var(--shadow-1); }
-.btn-ghost:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim), 0 0 20px -6px var(--blue-dim); }
 .btn-danger { background: var(--red-dim); color: var(--tone-red-ink); }
 .btn-danger:hover:not(:disabled) { background: var(--red); color: #fff; }
 .btn-block { width: 100%; }
@@ -347,11 +409,21 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   margin: 12px auto 0;
   padding: 0.55rem 0.9rem;
   border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-pill);
   background: var(--nav-glass);
-  backdrop-filter: blur(18px) saturate(1.5);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
   box-shadow: var(--shadow-1);
+}
+/* a lit hairline along the console's top edge */
+.app-nav::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 8%; right: 8%;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue-dim), var(--cyan-dim), transparent);
+  pointer-events: none;
 }
 .nav-brand {
   font-family: var(--font-display);
@@ -363,15 +435,18 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 }
 .nav-brand em {
   font-style: normal;
-  background: linear-gradient(120deg, var(--blue), var(--cyan));
+  background: linear-gradient(120deg, var(--blue), var(--cyan) 70%, var(--blue));
+  background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: var(--blue);
   margin-left: 1px;
+  animation: brand-current 7s linear infinite;
 }
+@keyframes brand-current { from { background-position: 0% 0; } to { background-position: 200% 0; } }
 .nav-link {
-  padding: 0.35rem 0.85rem;
+  padding: 0.38rem 0.9rem;
   border-radius: var(--r-pill);
   font-size: 0.88rem;
   font-weight: 600;
@@ -382,7 +457,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .nav-link.active {
   color: var(--tone-blue-ink);
   background: var(--blue-dim);
-  box-shadow: inset 0 0 0 1px var(--blue-dim);
+  box-shadow: inset 0 0 0 1px var(--blue-dim), 0 0 16px -4px var(--blue-dim);
 }
 
 /* on desktop the links wrapper dissolves into the flex row and the
@@ -398,7 +473,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--muted);
@@ -409,8 +484,8 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .theme-toggle:hover {
   color: var(--blue);
   border-color: var(--border2);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-2);
+  transform: translateY(-1px) rotate(12deg);
+  box-shadow: var(--shadow-2), 0 0 18px -6px var(--blue-dim);
 }
 .theme-toggle:active { transform: scale(0.94); }
 
@@ -423,10 +498,14 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .page-form { max-width: 420px; margin-top: 5rem; }
 .page-title {
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 4.4vw, 2.6rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-size: clamp(2.1rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
   display: inline-block;
+  background: linear-gradient(115deg, var(--text) 30%, var(--ink-grad-a) 62%, var(--ink-grad-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .section-title {
   font-family: var(--font-display);
@@ -445,6 +524,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   flex: none;
   border-radius: 2px;
   background: linear-gradient(180deg, var(--blue), var(--cyan));
+  box-shadow: 0 0 10px -1px var(--blue-dim);
 }
 .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
 .page-header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
@@ -455,40 +535,58 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.9em; }
 .divider { border: 0; border-top: 1px solid var(--border); margin: 2.4rem 0; }
 
-/* ---------- cards — instrument panels ---------- */
+/* ---------- cards — nebula glass panels ----------
+   A panel is glass over the void: blurred backdrop, an iridescent hairline
+   riding its top edge, and a highlight that reads as refracted light. */
 .card {
   position: relative;
-  background: var(--surface);
+  background: var(--card-glass);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 1.4rem 1.5rem;
+  padding: 1.5rem 1.6rem;
   box-shadow: var(--shadow-1), var(--card-highlight);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
   transition: box-shadow var(--normal) var(--ease), transform var(--normal) var(--ease), border-color var(--normal) var(--ease);
 }
+.card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 10%; right: 10%;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue-dim), var(--cyan-dim), transparent);
+  pointer-events: none;
+}
 .card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lift), var(--card-highlight), 0 0 0 1px var(--blue-dim);
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: var(--shadow-lift), var(--card-highlight), 0 0 0 1px var(--blue-dim), 0 0 34px -10px var(--blue-dim);
   border-color: var(--blue);
 }
 .card-accent { border-left: 3px solid var(--blue); }
 .card-accent.tone-emerald { border-left-color: var(--emerald); }
 .card-accent.tone-amber { border-left-color: var(--amber); }
 .card-accent.tone-red { border-left-color: var(--red); }
-/* Ion cyan = AI presence: the coach's cards carry a faint living glow
-   (dark mode) and a diffused corner light — the AI feels present,
-   never loud. */
+/* Plasma cyan = AI presence: the coach's cards breathe — a living aura
+   that swells and settles like something resting, never loud. */
 .card-accent.tone-cyan {
   border-left-color: var(--cyan);
   box-shadow: var(--shadow-1), var(--card-highlight), var(--glow-ai);
   overflow: hidden;
+  animation: ai-breathe 6s var(--ease-soft) infinite;
 }
 .card-accent.tone-cyan::before {
   content: '';
   position: absolute;
   top: -40%; right: -12%;
-  width: 55%; height: 120%;
+  left: auto;
+  width: 55%; height: 130%;
   background: radial-gradient(closest-side, var(--cyan-dim), transparent 75%);
   pointer-events: none;
+}
+@keyframes ai-breathe {
+  0%, 100% { box-shadow: var(--shadow-1), var(--card-highlight), var(--glow-ai); }
+  50% { box-shadow: var(--shadow-1), var(--card-highlight), 0 0 44px -6px rgba(63, 217, 240, 0.4); }
 }
 .card-accent.tone-muted { border-left-color: var(--border2); }
 .card h3 { font-family: var(--font-display); font-size: 1.12rem; font-weight: 600; }
@@ -500,25 +598,27 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   margin: 1.5rem 0;
 }
 
-/* ---------- stat tiles — readouts ---------- */
+/* ---------- stat tiles — glowing readouts ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
 .stat-card {
-  background: var(--surface);
+  background: var(--card-glass);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 1rem 1.15rem 0.9rem;
+  padding: 1.05rem 1.2rem 0.95rem;
   box-shadow: var(--shadow-1), var(--card-highlight);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
   position: relative;
   overflow: hidden;
 }
 /* No hover-lift: stat tiles are display-only — a lift would promise a
    click that doesn't exist. Only .card-hover (real links) lifts. */
-/* each readout carries a faint corner halo in its own hue */
+/* each readout carries a bloom in its own hue */
 .stat-card::before {
   content: '';
   position: absolute;
-  top: -30px; right: -30px;
-  width: 110px; height: 110px;
+  top: -34px; right: -34px;
+  width: 130px; height: 130px;
   border-radius: 50%;
   pointer-events: none;
 }
@@ -537,8 +637,8 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .stat-value {
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
-  font-size: 1.9rem;
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin-top: 0.25rem;
@@ -567,10 +667,10 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   background: var(--surface);
   color: var(--muted);
 }
-.chip.tone-emerald { background: var(--emerald-dim); color: var(--tone-emerald-ink); border-color: transparent; }
+.chip.tone-emerald { background: var(--emerald-dim); color: var(--tone-emerald-ink); border-color: transparent; box-shadow: 0 0 14px -6px var(--emerald-dim); }
 .chip.tone-amber { background: var(--amber-dim); color: var(--tone-amber-ink); border-color: transparent; }
 .chip.tone-red { background: var(--red-dim); color: var(--tone-red-ink); border-color: transparent; }
-.chip.tone-cyan { background: var(--cyan-dim); color: var(--tone-cyan-ink); border-color: transparent; }
+.chip.tone-cyan { background: var(--cyan-dim); color: var(--tone-cyan-ink); border-color: transparent; box-shadow: 0 0 14px -6px var(--cyan-dim); }
 .chip.tone-blue { background: var(--blue-dim); color: var(--tone-blue-ink); border-color: transparent; }
 
 .notice {
@@ -586,36 +686,60 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .notice.tone-cyan { background: var(--cyan-dim); border-left-color: var(--cyan); }
 .notice.tone-red { background: var(--red-dim); border-left-color: var(--red); }
 
-/* ---------- progress — a charged rail ---------- */
+/* ---------- progress — a charged filament ---------- */
 .progress-track {
   background: var(--bg1);
   border-radius: var(--r-pill);
-  height: 8px;
+  height: 9px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(18, 22, 40, 0.08);
+  box-shadow: inset 0 1px 2px rgba(20, 14, 50, 0.1);
 }
-:root[data-theme='dark'] .progress-track { background: var(--surface2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4); }
+:root[data-theme='dark'] .progress-track { background: var(--surface2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45); }
 .progress-fill {
   position: relative;
   height: 100%;
   border-radius: var(--r-pill);
   background: linear-gradient(90deg, var(--gold-deep), var(--gold-hi));
+  box-shadow: 0 0 12px -2px var(--blue-dim);
   animation: fill-in var(--slow) var(--ease) both;
   transition: width var(--slow) var(--ease);
+  overflow: hidden;
 }
-.progress-fill.tone-emerald { background: linear-gradient(90deg, var(--emerald), var(--tone-emerald-ink)); }
-.progress-fill.tone-amber { background: linear-gradient(90deg, var(--amber), var(--tone-amber-ink)); }
-.progress-fill.tone-red { background: linear-gradient(90deg, var(--red), var(--tone-red-ink)); }
+/* current runs down the filament — the bar is live, not painted */
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: filament 2.6s var(--ease-soft) infinite;
+}
+@keyframes filament { from { background-position: 130% 0; } to { background-position: -70% 0; } }
+.progress-fill.tone-emerald { background: linear-gradient(90deg, var(--emerald), var(--tone-emerald-ink)); box-shadow: 0 0 12px -2px var(--emerald-dim); }
+.progress-fill.tone-amber { background: linear-gradient(90deg, var(--amber), var(--tone-amber-ink)); box-shadow: 0 0 12px -2px var(--amber-dim); }
+.progress-fill.tone-red { background: linear-gradient(90deg, var(--red), var(--tone-red-ink)); box-shadow: 0 0 12px -2px var(--red-dim); }
 @keyframes fill-in { from { transform: translateX(-8%); opacity: 0.7; } to { transform: none; opacity: 1; } }
 .progress-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin-top: 0.4rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 /* ---------- checklist ---------- */
 .daily-checklist {
-  background: var(--surface);
+  position: relative;
+  background: var(--card-glass);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 1.4rem 1.5rem;
+  padding: 1.5rem 1.6rem;
   box-shadow: var(--shadow-1), var(--card-highlight);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+}
+.daily-checklist::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 10%; right: 10%;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue-dim), var(--cyan-dim), transparent);
+  pointer-events: none;
 }
 .daily-checklist h3 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
 .daily-checklist ul { list-style: none; margin: 0.6rem 0; padding: 0; }
@@ -650,17 +774,20 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 }
 .chat-bubble.user {
   align-self: flex-end;
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold) 60%, var(--gold-deep));
+  background: linear-gradient(135deg, var(--gold-hi), var(--gold) 55%, var(--gold-deep));
   color: var(--on-gold);
   border-bottom-right-radius: var(--r-sm);
-  box-shadow: 0 6px 20px -8px var(--gold-deep);
+  box-shadow: 0 8px 24px -8px var(--gold-deep);
 }
 .chat-bubble.coach {
   align-self: flex-start;
-  background: var(--surface);
+  background: var(--card-glass);
   border: 1px solid var(--border);
   border-left: 3px solid var(--cyan);
   border-bottom-left-radius: var(--r-sm);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-1), 0 0 22px -10px var(--cyan-dim);
 }
 .chat-bubble.error { align-self: flex-start; background: var(--red-dim); color: var(--tone-red-ink); box-shadow: none; }
 .chat-meta { margin-top: 0.45rem; font-size: 0.66rem; font-family: var(--font-mono); color: var(--muted); letter-spacing: 0.04em; }
@@ -682,22 +809,24 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
   background: var(--cyan-dim);
   border-color: var(--cyan);
   color: var(--tone-cyan-ink);
-  box-shadow: 0 0 0 3px var(--seafoam);
+  box-shadow: 0 0 0 3px var(--seafoam), 0 0 18px -6px var(--cyan-dim);
 }
 .thinking { display: inline-flex; gap: 6px; align-items: center; padding: 0.7rem 0.3rem; }
-.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); animation: think 1.25s infinite var(--ease); }
+.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan-dim); animation: think 1.25s infinite var(--ease); }
 .thinking i:nth-child(2) { animation-delay: 0.16s; }
 .thinking i:nth-child(3) { animation-delay: 0.32s; }
 @keyframes think { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
 
 /* ---------- misc ---------- */
 .plan-day {
-  background: var(--surface);
+  background: var(--card-glass);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 1rem 1.25rem;
   margin: 0.9rem 0;
   box-shadow: var(--shadow-1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .plan-day h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
 .plan-day ul { margin: 0.45rem 0 0; padding-left: 1.2rem; color: var(--muted); }
@@ -731,7 +860,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .dashboard-empty { max-width: 480px; margin: 6rem auto; text-align: center; padding: 0 1.5rem; }
 
 .checklist-skeleton, .checklist-error {
-  background: var(--surface);
+  background: var(--card-glass);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 1.4rem;
@@ -769,7 +898,7 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 @media (max-width: 640px) {
   .page { margin: 1.75rem auto; padding: 0 1.1rem; }
   .page-form { margin-top: 3rem; }
-  .app-nav { top: 8px; width: calc(100% - 16px); margin-top: 8px; padding: 0.5rem 0.7rem; }
+  .app-nav { top: 8px; width: calc(100% - 16px); margin-top: 8px; padding: 0.5rem 0.7rem; border-radius: var(--r-lg); }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   /* thumbs, not cursors: inline value inputs grow to a full touch target */
   .check-value input, .checklist-manual input { min-height: 44px; }
@@ -825,8 +954,8 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
     gap: 0.15rem;
     padding: 0.6rem 0.7rem 0.8rem;
     background: var(--nav-glass);
-    backdrop-filter: blur(18px) saturate(1.5);
-    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(22px) saturate(1.6);
+    -webkit-backdrop-filter: blur(22px) saturate(1.6);
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
     box-shadow: var(--shadow-2);

@@ -1,51 +1,58 @@
-/* Meridian motion — machined, expo-out: content settles like a needle
-   finding its mark. Transform + opacity only; idle animation only where
-   waiting is real; everything honors prefers-reduced-motion via the
-   global kill. */
+/* Ion Bloom motion — fluid, alive: content surfaces like light finding a
+   lens. Transform + opacity only; idle animation only where waiting or
+   presence is real; everything honors prefers-reduced-motion via the
+   global kill in theme.css. */
 
-.page-enter { animation: rise-in var(--slow, 450ms) var(--ease, ease) both; }
+.page-enter { animation: rise-in var(--slow, 480ms) var(--ease, ease) both; }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
 
-/* Panels settle onto the page one after another. */
-.grid-cards > *, .stat-grid > * { animation: deal-in 420ms var(--ease, ease) both; }
-.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 60ms; }
-.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 120ms; }
-.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 180ms; }
+/* Panels surface one after another — up to eight, then they arrive together
+   (a longer stagger reads as lag, not choreography). */
+.grid-cards > *, .stat-grid > * { animation: deal-in 460ms var(--ease, ease) both; }
+.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 55ms; }
+.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 110ms; }
+.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 165ms; }
+.grid-cards > *:nth-child(5), .stat-grid > *:nth-child(5) { animation-delay: 220ms; }
+.grid-cards > *:nth-child(6), .stat-grid > *:nth-child(6) { animation-delay: 275ms; }
+.grid-cards > *:nth-child(7), .stat-grid > *:nth-child(7) { animation-delay: 330ms; }
+.grid-cards > *:nth-child(8), .stat-grid > *:nth-child(8) { animation-delay: 385ms; }
 
 @keyframes deal-in {
-  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  from { opacity: 0; transform: translateY(16px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 
-/* Aurora — the landing hero's slow volumetric light: an iris beam, an ion
-   pool, a green undertone, drifting far below anyone's attention. */
+/* Aurora — slow volumetric light: an ultraviolet beam, a plasma pool, a
+   bio-lume undertone, and a magenta whisper, drifting far below anyone's
+   attention. Used by heroes and empty states. */
 .aurora {
   position: absolute;
   inset: -20% -10%;
   z-index: -1;
   pointer-events: none;
   filter: blur(70px);
-  opacity: 0.9;
+  opacity: 0.95;
   background:
-    radial-gradient(40% 44% at 26% 24%, var(--blue-dim), transparent 70%),
-    radial-gradient(34% 38% at 76% 20%, var(--cyan-dim), transparent 70%),
-    radial-gradient(46% 50% at 56% 84%, var(--emerald-dim), transparent 70%);
-  animation: aurora-drift 30s var(--ease-soft, ease) infinite alternate;
+    radial-gradient(42% 46% at 24% 22%, var(--blue-dim), transparent 70%),
+    radial-gradient(36% 40% at 78% 18%, var(--cyan-dim), transparent 70%),
+    radial-gradient(46% 50% at 56% 86%, var(--emerald-dim), transparent 70%),
+    radial-gradient(30% 34% at 8% 74%, var(--atmo-3, transparent), transparent 72%);
+  animation: aurora-drift 26s var(--ease-soft, ease) infinite alternate;
 }
 
 @keyframes aurora-drift {
-  from { transform: translate3d(-2%, -1%, 0) scale(1); }
-  to { transform: translate3d(2%, 2%, 0) scale(1.05); }
+  from { transform: translate3d(-2.5%, -1.5%, 0) scale(1) rotate(-0.5deg); }
+  to { transform: translate3d(2.5%, 2.5%, 0) scale(1.07) rotate(0.5deg); }
 }
 
 /* Editorial reveal — staggered lines for the hero (used via inline delays). */
-.reveal { animation: reveal-up 600ms var(--ease, ease) both; }
+.reveal { animation: reveal-up 640ms var(--ease, ease) both; }
 @keyframes reveal-up {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -53,5 +60,13 @@
 .float-slow { animation: float-slow 7s ease-in-out infinite alternate; }
 @keyframes float-slow {
   from { transform: translateY(0); }
-  to { transform: translateY(-8px); }
+  to { transform: translateY(-9px); }
+}
+
+/* A soft pulse for elements that are alive and waiting (AI presence dots,
+   live indicators) — breath, not blink. */
+.pulse-live { animation: pulse-live 2.6s var(--ease-soft, ease) infinite; }
+@keyframes pulse-live {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
