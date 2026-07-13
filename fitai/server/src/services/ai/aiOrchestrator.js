@@ -51,7 +51,9 @@ async function generatePlan({ profile, prompt, skipCache = false }) {
 
 async function analyzeFoodImage({ imageBase64, mimeType, prompt, userId }) {
   // Keyed by image content: the same plate photo retried (e.g. a flaky
-  // upload) shouldn't re-spend an AI call.
+  // upload) shouldn't re-spend an AI call. userId is in the key so no
+  // cached analysis can ever cross accounts, even once the response
+  // becomes personalized.
   const { data, source } = await gateway.execute({
     task: 'nutrition',
     schemaName: 'foodAnalysis',
@@ -60,7 +62,7 @@ async function analyzeFoodImage({ imageBase64, mimeType, prompt, userId }) {
     imageBase64,
     mimeType,
     userId,
-    cacheKey: { namespace: 'nutrition', input: { imageHash: hashQuestion(imageBase64) } },
+    cacheKey: { namespace: 'nutrition', input: { userId, imageHash: hashQuestion(imageBase64) } },
     useLastKnownGood: true,
     fallback: () => fallback.fallbackFoodAnalysis(),
   });

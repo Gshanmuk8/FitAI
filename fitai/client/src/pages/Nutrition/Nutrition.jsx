@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { analyzeFoodImage, saveMeal, getTodayMeals, deleteMeal } from '../../services/nutritionService';
+import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 
 const emptyManual = { name: '', calories: '', protein: '' };
@@ -47,18 +48,24 @@ function calorieStatus(summary) {
 }
 
 // Pending photo analysis survives a refresh — losing it would force the
-// user to pay a second AI analysis for the same plate.
-const ANALYSIS_KEY = 'fitai.pendingAnalysis';
-function loadPendingAnalysis() {
+// user to pay a second AI analysis for the same plate. Keyed per user so
+// a draft never survives an account switch in the same tab.
+const analysisKey = (userId) => `fitai.pendingAnalysis.${userId}`;
+function loadPendingAnalysis(userId) {
   try {
-    return JSON.parse(sessionStorage.getItem(ANALYSIS_KEY)) || null;
+    // Drop the legacy shared key: drafts written before per-user keying
+    // must not surface for whoever logs in next.
+    sessionStorage.removeItem('fitai.pendingAnalysis');
+    if (!userId) return null;
+    return JSON.parse(sessionStorage.getItem(analysisKey(userId))) || null;
   } catch {
     return null;
   }
 }
 
 export default function Nutrition() {
-  const [analysis, setAnalysisState] = useState(loadPendingAnalysis); // items pending confirmation
+  const { user } = useAuth();
+  const [analysis, setAnalysisState] = useState(() => loadPendingAnalysis(user?.id)); // items pending confirmation
   const [meals, setMeals] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true); // initial diary fetch
@@ -73,8 +80,10 @@ export default function Nutrition() {
     setAnalysisState((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
       try {
-        if (value?.foods?.length) sessionStorage.setItem(ANALYSIS_KEY, JSON.stringify(value));
-        else sessionStorage.removeItem(ANALYSIS_KEY);
+        if (user?.id) {
+          if (value?.foods?.length) sessionStorage.setItem(analysisKey(user.id), JSON.stringify(value));
+          else sessionStorage.removeItem(analysisKey(user.id));
+        }
       } catch { /* storage unavailable — analysis just won't survive refresh */ }
       return value;
     });
