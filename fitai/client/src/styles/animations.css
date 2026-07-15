@@ -1,83 +1,84 @@
-/* Ambrosia motion — this world BOUNCES. Things arrive with a little
-   overshoot, the way something soft lands. All motion is transform +
-   opacity only (cheap, compositor-only); the global
-   prefers-reduced-motion kill lives in theme.css. */
+/* Motion — nothing overshoots.
 
-.page-enter { animation: rise-in var(--slow, 560ms) var(--ease-spring, ease) both; }
+   The previous system ran everything on a spring (cubic-bezier with a
+   control point past 1), so every card landed with a bounce and every
+   checkbox popped. Overshoot is the single loudest "this is a toy" signal
+   in an interface: real materials have mass and they settle. Everything
+   here decelerates into place on a sharp-out curve and stops.
+
+   Distances are short (6–8px, never 20), durations are brief (180–380ms),
+   and idle animation exists only where the product is genuinely waiting.
+   Transform and opacity only — the compositor does the work.
+   prefers-reduced-motion is killed globally in theme.css.               */
+
+.page-enter { animation: rise-in var(--normal, 200ms) var(--ease, ease) both; }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 
-/* Confections are set down one after another, each with a little bounce.
-   Up to eight, then they arrive together — a longer stagger reads as lag,
-   not as choreography. */
-.grid-cards > *, .stat-grid > * { animation: deal-in 560ms var(--ease-spring, ease) both; }
-.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 60ms; }
-.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 120ms; }
-.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 180ms; }
-.grid-cards > *:nth-child(5), .stat-grid > *:nth-child(5) { animation-delay: 240ms; }
-.grid-cards > *:nth-child(6), .stat-grid > *:nth-child(6) { animation-delay: 300ms; }
-.grid-cards > *:nth-child(7), .stat-grid > *:nth-child(7) { animation-delay: 360ms; }
-.grid-cards > *:nth-child(8), .stat-grid > *:nth-child(8) { animation-delay: 420ms; }
+/* Content arrives in one settled move. The stagger is tight — 40ms, up to
+   six — because a long cascade reads as lag, not as choreography. */
+.grid-cards > *, .stat-grid > * { animation: deal-in 280ms var(--ease, ease) both; }
+.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 40ms; }
+.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 80ms; }
+.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 120ms; }
+.grid-cards > *:nth-child(5), .stat-grid > *:nth-child(5) { animation-delay: 160ms; }
+.grid-cards > *:nth-child(6), .stat-grid > *:nth-child(6) { animation-delay: 200ms; }
 
 @keyframes deal-in {
-  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
 
-/* The orchard light — big, abundant pools of fruit drifting behind the
-   hero. This is the largest colour field in the app and it is meant to be
-   FELT: mango high left, dragonfruit at the shoulder, blood orange low,
-   citron in the corner. It travels the arc (harmony rule 1) and never
-   uses lime, which is reserved for "on track" (rule 3).
+/* The ambient wash behind a hero. Two faint pools, drifting slowly enough
+   that you never catch it moving. It is almost not there, and that is the
+   point — it gives the ground depth without becoming the subject.
    (Kept under the .aurora name: heroes and empty states reference it.) */
 .aurora {
   position: absolute;
-  inset: -25% -12%;
+  inset: -30% -15%;
   z-index: -1;
   pointer-events: none;
-  filter: blur(72px);
-  opacity: 1;
+  filter: blur(90px);
+  opacity: 0.7;
   background:
-    radial-gradient(42% 46% at 20% 18%, var(--amber-dim), transparent 68%),
-    radial-gradient(38% 42% at 82% 14%, var(--blue-dim), transparent 68%),
-    radial-gradient(46% 50% at 58% 90%, var(--red-dim), transparent 68%),
-    radial-gradient(32% 36% at 4% 78%, var(--cyan-dim), transparent 70%);
-  animation: aurora-drift 26s var(--ease-soft, ease) infinite alternate;
+    radial-gradient(38% 42% at 22% 24%, var(--amber-dim), transparent 68%),
+    radial-gradient(34% 38% at 78% 18%, var(--blue-dim), transparent 68%);
+  animation: aurora-drift 40s var(--ease-soft, ease) infinite alternate;
 }
 
 @keyframes aurora-drift {
-  from { transform: translate3d(-3%, -2%, 0) scale(1) rotate(-1deg); }
-  to { transform: translate3d(3%, 3%, 0) scale(1.1) rotate(1deg); }
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to { transform: translate3d(1.5%, 1.5%, 0) scale(1.04); }
 }
 
-/* Reveal — staggered lines for the hero (used via inline delays). */
-.reveal { animation: reveal-up 760ms var(--ease-spring, ease) both; }
+/* Editorial reveal — staggered lines for the hero (used via inline delays). */
+.reveal { animation: reveal-up 420ms var(--ease, ease) both; }
 @keyframes reveal-up {
-  from { opacity: 0; transform: translateY(22px) scale(0.985); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 
 /* A slow drift for ornaments that should feel suspended, not parked. */
-.float-slow { animation: float-slow 8s ease-in-out infinite alternate; }
+.float-slow { animation: float-slow 9s ease-in-out infinite alternate; }
 @keyframes float-slow {
   from { transform: translateY(0); }
-  to { transform: translateY(-8px); }
+  to { transform: translateY(-5px); }
 }
 
-/* Breath for elements that are alive and waiting (the coach thinking, live
-   indicators) — a rest cycle, never a blink. */
-.pulse-live { animation: pulse-live 3s var(--ease-soft, ease) infinite; }
+/* Breath for elements that are genuinely waiting (the coach thinking, a
+   live indicator). Opacity only — a pulsing scale is a heartbeat, and a
+   heartbeat demands attention the thing hasn't earned. */
+.pulse-live { animation: pulse-live 3.2s var(--ease-soft, ease) infinite; }
 @keyframes pulse-live {
-  0%, 100% { opacity: 0.5; }
+  0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
 }
 
-/* The ripen — a pigment stem drawing itself in. Used where something has
-   just become true (a saved value, a completed item). */
-.ripen-in { animation: ripen-in var(--slow, 520ms) var(--ease, ease) both; }
+/* Kept for compatibility — the ripen stem, now a plain settled draw. */
+.ripen-in { animation: ripen-in var(--slow, 380ms) var(--ease, ease) both; }
 @keyframes ripen-in {
   from { transform: scaleX(0); transform-origin: left; opacity: 0; }
   to { transform: scaleX(1); opacity: 1; }

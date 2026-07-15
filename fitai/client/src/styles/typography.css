@@ -1,77 +1,111 @@
-/* "Ambrosia" typography — expressive, playful, unmistakably premium.
+/* FitAI typography — an editorial technology voice.
 
-   Fraunces  — an old-style display serif with SOFT and WONK axes. This is
-               the whole personality: SOFT rounds the terminals until the
-               letters read like poured sugar, WONK cants the ear and flares
-               the leg so the face is *characterful*, not corporate. Both
-               axes are pushed hard here — at hero sizes the wonk is fully
-               on. No other serif on Google Fonts does this.
-   Karla     — a grotesque with warm, slightly odd terminals. Neutral enough
-               to read for hours, particular enough that it never reads as
-               the default sans. Body, UI, controls.
-   Space Mono— the label voice: eyebrows, measurements, plate numbers.
-               Quirky and slab-ish; it keeps the small type from going quiet.
+   THE PAIRING
+   Fraunces   — display only. Set with SOFT near zero and WONK OFF, it stops
+                being a novelty face and becomes what it actually is: a
+                well-drawn old-style serif with real optical sizing. The
+                previous system ran it at SOFT 100 / WONK 1 — poured-sugar
+                terminals and a canted ear — which is precisely why the UI
+                read as childish. Same typeface, adult setting.
+   Geist      — the UI voice. Drawn for interface work: closed apertures,
+                even rhythm, tight default tracking, and figures that hold a
+                column. It replaces Karla, whose quirks (the splayed 'a', the
+                loose fit) read informal at every size.
+   Geist Mono — labels and measurements. Replaces Space Mono, which is a
+                display mono wearing a label's clothes.
 
-   DYNAMIC SCALE — the jump from body (1rem) to hero (up to 6.5rem) is
-   deliberate and enormous. Maximalism needs contrast to read as composed
-   rather than merely loud: big things must be VERY big so the small things
-   can stay calm and legible.                                             */
+   THE RULE
+   Hierarchy is built from SIZE, WEIGHT, and SPACE — never from colour.
+   If a heading needs a pigment to outrank the paragraph under it, the
+   typography has failed and the colour is covering for it.               */
 
 :root {
   --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --font-body: 'Karla', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'Space Mono', ui-monospace, Consolas, monospace;
-  /* the quiet aside — Fraunces italic at a soft optical size */
+  --font-body: 'Geist', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, Consolas, monospace;
+  /* the aside — Fraunces italic, still restrained */
   --font-hand: 'Fraunces', Georgia, serif;
+
+  /* ---- THE TYPE SCALE ----
+     A modular scale, not a pile of ad-hoc rem values. Every size in the
+     app resolves to one of these, which is what makes the page feel
+     measured instead of assembled. */
+  --t-hero: clamp(2.5rem, 4.6vw, 3.9rem);
+  --t-title: clamp(1.9rem, 2.6vw, 2.45rem);
+  --t-h2: 1.45rem;
+  --t-h3: 1.075rem;
+  --t-body: 1rem;
+  --t-small: 0.9rem;
+  --t-tiny: 0.8rem;
+  --t-label: 0.6875rem;
 }
 
 body, .btn, input, select, textarea { font-family: var(--font-body); }
 body {
-  font-size: 16.5px;
+  font-size: 16px;
   line-height: 1.6;
-  letter-spacing: 0.004em;
-  /* Karla's default figures are proportional; measurements want alignment */
+  /* Geist is drawn tight; a hair of negative tracking at body size keeps
+     the colour of the text even without closing up the counters */
+  letter-spacing: -0.006em;
   font-variant-numeric: proportional-nums;
+  font-feature-settings: 'ss01';
 }
 
-/* Display — Fraunces with SOFT and WONK pushed. `opsz` tracks the rendered
-   size so the serif thins correctly as it grows. */
+/* ---- Display: Fraunces, adult setting ----
+   SOFT low, WONK off, weight in the 400–500 range. `opsz` tracks the
+   rendered size so the serifs thin correctly as the type grows. */
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  font-variation-settings: 'SOFT' 70, 'WONK' 1, 'opsz' 40;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+  font-variation-settings: 'SOFT' 12, 'WONK' 0, 'opsz' 40;
 }
 h1 {
-  font-weight: 700;
-  letter-spacing: -0.038em;
-  font-variation-settings: 'SOFT' 90, 'WONK' 1, 'opsz' 144;
+  font-size: var(--t-title);
+  font-weight: 450;
+  letter-spacing: -0.026em;
+  line-height: 1.1;
+  font-variation-settings: 'SOFT' 8, 'WONK' 0, 'opsz' 96;
 }
-h2 { font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 60; }
-/* Below ~20px the wonk turns to mush — keep the softness, drop the wonk. */
-h3, h4 { font-variation-settings: 'SOFT' 60, 'WONK' 0, 'opsz' 28; }
+h2 {
+  font-size: var(--t-h2);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variation-settings: 'SOFT' 10, 'WONK' 0, 'opsz' 48;
+}
+/* Small display sizes want a touch more weight to hold their own against
+   Geist's even colour, and a lower opsz so the serifs stay sturdy. */
+h3, h4 {
+  font-size: var(--t-h3);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  font-variation-settings: 'SOFT' 14, 'WONK' 0, 'opsz' 18;
+}
 
-/* The aside: Fraunces italic, very soft — the product's playful voice. */
+/* The aside — a margin note, not a flourish. */
 .font-accent {
   font-family: var(--font-hand);
   font-style: italic;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0;
-  font-variation-settings: 'SOFT' 90, 'WONK' 1, 'opsz' 14;
+  font-variation-settings: 'SOFT' 20, 'WONK' 0, 'opsz' 14;
 }
 
-/* The label voice — eyebrows, form labels, footers. Berry ink keeps the
-   small type part of the world instead of dropping it to grey. */
+/* ---- The label voice ----
+   Geist Mono, small, widely tracked, and QUIET. Labels sat in berry
+   pigment before; a label is metadata and metadata does not outrank the
+   value it labels. It is grey now, and the hierarchy reads instantly. */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.24em;
+  font-size: var(--t-label);
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--navy);
+  color: var(--faint);
 }
 
 code, kbd, .mono { font-family: var(--font-mono); }
 
-/* Measurements align in a column — the one place figures must be tabular. */
+/* Measurements align in a column — figures in a table must be tabular. */
 .mono, .stat-value, [class*='-value'] { font-variant-numeric: tabular-nums; }
