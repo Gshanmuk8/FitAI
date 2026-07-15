@@ -38,8 +38,8 @@
   /* hairlines, not borders. A 2px rule is a box; a 1px rule at low alpha
      is an edge, and edges are what make a surface look cut rather than
      drawn. */
-  --border: rgba(42, 14, 30, 0.09);
-  --border2: rgba(42, 14, 30, 0.16);
+  --border: rgba(160, 30, 90, 0.1);
+  --border2: rgba(160, 30, 90, 0.18);
 
   /* ---- ink ---- */
   --text: #2a0e1e;
@@ -158,11 +158,11 @@
 :root[data-theme='dark'] {
   --bg0: #1a0716;
   --bg1: #12040f;
-  --surface: #230d1e;
-  --surface2: #1e0a1a;
+  --surface: #2a0f24;
+  --surface2: #200a1b;
   --inkline: #ffeef6;
-  --border: rgba(255, 238, 246, 0.1);
-  --border2: rgba(255, 238, 246, 0.17);
+  --border: rgba(255, 160, 210, 0.11);
+  --border2: rgba(255, 160, 210, 0.2);
 
   --text: #ffeef6;
   --muted: #c79bb4;
@@ -204,10 +204,10 @@
   --mat: var(--sheen);
 
   --tone-emerald-ink: #a9f08a;
-  --tone-amber-ink: #f6ca7d;
-  --tone-red-ink: #ffa98d;
+  --tone-amber-ink: #ffd583;
+  --tone-red-ink: #ff9e7f;
   --tone-cyan-ink: #ffc28a;
-  --tone-lime-ink: #e6ed92;
+  --tone-lime-ink: #e6f58a;
   --tone-blue-ink: #ff9ac4;
 
   --nav-glass: rgba(26, 7, 22, 0.85);
