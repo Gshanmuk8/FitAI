@@ -1,72 +1,84 @@
-/* Ion Bloom motion — fluid, alive: content surfaces like light finding a
-   lens. Transform + opacity only; idle animation only where waiting or
-   presence is real; everything honors prefers-reduced-motion via the
-   global kill in theme.css. */
+/* Ambrosia motion — this world BOUNCES. Things arrive with a little
+   overshoot, the way something soft lands. All motion is transform +
+   opacity only (cheap, compositor-only); the global
+   prefers-reduced-motion kill lives in theme.css. */
 
-.page-enter { animation: rise-in var(--slow, 480ms) var(--ease, ease) both; }
+.page-enter { animation: rise-in var(--slow, 560ms) var(--ease-spring, ease) both; }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
   to { opacity: 1; transform: none; }
 }
 
-/* Panels surface one after another — up to eight, then they arrive together
-   (a longer stagger reads as lag, not choreography). */
-.grid-cards > *, .stat-grid > * { animation: deal-in 460ms var(--ease, ease) both; }
-.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 55ms; }
-.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 110ms; }
-.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 165ms; }
-.grid-cards > *:nth-child(5), .stat-grid > *:nth-child(5) { animation-delay: 220ms; }
-.grid-cards > *:nth-child(6), .stat-grid > *:nth-child(6) { animation-delay: 275ms; }
-.grid-cards > *:nth-child(7), .stat-grid > *:nth-child(7) { animation-delay: 330ms; }
-.grid-cards > *:nth-child(8), .stat-grid > *:nth-child(8) { animation-delay: 385ms; }
+/* Confections are set down one after another, each with a little bounce.
+   Up to eight, then they arrive together — a longer stagger reads as lag,
+   not as choreography. */
+.grid-cards > *, .stat-grid > * { animation: deal-in 560ms var(--ease-spring, ease) both; }
+.grid-cards > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 60ms; }
+.grid-cards > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 120ms; }
+.grid-cards > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 180ms; }
+.grid-cards > *:nth-child(5), .stat-grid > *:nth-child(5) { animation-delay: 240ms; }
+.grid-cards > *:nth-child(6), .stat-grid > *:nth-child(6) { animation-delay: 300ms; }
+.grid-cards > *:nth-child(7), .stat-grid > *:nth-child(7) { animation-delay: 360ms; }
+.grid-cards > *:nth-child(8), .stat-grid > *:nth-child(8) { animation-delay: 420ms; }
 
 @keyframes deal-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.985); }
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
 
-/* Aurora — slow volumetric light: an ultraviolet beam, a plasma pool, a
-   bio-lume undertone, and a magenta whisper, drifting far below anyone's
-   attention. Used by heroes and empty states. */
+/* The orchard light — big, abundant pools of fruit drifting behind the
+   hero. This is the largest colour field in the app and it is meant to be
+   FELT: mango high left, dragonfruit at the shoulder, blood orange low,
+   citron in the corner. It travels the arc (harmony rule 1) and never
+   uses lime, which is reserved for "on track" (rule 3).
+   (Kept under the .aurora name: heroes and empty states reference it.) */
 .aurora {
   position: absolute;
-  inset: -20% -10%;
+  inset: -25% -12%;
   z-index: -1;
   pointer-events: none;
-  filter: blur(70px);
-  opacity: 0.95;
+  filter: blur(72px);
+  opacity: 1;
   background:
-    radial-gradient(42% 46% at 24% 22%, var(--blue-dim), transparent 70%),
-    radial-gradient(36% 40% at 78% 18%, var(--cyan-dim), transparent 70%),
-    radial-gradient(46% 50% at 56% 86%, var(--emerald-dim), transparent 70%),
-    radial-gradient(30% 34% at 8% 74%, var(--atmo-3, transparent), transparent 72%);
+    radial-gradient(42% 46% at 20% 18%, var(--amber-dim), transparent 68%),
+    radial-gradient(38% 42% at 82% 14%, var(--blue-dim), transparent 68%),
+    radial-gradient(46% 50% at 58% 90%, var(--red-dim), transparent 68%),
+    radial-gradient(32% 36% at 4% 78%, var(--cyan-dim), transparent 70%);
   animation: aurora-drift 26s var(--ease-soft, ease) infinite alternate;
 }
 
 @keyframes aurora-drift {
-  from { transform: translate3d(-2.5%, -1.5%, 0) scale(1) rotate(-0.5deg); }
-  to { transform: translate3d(2.5%, 2.5%, 0) scale(1.07) rotate(0.5deg); }
+  from { transform: translate3d(-3%, -2%, 0) scale(1) rotate(-1deg); }
+  to { transform: translate3d(3%, 3%, 0) scale(1.1) rotate(1deg); }
 }
 
-/* Editorial reveal — staggered lines for the hero (used via inline delays). */
-.reveal { animation: reveal-up 640ms var(--ease, ease) both; }
+/* Reveal — staggered lines for the hero (used via inline delays). */
+.reveal { animation: reveal-up 760ms var(--ease-spring, ease) both; }
 @keyframes reveal-up {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(22px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 
-/* A slow float for ornaments that should feel suspended, not parked. */
-.float-slow { animation: float-slow 7s ease-in-out infinite alternate; }
+/* A slow drift for ornaments that should feel suspended, not parked. */
+.float-slow { animation: float-slow 8s ease-in-out infinite alternate; }
 @keyframes float-slow {
   from { transform: translateY(0); }
-  to { transform: translateY(-9px); }
+  to { transform: translateY(-8px); }
 }
 
-/* A soft pulse for elements that are alive and waiting (AI presence dots,
-   live indicators) — breath, not blink. */
-.pulse-live { animation: pulse-live 2.6s var(--ease-soft, ease) infinite; }
+/* Breath for elements that are alive and waiting (the coach thinking, live
+   indicators) — a rest cycle, never a blink. */
+.pulse-live { animation: pulse-live 3s var(--ease-soft, ease) infinite; }
 @keyframes pulse-live {
-  0%, 100% { opacity: 0.55; }
+  0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+
+/* The ripen — a pigment stem drawing itself in. Used where something has
+   just become true (a saved value, a completed item). */
+.ripen-in { animation: ripen-in var(--slow, 520ms) var(--ease, ease) both; }
+@keyframes ripen-in {
+  from { transform: scaleX(0); transform-origin: left; opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
 }

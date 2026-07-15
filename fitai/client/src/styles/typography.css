@@ -1,37 +1,77 @@
-/* "Meridian" typography — a precision-instrument voice.
-   Space Grotesk    — engineered display grotesque with a machined edge:
-                      headlines, numerals, the product's speaking voice.
-   Instrument Sans  — calm, wide-aperture sans for reading and UI; its true
-                      italic carries the quiet asides the old hand once did.
-   JetBrains Mono   — instrument labels: eyebrows, dates, measurements.   */
+/* "Ambrosia" typography — expressive, playful, unmistakably premium.
+
+   Fraunces  — an old-style display serif with SOFT and WONK axes. This is
+               the whole personality: SOFT rounds the terminals until the
+               letters read like poured sugar, WONK cants the ear and flares
+               the leg so the face is *characterful*, not corporate. Both
+               axes are pushed hard here — at hero sizes the wonk is fully
+               on. No other serif on Google Fonts does this.
+   Karla     — a grotesque with warm, slightly odd terminals. Neutral enough
+               to read for hours, particular enough that it never reads as
+               the default sans. Body, UI, controls.
+   Space Mono— the label voice: eyebrows, measurements, plate numbers.
+               Quirky and slab-ish; it keeps the small type from going quiet.
+
+   DYNAMIC SCALE — the jump from body (1rem) to hero (up to 6.5rem) is
+   deliberate and enormous. Maximalism needs contrast to read as composed
+   rather than merely loud: big things must be VERY big so the small things
+   can stay calm and legible.                                             */
 
 :root {
-  --font-display: 'Space Grotesk', 'Segoe UI', 'Helvetica Neue', sans-serif;
-  --font-body: 'Instrument Sans', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  --font-hand: 'Instrument Sans', 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Karla', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, Consolas, monospace;
+  /* the quiet aside — Fraunces italic at a soft optical size */
+  --font-hand: 'Fraunces', Georgia, serif;
 }
 
 body, .btn, input, select, textarea { font-family: var(--font-body); }
-body { font-size: 16px; letter-spacing: 0.002em; }
+body {
+  font-size: 16.5px;
+  line-height: 1.6;
+  letter-spacing: 0.004em;
+  /* Karla's default figures are proportional; measurements want alignment */
+  font-variant-numeric: proportional-nums;
+}
 
+/* Display — Fraunces with SOFT and WONK pushed. `opsz` tracks the rendered
+   size so the serif thins correctly as it grows. */
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variation-settings: 'SOFT' 70, 'WONK' 1, 'opsz' 40;
 }
-h1 { font-weight: 700; letter-spacing: -0.035em; }
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.038em;
+  font-variation-settings: 'SOFT' 90, 'WONK' 1, 'opsz' 144;
+}
+h2 { font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 60; }
+/* Below ~20px the wonk turns to mush — keep the softness, drop the wonk. */
+h3, h4 { font-variation-settings: 'SOFT' 60, 'WONK' 0, 'opsz' 28; }
 
-.font-accent { font-family: var(--font-hand); font-style: italic; font-weight: 500; letter-spacing: 0; }
+/* The aside: Fraunces italic, very soft — the product's playful voice. */
+.font-accent {
+  font-family: var(--font-hand);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-variation-settings: 'SOFT' 90, 'WONK' 1, 'opsz' 14;
+}
 
-/* Instrument label — eyebrows, form labels, footers. */
+/* The label voice — eyebrows, form labels, footers. Berry ink keeps the
+   small type part of the world instead of dropping it to grey. */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  font-weight: 500;
-  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--navy);
 }
 
 code, kbd, .mono { font-family: var(--font-mono); }
+
+/* Measurements align in a column — the one place figures must be tabular. */
+.mono, .stat-value, [class*='-value'] { font-variant-numeric: tabular-nums; }
