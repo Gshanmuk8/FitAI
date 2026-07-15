@@ -1,101 +1,166 @@
-/* FitAI "Ion Bloom" — a bioluminescent instrument from somewhere else.
-   Deep-space violet dark by night, pearl iridescence by day; every living
-   element emits its own light instead of borrowing a shadow.
+/* FitAI "Ambrosia" — the food of the gods, served in a laboratory.
+   A futuristic luxury confectionery: jewel-bright fruit, glossy layered
+   surfaces, organic forms, and light that behaves like sugar glass.
 
-   Anchors:   ultraviolet (interactive) · bio-lume green (success)
-   Grounds:   void violet-black / nebula glass · pearl white / opal mist
-   Court:     plasma cyan (AI presence) · solar amber (attention)
-              ember red (risk) · citron (energy) · steel (quiet emphasis)
+   THE IDEA — ripeness, but abundant. Colour is not rationed here; it is
+   ARRANGED. Maximalism fails when it is random, so this system spends
+   colour freely under three hard rules that make abundance read as design:
+
+   ┌ HARMONY RULE 1 — THE ARC ────────────────────────────────────────────┐
+   │ Every pigment lives on one warm arc, in this order:                  │
+   │   mango → citrus → blood orange → dragonfruit → berry                │
+   │ A gradient may only travel ADJACENT stops on the arc. mango→citrus   │
+   │ yes; mango→berry no. This is why the gradients feel like fruit and   │
+   │ not like a rainbow: nature ripens along the arc, it doesn't skip.    │
+   │ The single exception is --grad-spectrum, licensed to the hero alone. │
+   └──────────────────────────────────────────────────────────────────────┘
+   ┌ HARMONY RULE 2 — TWO, NOT FIVE ──────────────────────────────────────┐
+   │ Any one surface carries at most TWO pigments. The hero may carry     │
+   │ three. Abundance comes from many surfaces each being bold — never    │
+   │ from one surface being busy.                                         │
+   └──────────────────────────────────────────────────────────────────────┘
+   ┌ HARMONY RULE 3 — LIME IS NEVER DECORATION ───────────────────────────┐
+   │ Lime/pistachio is the one cool note and it is RESERVED: it means     │
+   │ "on track" and nothing else. It never appears in a decorative        │
+   │ gradient. In a palette this loud, the only way a status colour can   │
+   │ still be read as a status is if it is never spent on ornament.       │
+   └──────────────────────────────────────────────────────────────────────┘
 
    Class and variable NAMES are the stable API — the entire app reskins
-   from this file. One color, one meaning (legacy token names kept):
-     --blue    = interactive ultraviolet   --cyan  = AI presence plasma
-     --emerald = on-track bio-lume         --amber = attention/behind
-     --red     = risk/ember                --lime  = streaks/citron energy
-     --gold-*  = the CTA plasma ramp (name kept from the gold era)        */
+   from this file. One colour, one meaning (legacy token names kept so no
+   component ever references a raw hex):
+     --blue    = dragonfruit, interactive   --cyan  = citrus, the coach
+     --emerald = lime, on track             --amber = mango, behind
+     --red     = blood orange, at risk      --lime  = citron, streaks
+     --navy    = berry, quiet emphasis
+     --gold-*  = the CTA nectar ramp (name kept from the gold era)        */
 
 :root {
-  /* pearl daylight grounds */
-  --bg0: #f4f3fa;         /* opal field */
-  --bg1: #eae8f4;         /* mist well */
-  --surface: #ffffff;     /* pearl panel */
-  --surface2: #f2f0fa;    /* frost inset */
-  --inkline: #1a1730;     /* void line */
-  --border: rgba(38, 28, 92, 0.1);
-  --border2: rgba(38, 28, 92, 0.2);
+  /* ---- grounds: sorbet, not paper. The ground itself is confection. ---- */
+  --bg0: #fff4ec;         /* mango sorbet */
+  --bg1: #ffe6d8;         /* deeper sorbet */
+  --surface: #ffffff;     /* sugar glass — plates gleam against the ground */
+  --surface2: #fff1e7;
+  --inkline: #2a0e1e;
+  --border: rgba(160, 30, 90, 0.14);
+  --border2: rgba(160, 30, 90, 0.28);
 
-  /* ink */
-  --text: #171429;        /* void ink */
-  --muted: #59547a;
-  --faint: #8d88ab;
+  /* ---- ink: berry-black. Never neutral grey — grey is the death of this. */
+  --text: #2a0e1e;
+  --muted: #7a4a5e;
+  --faint: #b08497;
 
-  /* pigments (legacy names kept as stable API) */
-  --blue: #6d3ef2;        /* ultraviolet — interactive anchor */
-  --cyan: #0797b9;        /* plasma — AI presence */
-  --emerald: #0e9f6e;     /* bio-lume — success anchor */
-  --lime: #71a412;        /* citron — streaks/energy */
-  --amber: #d97706;       /* solar amber — attention/behind */
-  --red: #dc2643;         /* ember — risk */
-  --navy: #55597c;        /* steel — quiet emphasis */
+  /* ---- the arc: mango → citrus → blood orange → dragonfruit → berry ---- */
+  --amber: #f5a300;       /* exotic mango gold — attention, behind */
+  --cyan: #f26b00;        /* tropical citrus — the coach's voice */
+  --red: #e8340d;         /* blood orange — at risk */
+  --blue: #e0126a;        /* dragon fruit — interactive anchor */
+  --navy: #8e2a6b;        /* rare berry — quiet emphasis */
+  --emerald: #46b82e;     /* lime — on track (RESERVED, see rule 3) */
+  --lime: #a8cc1b;        /* citron — streaks, energy */
 
-  /* plasma ramp — the CTA, both modes (legacy gold names kept) */
-  --gold-hi: #9d6bff;
-  --gold: #7a3ff2;
-  --gold-deep: #5b21c8;
+  /* the CTA nectar ramp: mango falling through blood orange into dragonfruit */
+  --gold-hi: #ffa51f;
+  --gold: #ff4e27;
+  --gold-deep: #e0126a;
   --on-gold: #ffffff;
 
-  /* rare-color washes */
-  --blue-dim: rgba(109, 62, 242, 0.12);
-  --cyan-dim: rgba(7, 151, 185, 0.11);
-  --emerald-dim: rgba(14, 159, 110, 0.11);
-  --amber-dim: rgba(217, 119, 6, 0.12);
-  --red-dim: rgba(220, 38, 67, 0.1);
-  --lime-dim: rgba(113, 164, 18, 0.12);
-  --seafoam: rgba(7, 151, 185, 0.07);
-  --eucalyptus: rgba(14, 159, 110, 0.06);
+  /* ---- THE GRADIENT SYSTEM — each one travels the arc, adjacent only ---- */
+  --grad-sunrise: linear-gradient(135deg, #ffc542, var(--amber) 45%, var(--cyan));
+  --grad-sunset: linear-gradient(135deg, var(--cyan), var(--red) 55%, var(--blue));
+  --grad-bloom: linear-gradient(135deg, var(--blue), var(--navy));
+  --grad-nectar: linear-gradient(135deg, var(--gold-hi), var(--gold) 48%, var(--gold-deep));
+  /* licensed to the hero alone — the whole arc, once, as a treat */
+  --grad-spectrum: linear-gradient(115deg, var(--amber), var(--cyan) 28%, var(--red) 52%, var(--blue) 76%, var(--navy));
 
-  /* atmosphere — the page's ambient light pools (pearl iridescence) */
-  --atmo-1: rgba(122, 63, 242, 0.1);
-  --atmo-2: rgba(7, 151, 185, 0.08);
-  --atmo-3: rgba(236, 72, 153, 0.05);   /* a magenta whisper at the edge */
+  /* ---- THE ORB RAMPS — harmony rule 1 applied to ornament ----
+     An orb must sit ADJACENT TO THE GROUND IT LIES ON. On this light
+     sorbet ground the arc runs from its mango end, and a row of tiles
+     ripens through these four in order. The dark block re-pitches all
+     four toward the berry end for a reason worth reading. */
+  --orb-1: linear-gradient(135deg, #ffc542, var(--amber));
+  --orb-2: linear-gradient(135deg, var(--amber), var(--cyan));
+  --orb-3: linear-gradient(135deg, var(--cyan), var(--red));
+  --orb-4: linear-gradient(135deg, var(--red), var(--blue));
+  --orb-default: var(--orb-1);
 
-  /* gradient ink — display type is lit, not printed */
-  --ink-grad-a: #3b1d99;
-  --ink-grad-b: #0e7490;
+  /* washes — a pigment dissolved into sugar */
+  --blue-dim: rgba(224, 18, 106, 0.12);
+  --cyan-dim: rgba(242, 107, 0, 0.13);
+  --emerald-dim: rgba(70, 184, 46, 0.14);
+  --amber-dim: rgba(245, 163, 0, 0.16);
+  --red-dim: rgba(232, 52, 13, 0.12);
+  --lime-dim: rgba(168, 204, 27, 0.16);
+  --seafoam: rgba(242, 107, 0, 0.09);
 
-  /* shape */
-  --r-sm: 8px;
-  --r-md: 13px;
-  --r-lg: 20px;
+  /* atmosphere — the candy world's ambient light, generous */
+  --atmo-1: rgba(245, 163, 0, 0.22);
+  --atmo-2: rgba(224, 18, 106, 0.16);
+  --atmo-3: rgba(232, 52, 13, 0.13);
+
+  --ink-grad-a: #e0126a;
+  --ink-grad-b: #f26b00;
+
+  /* ---- shape: organic. Nothing here has a corner you'd call square. ---- */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 26px;
+  --r-xl: 36px;
   --r-pill: 999px;
+  /* the blob — an organic asymmetric form for ornaments and empty states */
+  --r-blob: 62% 38% 54% 46% / 48% 56% 44% 52%;
 
-  /* layered elevation — a violet key light + wide ambient */
-  --shadow-1: 0 1px 2px rgba(30, 20, 70, 0.06), 0 10px 28px -14px rgba(30, 20, 70, 0.16);
-  --shadow-2: 0 2px 4px rgba(30, 20, 70, 0.07), 0 18px 44px -16px rgba(30, 20, 70, 0.22);
-  --shadow-lift: 0 2px 6px rgba(30, 20, 70, 0.07), 0 26px 52px -16px rgba(91, 33, 200, 0.28);
+  /* ---- spacing scale ---- */
+  --s1: 0.5rem;
+  --s2: 0.75rem;
+  --s3: 1rem;
+  --s4: 1.5rem;
+  --s5: 2rem;
+  --s6: 3rem;
+  --s7: 4.5rem;
+  --s8: 7rem;
 
-  /* motion — fluid, alive */
-  --fast: 140ms;
-  --normal: 260ms;
-  --slow: 480ms;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-soft: cubic-bezier(0.3, 0.9, 0.35, 1);
+  /* ---- soft 3D depth — every shadow is TINTED. A grey shadow under a
+     candy surface is the single thing that would make this look cheap:
+     real light bouncing off saturated colour picks the colour up. ---- */
+  --shadow-1: 0 2px 4px rgba(120, 20, 70, 0.05), 0 10px 24px -8px rgba(120, 20, 70, 0.14);
+  --shadow-2: 0 3px 8px rgba(120, 20, 70, 0.07), 0 20px 44px -12px rgba(120, 20, 70, 0.2);
+  --shadow-lift: 0 4px 10px rgba(120, 20, 70, 0.08), 0 32px 64px -16px rgba(224, 18, 106, 0.34);
+  /* the gloss: a sugar-glass highlight on top, a colour bounce underneath */
+  --gloss: inset 0 2px 0 rgba(255, 255, 255, 0.85), inset 0 -3px 0 rgba(160, 30, 90, 0.05);
+  --mat: var(--gloss);
 
-  /* strong tone inks (chips, tone text) — one token per hue, both modes */
-  --tone-emerald-ink: #0b6e4e;
-  --tone-amber-ink: #92500a;
-  --tone-red-ink: #b91c35;
-  --tone-cyan-ink: #0e7490;
-  --tone-lime-ink: #4d7c0f;
-  --tone-blue-ink: #5527c9;
+  /* ---- motion — springy. This world bounces. ---- */
+  --fast: 160ms;
+  --normal: 300ms;
+  --slow: 560ms;
+  --ease: cubic-bezier(0.34, 1.4, 0.5, 1);
+  --ease-spring: cubic-bezier(0.34, 1.7, 0.5, 1);
+  --ease-soft: cubic-bezier(0.35, 0.85, 0.4, 1);
 
-  /* glass + glow */
-  --nav-glass: rgba(255, 255, 255, 0.66);
-  --card-glass: rgba(255, 255, 255, 0.86);
-  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  --glow-ai: 0 0 26px -8px rgba(7, 151, 185, 0.35);
-  --glow-cta: 0 12px 34px -10px rgba(109, 62, 242, 0.55);
-  --ring-grad: linear-gradient(135deg, rgba(109, 62, 242, 0.5), rgba(7, 151, 185, 0.35), rgba(236, 72, 153, 0.3));
+  /* strong tone inks — darkened until they hold against a bright ground */
+  --tone-emerald-ink: #2c7a1c;
+  --tone-amber-ink: #9a5d00;
+  --tone-red-ink: #b32409;
+  --tone-cyan-ink: #a34700;
+  --tone-lime-ink: #5f7a0a;
+  --tone-blue-ink: #b00b54;
+
+  --nav-glass: rgba(255, 244, 236, 0.78);
+  --glow-cta: 0 12px 32px -8px rgba(224, 18, 106, 0.5);
+  --glow-ai: 0 0 30px -6px rgba(242, 107, 0, 0.35);
+  /* How a surface's fruit orb blooms. On a light ground the orb simply
+     tints the white — normal blending is correct. See the dark block for
+     why the blend mode has to change there. */
+  --orb-opacity: 0.22;
+  --orb-blend: normal;
+
+  /* sugar grain — fine noise so the saturated fields read as material
+     (frosted sugar) rather than as flat vector fills. Subtle by design:
+     the richness here comes from colour and depth, not from visible noise. */
+  --grain-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E");
+  --grain-opacity: 0.05;
+  --grain-blend: multiply;
 
   /* older aliases */
   --slate: var(--muted);
@@ -106,78 +171,103 @@
   color-scheme: light;
 }
 
-/* ---------- dark mode — "The Bloom" ----------
-   The instrument's true habitat: void violet-black, ultraviolet turned
-   luminous, plasma cyan breathing like a readout, panels of nebula glass.
-   Every token adapts; no component references a raw color. */
+/* ---------- dark mode — "The Night Kitchen" ----------
+   Not a void and not a dashboard: a confectioner's laboratory after dark.
+   The blacks are berry and cacao — saturated all the way down — and the
+   fruit turns luminous, lit from inside like sugar glass over a lamp. */
 :root[data-theme='dark'] {
-  --bg0: #0a0813;
-  --bg1: #06050d;
-  --surface: #131022;
-  --surface2: #0e0c1b;
-  --inkline: #eae7fb;
-  --border: rgba(190, 180, 255, 0.11);
-  --border2: rgba(190, 180, 255, 0.22);
+  --bg0: #1a0716;
+  --bg1: #12040f;
+  --surface: #2a0f24;
+  --surface2: #200a1b;
+  --inkline: #ffeef6;
+  --border: rgba(255, 160, 210, 0.16);
+  --border2: rgba(255, 160, 210, 0.3);
 
-  --text: #ecebfb;
-  --muted: #a9a5c9;
-  --faint: #6c688e;
+  --text: #ffeef6;
+  --muted: #c79bb4;
+  --faint: #8a5e77;
 
-  --blue: #a48dff;
-  --cyan: #3fd9f0;
-  --emerald: #35e0a1;
-  --lime: #b1ec3a;
-  --amber: #f5a524;
-  --red: #fb7185;
-  --navy: #93a0c8;
+  --amber: #ffbe3d;
+  --cyan: #ff9a3d;
+  --red: #ff6a45;
+  --blue: #ff4d96;
+  --navy: #d96bb0;
+  --emerald: #7fe05a;
+  --lime: #d7ee4a;
 
-  --gold-hi: #c1a5ff;
-  --gold: #9165ff;
-  --gold-deep: #6c34e8;
-  --on-gold: #ffffff;
+  --gold-hi: #ffc25c;
+  --gold: #ff6a45;
+  --gold-deep: #ff2e86;
+  --on-gold: #2a0715;
 
-  --blue-dim: rgba(164, 141, 255, 0.15);
-  --cyan-dim: rgba(63, 217, 240, 0.13);
-  --emerald-dim: rgba(53, 224, 161, 0.13);
-  --amber-dim: rgba(245, 165, 36, 0.13);
-  --red-dim: rgba(251, 113, 133, 0.14);
-  --lime-dim: rgba(177, 236, 58, 0.11);
-  --seafoam: rgba(63, 217, 240, 0.07);
-  --eucalyptus: rgba(53, 224, 161, 0.06);
+  --grad-sunrise: linear-gradient(135deg, #ffd977, var(--amber) 45%, var(--cyan));
+  --grad-sunset: linear-gradient(135deg, var(--cyan), var(--red) 55%, var(--blue));
+  --grad-bloom: linear-gradient(135deg, var(--blue), var(--navy));
+  --grad-nectar: linear-gradient(135deg, var(--gold-hi), var(--gold) 48%, var(--gold-deep));
+  --grad-spectrum: linear-gradient(115deg, var(--amber), var(--cyan) 28%, var(--red) 52%, var(--blue) 76%, var(--navy));
 
-  --atmo-1: rgba(124, 82, 255, 0.17);
-  --atmo-2: rgba(63, 217, 240, 0.08);
-  --atmo-3: rgba(236, 72, 153, 0.08);
+  /* ---- THE ORB RAMPS, re-pitched for a berry ground ----
+     This is harmony rule 1 doing real work rather than decorating a
+     comment. The dark surface IS berry — the far end of the arc — so a
+     mango orb laid on it is a near-complementary mix, and yellow over
+     purple desaturates straight into brown. No opacity or blend mode
+     rescues it; it is colour theory, not a bug. So on this ground the
+     ornament shifts to the arc stops ADJACENT to berry: citrus through
+     dragonfruit. Mango keeps its semantic job (attention/behind) in
+     chips and text, where it sits on small, high-contrast elements and
+     never as a large field over plum. */
+  --orb-1: linear-gradient(135deg, var(--cyan), var(--red));
+  --orb-2: linear-gradient(135deg, var(--red), var(--blue));
+  --orb-3: linear-gradient(135deg, var(--blue), var(--navy));
+  --orb-4: linear-gradient(135deg, var(--red), var(--blue));
+  --orb-default: var(--orb-2);
 
-  --ink-grad-a: #cdb9ff;
-  --ink-grad-b: #6fe6f5;
+  --blue-dim: rgba(255, 77, 150, 0.18);
+  --cyan-dim: rgba(255, 154, 61, 0.16);
+  --emerald-dim: rgba(127, 224, 90, 0.16);
+  --amber-dim: rgba(255, 190, 61, 0.16);
+  --red-dim: rgba(255, 106, 69, 0.16);
+  --lime-dim: rgba(215, 238, 74, 0.14);
+  --seafoam: rgba(255, 154, 61, 0.1);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px -14px rgba(0, 0, 0, 0.6);
-  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 22px 52px -16px rgba(0, 0, 0, 0.7);
-  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 26px 60px -16px rgba(108, 52, 232, 0.4);
+  --atmo-1: rgba(255, 190, 61, 0.16);
+  --atmo-2: rgba(255, 77, 150, 0.18);
+  --atmo-3: rgba(255, 106, 69, 0.12);
 
-  --tone-emerald-ink: #7df0c3;
-  --tone-amber-ink: #f7c476;
-  --tone-red-ink: #fda4b0;
-  --tone-cyan-ink: #79e7f5;
-  --tone-lime-ink: #d7f58a;
-  --tone-blue-ink: #c3b2ff;
+  --ink-grad-a: #ff8ec0;
+  --ink-grad-b: #ffc25c;
 
-  --nav-glass: rgba(14, 12, 26, 0.6);
-  --card-glass: rgba(19, 16, 34, 0.72);
-  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --glow-ai: 0 0 34px -6px rgba(63, 217, 240, 0.35);
-  --glow-cta: 0 14px 40px -10px rgba(145, 101, 255, 0.6);
-  --ring-grad: linear-gradient(135deg, rgba(164, 141, 255, 0.55), rgba(63, 217, 240, 0.4), rgba(236, 72, 153, 0.35));
+  --shadow-1: 0 2px 4px rgba(0, 0, 0, 0.4), 0 10px 26px -8px rgba(0, 0, 0, 0.55);
+  --shadow-2: 0 3px 8px rgba(0, 0, 0, 0.45), 0 22px 48px -12px rgba(0, 0, 0, 0.65);
+  --shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.5), 0 34px 68px -16px rgba(255, 46, 134, 0.4);
+  --gloss: inset 0 2px 0 rgba(255, 255, 255, 0.1), inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+  --mat: var(--gloss);
+
+  --tone-emerald-ink: #a9f08a;
+  --tone-amber-ink: #ffd583;
+  --tone-red-ink: #ff9e7f;
+  --tone-cyan-ink: #ffc28a;
+  --tone-lime-ink: #e6f58a;
+  --tone-blue-ink: #ff9ac4;
+
+  --nav-glass: rgba(26, 7, 22, 0.76);
+  --glow-cta: 0 14px 36px -8px rgba(255, 46, 134, 0.55);
+  --glow-ai: 0 0 34px -6px rgba(255, 154, 61, 0.4);
+  /* Dark MUST screen. Mango over plum at any opacity in normal blending
+     multiplies down into brown mud — the orb reads as a dirty smudge on
+     the corner of every card. Screening makes it ADD light instead, which
+     is what a bloom physically is: the fruit lit from inside. */
+  --orb-opacity: 0.34;
+  --orb-blend: screen;
+
+  --grain-opacity: 0.06;
+  --grain-blend: overlay;
 
   color-scheme: dark;
 }
 
-/* ---------- theme transition — the switch itself is the show ----------
-   The toggle stamps .theme-morph on <html> for the duration of the swap:
-   every color-bearing property crossfades in sync, then the class comes
-   off so normal interactions stay snappy. Paired with the View Transitions
-   crossfade where the browser supports it. */
+/* ---------- theme transition ---------- */
 html.theme-morph,
 html.theme-morph *,
 html.theme-morph *::before,
@@ -192,15 +282,18 @@ html.theme-morph *::after {
 }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 500ms; }
 
-/* ---------- base — the habitat ---------- */
+/* ---------- base — the candy world ---------- */
 * { box-sizing: border-box; }
 html { background: var(--bg0); }
 body {
   margin: 0;
+  /* four ambient pools of fruit light. This is the "abundance" the whole
+     identity rests on — the page is never a flat colour anywhere. */
   background:
-    radial-gradient(1200px 560px at 50% -16%, var(--atmo-1), transparent 62%),
-    radial-gradient(900px 460px at 100% -6%, var(--atmo-2), transparent 58%),
-    radial-gradient(760px 420px at -8% 30%, var(--atmo-3), transparent 60%),
+    radial-gradient(1200px 640px at 12% -12%, var(--atmo-1), transparent 62%),
+    radial-gradient(1000px 560px at 96% -6%, var(--atmo-2), transparent 60%),
+    radial-gradient(900px 620px at 50% 108%, var(--atmo-3), transparent 62%),
+    radial-gradient(700px 480px at -10% 62%, var(--blue-dim), transparent 64%),
     var(--bg0);
   background-attachment: fixed;
   color: var(--text);
@@ -209,441 +302,487 @@ body {
   min-height: 100vh;
 }
 
-/* The starfield: a fixed veil of pinprick lights, dark mode only — the one
-   ornament that never asks for attention but makes the void feel inhabited. */
-:root[data-theme='dark'] body::before {
+/* sugar grain over everything — material, not noise */
+body::before {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 9999;
   pointer-events: none;
-  background-image:
-    radial-gradient(1px 1px at 22% 18%, rgba(255, 255, 255, 0.5), transparent 100%),
-    radial-gradient(1px 1px at 68% 8%, rgba(190, 180, 255, 0.5), transparent 100%),
-    radial-gradient(1.5px 1.5px at 84% 32%, rgba(255, 255, 255, 0.35), transparent 100%),
-    radial-gradient(1px 1px at 8% 56%, rgba(63, 217, 240, 0.4), transparent 100%),
-    radial-gradient(1px 1px at 45% 42%, rgba(255, 255, 255, 0.3), transparent 100%),
-    radial-gradient(1.5px 1.5px at 92% 74%, rgba(190, 180, 255, 0.35), transparent 100%),
-    radial-gradient(1px 1px at 33% 84%, rgba(255, 255, 255, 0.28), transparent 100%),
-    radial-gradient(1px 1px at 60% 66%, rgba(63, 217, 240, 0.3), transparent 100%);
-  background-size: 720px 720px;
+  background-image: var(--grain-url);
   background-repeat: repeat;
-  animation: star-drift 240s linear infinite;
-}
-@keyframes star-drift {
-  from { background-position: 0 0; }
-  to { background-position: -720px 720px; }
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
 }
 
-a { color: var(--blue); text-decoration: none; font-weight: 600; }
-a:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
-::selection { background: var(--blue-dim); }
+a { color: var(--blue); text-decoration: none; font-weight: 700; }
 
-h1, h2, h3, h4 { line-height: 1.12; margin: 0 0 0.5rem; }
-p { line-height: 1.65; }
+/* The growing underline belongs to CONTENT links only — a link set in a
+   sentence. It must never be applied to `a` globally: buttons and cards are
+   anchors too, and painting a background-image on them collapses their own
+   background (a `.btn` gradient becomes a 1px line the moment `a:hover`
+   outranks it). Scope the ornament to where it means "this is a link in
+   text", and chrome keeps its own styling. */
+.prose a,
+p > a,
+li > a,
+.hint a,
+.site-footer-links a {
+  background-image: var(--grad-sunset);
+  background-size: 0% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--normal) var(--ease), color var(--fast) var(--ease);
+}
+.prose a:hover,
+p > a:hover,
+li > a:hover,
+.hint a:hover,
+.site-footer-links a:hover { background-size: 100% 2px; }
+::selection { background: var(--amber); color: var(--text); }
+
+h1, h2, h3, h4 { line-height: 1.08; margin: 0 0 var(--s2); }
+p { line-height: 1.68; }
 
 :focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
   border-radius: var(--r-sm);
 }
 
-/* instrument scrollbar — a lit filament, not a gutter */
-::-webkit-scrollbar { width: 10px; height: 10px; }
+/* scrollbar — a stick of candy */
+::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold-deep));
+  background: var(--grad-nectar);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: content-box;
-  opacity: 0.7;
 }
-::-webkit-scrollbar-thumb:hover { border-width: 2px; }
 
-/* ---------- forms — lit fields ---------- */
+/* ---------- forms — pillows of sugar glass ---------- */
 input, select, textarea {
   background: var(--surface);
   color: var(--text);
-  border: 1px solid var(--border2);
+  border: 2px solid var(--border);
   border-radius: var(--r-md);
-  padding: 0.55rem 0.9rem;
+  padding: 0.7rem 1rem;
   font: inherit;
-  min-height: 44px;
-  box-shadow: inset 0 1px 2px rgba(20, 14, 50, 0.05);
-  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), background var(--fast) var(--ease);
+  min-height: 48px;
+  box-shadow: var(--gloss);
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease);
 }
 :root[data-theme='dark'] input,
 :root[data-theme='dark'] select,
 :root[data-theme='dark'] textarea { background: var(--surface2); }
-input::placeholder { color: var(--faint); }
+input::placeholder, textarea::placeholder { color: var(--faint); }
+input:hover, select:hover, textarea:hover { border-color: var(--border2); }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--blue);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--blue-dim), 0 0 18px -6px var(--blue-dim);
+  box-shadow: var(--gloss), 0 0 0 4px var(--blue-dim), 0 8px 22px -10px var(--blue);
 }
+
+/* the checkbox is a fruit that ripens — it pops when it lands */
 input[type='checkbox'] {
   appearance: none;
   min-height: 0;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  border-radius: 7px;
-  border: 1.5px solid var(--border2);
+  border-radius: 9px;
+  border: 2px solid var(--border2);
   background: var(--surface);
   box-shadow: none;
   cursor: pointer;
   position: relative;
   flex: none;
   vertical-align: middle;
-  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease-spring), box-shadow var(--fast) var(--ease);
 }
-input[type='checkbox']:hover { border-color: var(--emerald); box-shadow: 0 0 12px -4px var(--emerald-dim); }
+input[type='checkbox']:hover { border-color: var(--emerald); transform: scale(1.08) rotate(-4deg); }
 input[type='checkbox']:checked {
-  background: var(--emerald);
+  background: linear-gradient(135deg, var(--lime), var(--emerald));
   border-color: var(--emerald);
-  box-shadow: 0 0 0 3px var(--emerald-dim), 0 0 16px -2px var(--emerald-dim);
-  animation: check-pop var(--fast) var(--ease);
+  box-shadow: 0 0 0 4px var(--emerald-dim), 0 6px 16px -6px var(--emerald);
+  animation: check-pop 420ms var(--ease-spring);
 }
 input[type='checkbox']:checked::after {
   content: '';
   position: absolute;
-  left: 7px; top: 3px;
-  width: 5px; height: 10px;
-  border: solid var(--surface);
-  border-width: 0 2.5px 2.5px 0;
+  left: 9px; top: 4px;
+  width: 6px; height: 12px;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
   transform: rotate(45deg);
 }
-:root[data-theme='dark'] input[type='checkbox']:checked::after { border-color: #06130c; }
-input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; border: 1.5px dashed var(--border2); box-shadow: none; }
-@keyframes check-pop { 0% { transform: scale(1); } 55% { transform: scale(1.18); } 100% { transform: scale(1); } }
+:root[data-theme='dark'] input[type='checkbox']:checked::after { border-color: #12290a; }
+input[type='file'] { min-height: 0; padding: var(--s2); background: transparent; border: 2px dashed var(--border2); box-shadow: none; }
+@keyframes check-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.32) rotate(6deg); }
+  70% { transform: scale(0.94) rotate(-2deg); }
+  100% { transform: scale(1); }
+}
 
 .label {
   display: block;
   font-family: var(--font-mono);
   font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--muted);
-  margin: 1rem 0 0.35rem;
+  color: var(--navy);
+  margin: var(--s4) 0 var(--s1);
 }
-.field { width: 100%; margin-bottom: 0.4rem; }
-.hint { font-family: var(--font-hand); font-style: italic; font-size: 0.9rem; color: var(--muted); margin: 0.3rem 0 0; }
-.error-text { color: var(--tone-red-ink); font-size: 0.88rem; font-weight: 600; }
-.success-text { color: var(--tone-emerald-ink); font-size: 0.88rem; font-weight: 600; }
+.field { width: 100%; margin-bottom: var(--s1); }
+.hint { font-family: var(--font-hand); font-style: italic; font-size: 0.98rem; color: var(--muted); margin: 0.4rem 0 0; font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 14; }
+.error-text { color: var(--tone-red-ink); font-size: 0.9rem; font-weight: 700; }
+.success-text { color: var(--tone-emerald-ink); font-size: 0.9rem; font-weight: 700; }
 
-/* ---------- buttons — plasma keys, lit from within ---------- */
+/* ---------- buttons — glazed sweets ---------- */
 .btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 0.55rem 1.5rem;
-  border-radius: var(--r-md);
-  border: 1px solid transparent;
+  gap: var(--s1);
+  min-height: 50px;
+  padding: 0.7rem 1.8rem;
+  border-radius: var(--r-pill);
+  border: 0;
   font: inherit;
-  font-weight: 600;
-  font-size: 0.92rem;
+  font-weight: 800;
+  font-size: 0.95rem;
   letter-spacing: 0.01em;
   cursor: pointer;
   overflow: hidden;
-  transition: transform var(--fast) var(--ease), box-shadow var(--normal) var(--ease), background var(--fast) var(--ease-soft), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+  transition: transform var(--fast) var(--ease-spring), box-shadow var(--normal) var(--ease), background-position var(--slow) var(--ease-soft), color var(--fast) var(--ease);
 }
-.btn:hover:not(:disabled) { transform: translateY(-1px); }
-.btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.btn:hover:not(:disabled) { transform: translateY(-3px) scale(1.03); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.96); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .btn-primary {
-  background: linear-gradient(135deg, var(--gold-hi), var(--gold) 48%, var(--gold-deep));
+  background: var(--grad-nectar);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
   color: var(--on-gold);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(20, 10, 50, 0.25), var(--glow-cta);
+  box-shadow: var(--gloss), var(--glow-cta);
 }
-/* the sheen: a band of light crosses the key on hover — the button answers */
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0;
-  left: -80%;
-  width: 55%;
-  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transform: skewX(-18deg);
-  transition: left var(--slow) var(--ease);
-  pointer-events: none;
-}
-.btn-primary:hover:not(:disabled)::after { left: 130%; }
+/* the ripen: the nectar travels its own arc on hover */
 .btn-primary:hover:not(:disabled) {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 4px rgba(20, 10, 50, 0.25), 0 16px 44px -10px var(--gold-deep);
+  background-position: 100% 50%;
+  box-shadow: var(--gloss), 0 18px 42px -10px var(--gold-deep);
 }
-.btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border2); box-shadow: var(--shadow-1); }
-.btn-ghost:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim), 0 0 20px -6px var(--blue-dim); }
-.btn-danger { background: var(--red-dim); color: var(--tone-red-ink); }
+.btn-ghost {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--border2), var(--shadow-1);
+}
+.btn-ghost:hover:not(:disabled) { color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue), var(--shadow-2); }
+.btn-danger { background: var(--red-dim); color: var(--tone-red-ink); box-shadow: inset 0 0 0 2px var(--red-dim); }
 .btn-danger:hover:not(:disabled) { background: var(--red); color: #fff; }
 .btn-block { width: 100%; }
 
-/* quiet inline action — text that behaves like a key */
 .ghost-button {
   background: none;
-  border: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--r-sm);
+  border: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--r-pill);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--blue);
   cursor: pointer;
-  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease-spring);
 }
-.ghost-button:hover { background: var(--blue-dim); }
+.ghost-button:hover { background: var(--blue-dim); transform: translateY(-1px); }
 
-/* ---------- navigation — the floating console ---------- */
+/* ---------- navigation — the confectioner's counter ---------- */
 .app-nav {
   position: sticky;
-  top: 12px;
+  top: 0;
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   flex-wrap: wrap;
-  width: min(1060px, calc(100% - 32px));
-  margin: 12px auto 0;
-  padding: 0.55rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
+  width: 100%;
+  margin: 0;
+  padding: var(--s2) var(--s5);
+  border: 0;
+  border-bottom: 2px solid var(--border);
   background: var(--nav-glass);
-  backdrop-filter: blur(22px) saturate(1.6);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
-  box-shadow: var(--shadow-1);
-}
-/* a lit hairline along the console's top edge */
-.app-nav::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 8%; right: 8%;
-  height: 1px;
-  border-radius: 1px;
-  background: linear-gradient(90deg, transparent, var(--blue-dim), var(--cyan-dim), transparent);
-  pointer-events: none;
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
 }
 .nav-brand {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.18rem;
-  letter-spacing: -0.02em;
-  margin: 0 1.1rem 0 0.35rem;
+  font-size: 1.45rem;
+  letter-spacing: -0.035em;
+  font-variation-settings: 'SOFT' 70, 'WONK' 1, 'opsz' 40;
+  margin: 0 var(--s5) 0 0;
   color: var(--text);
 }
+/* the brand's second syllable is the fruit itself — the whole arc, small */
 .nav-brand em {
-  font-style: normal;
-  background: linear-gradient(120deg, var(--blue), var(--cyan) 70%, var(--blue));
-  background-size: 200% 100%;
+  font-style: italic;
+  background: var(--grad-sunset);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: var(--blue);
   margin-left: 1px;
-  animation: brand-current 7s linear infinite;
 }
-@keyframes brand-current { from { background-position: 0% 0; } to { background-position: 200% 0; } }
 .nav-link {
-  padding: 0.38rem 0.9rem;
+  position: relative;
+  padding: 0.45rem 0.95rem;
   border-radius: var(--r-pill);
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: var(--muted);
-  transition: color var(--fast) var(--ease), background var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  background-image: none;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease), transform var(--fast) var(--ease-spring);
 }
-.nav-link:hover { color: var(--text); text-decoration: none; background: var(--surface2); }
-.nav-link.active {
-  color: var(--tone-blue-ink);
-  background: var(--blue-dim);
-  box-shadow: inset 0 0 0 1px var(--blue-dim), 0 0 16px -4px var(--blue-dim);
-}
+.nav-link:hover { color: var(--text); background: var(--amber-dim); transform: translateY(-1px); }
+.nav-link.active { color: var(--on-gold); background: var(--grad-bloom); box-shadow: 0 6px 18px -8px var(--blue); }
 
-/* on desktop the links wrapper dissolves into the flex row and the
-   hamburger doesn't exist; both only take shape under the mobile query */
 .nav-links { display: contents; }
 .nav-hamburger { display: none; }
 
-/* the sun/moon switch — quiet until touched */
+/* the right-hand cluster: toggle, CTA, and (on mobile) the hamburger.
+   It owns the auto-margin so the link group stays with the brand. */
+.nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+.nav-actions .theme-toggle { margin-left: 0; }
+.nav-cta { min-height: 40px; padding: 0.35rem 1.2rem; font-size: 0.86rem; }
+
 .theme-toggle {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   background: var(--surface);
-  color: var(--muted);
+  color: var(--amber);
   cursor: pointer;
   box-shadow: var(--shadow-1);
-  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease), box-shadow var(--normal) var(--ease);
+  transition: color var(--fast) var(--ease), transform var(--normal) var(--ease-spring), box-shadow var(--fast) var(--ease);
 }
-.theme-toggle:hover {
-  color: var(--blue);
-  border-color: var(--border2);
-  transform: translateY(-1px) rotate(12deg);
-  box-shadow: var(--shadow-2), 0 0 18px -6px var(--blue-dim);
-}
-.theme-toggle:active { transform: scale(0.94); }
+.theme-toggle:hover { color: var(--cyan); transform: translateY(-2px) rotate(24deg) scale(1.06); box-shadow: var(--shadow-2); }
+.theme-toggle:active { transform: scale(0.92); }
 
 /* ---------- layout ---------- */
-.page { margin: 3rem auto; padding: 0 2rem; }
+.page { margin: var(--s7) auto var(--s8); padding: 0 var(--s5); }
 .page-narrow { max-width: 560px; }
-.page-mid { max-width: 740px; }
-.page-wide { max-width: 1000px; }
-/* focused single-form pages (auth, onboarding) — quieter, centered lower */
-.page-form { max-width: 420px; margin-top: 5rem; }
+.page-mid { max-width: 720px; }
+.page-wide { max-width: 1020px; }
+.page-form { max-width: 420px; margin-top: var(--s7); }
+
+/* The title is the loudest thing on the page — the whole arc, once. */
 .page-title {
   font-family: var(--font-display);
-  font-size: clamp(2.1rem, 5vw, 3rem);
+  font-size: clamp(2.6rem, 6vw, 3.8rem);
   font-weight: 700;
   letter-spacing: -0.035em;
-  display: inline-block;
-  background: linear-gradient(115deg, var(--text) 30%, var(--ink-grad-a) 62%, var(--ink-grad-b));
+  line-height: 1.02;
+  font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 120;
+  color: var(--text);
+  -webkit-text-fill-color: currentColor;
+  margin-bottom: var(--s2);
+}
+.page-title em {
+  font-style: italic;
+  background: var(--grad-spectrum);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* A section title is a candy tab — a filled pill, not a hairline. */
 .section-title {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 2.4rem 0 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin: var(--s7) 0 var(--s4);
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: var(--s3);
 }
 .section-title::before {
   content: '';
-  width: 3px;
-  height: 1.05em;
+  width: 14px;
+  height: 14px;
   flex: none;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--blue), var(--cyan));
-  box-shadow: 0 0 10px -1px var(--blue-dim);
+  border-radius: var(--r-blob);
+  background: var(--grad-sunset);
+  animation: blob-morph 12s var(--ease-soft) infinite;
 }
-.section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
-.page-header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--border2), transparent);
+}
+.page-header { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); }
-.small { font-size: 0.88rem; }
-.tiny { font-size: 0.76rem; }
-.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.9em; }
-.divider { border: 0; border-top: 1px solid var(--border); margin: 2.4rem 0; }
+.small { font-size: 0.92rem; }
+.tiny { font-size: 0.78rem; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.88em; }
+.divider { border: 0; border-top: 2px solid var(--border); margin: var(--s7) 0; }
 
-/* ---------- cards — nebula glass panels ----------
-   A panel is glass over the void: blurred backdrop, an iridescent hairline
-   riding its top edge, and a highlight that reads as refracted light. */
+/* ---------- cards — glazed confections ----------
+   Layered: a sugar-glass gloss on top, a tinted bounce underneath, an
+   organic fruit orb blooming out of one corner, and a real lift on hover. */
 .card {
   position: relative;
-  background: var(--card-glass);
-  border: 1px solid var(--border);
+  /* A card is routinely wrapped in a <Link>; without this the heading
+     inherits the link pigment and the whole card reads as one anchor. */
+  color: var(--text);
+  background: var(--surface);
+  border: 0;
   border-radius: var(--r-lg);
-  padding: 1.5rem 1.6rem;
-  box-shadow: var(--shadow-1), var(--card-highlight);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  transition: box-shadow var(--normal) var(--ease), transform var(--normal) var(--ease), border-color var(--normal) var(--ease);
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: -1px; left: 10%; right: 10%;
-  height: 1px;
-  border-radius: 1px;
-  background: linear-gradient(90deg, transparent, var(--blue-dim), var(--cyan-dim), transparent);
-  pointer-events: none;
-}
-.card-hover:hover {
-  transform: translateY(-3px) scale(1.005);
-  box-shadow: var(--shadow-lift), var(--card-highlight), 0 0 0 1px var(--blue-dim), 0 0 34px -10px var(--blue-dim);
-  border-color: var(--blue);
-}
-.card-accent { border-left: 3px solid var(--blue); }
-.card-accent.tone-emerald { border-left-color: var(--emerald); }
-.card-accent.tone-amber { border-left-color: var(--amber); }
-.card-accent.tone-red { border-left-color: var(--red); }
-/* Plasma cyan = AI presence: the coach's cards breathe — a living aura
-   that swells and settles like something resting, never loud. */
-.card-accent.tone-cyan {
-  border-left-color: var(--cyan);
-  box-shadow: var(--shadow-1), var(--card-highlight), var(--glow-ai);
+  padding: var(--s5);
   overflow: hidden;
-  animation: ai-breathe 6s var(--ease-soft) infinite;
+  /* confine the orb's blend to this card — without isolation it would
+     screen against whatever the page is painting behind it */
+  isolation: isolate;
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--border), var(--shadow-1);
+  transition: box-shadow var(--normal) var(--ease), transform var(--normal) var(--ease-spring);
 }
-.card-accent.tone-cyan::before {
+/* The fruit orb: every card carries one, blooming out of its top-right.
+   It MUST be blurred. Unblurred, `overflow: hidden` slices the blob into a
+   hard-edged quarter-pie, and a low-opacity warm gradient sitting on a dark
+   surface reads as brown mud rather than fruit. Blurred, it becomes light
+   bouncing off the confection — which is the whole point. */
+.card::after {
   content: '';
   position: absolute;
-  top: -40%; right: -12%;
-  left: auto;
-  width: 55%; height: 130%;
-  background: radial-gradient(closest-side, var(--cyan-dim), transparent 75%);
+  top: -90px; right: -90px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  /* --card-orb lets a card name its own stop on the arc; the sunrise is
+     the default so an un-themed card still carries fruit */
+  background: var(--card-orb, var(--orb-default));
+  filter: blur(30px);
+  opacity: var(--orb-opacity);
+  mix-blend-mode: var(--orb-blend);
   pointer-events: none;
+  transition: transform var(--slow) var(--ease-soft), opacity var(--slow) var(--ease);
 }
-@keyframes ai-breathe {
-  0%, 100% { box-shadow: var(--shadow-1), var(--card-highlight), var(--glow-ai); }
-  50% { box-shadow: var(--shadow-1), var(--card-highlight), 0 0 44px -6px rgba(63, 217, 240, 0.4); }
+.card-hover { cursor: pointer; }
+.card-hover:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--blue), var(--shadow-lift);
 }
-.card-accent.tone-muted { border-left-color: var(--border2); }
-.card h3 { font-family: var(--font-display); font-size: 1.12rem; font-weight: 600; }
+/* the delight: the fruit swells into the card as you reach for it */
+.card-hover:hover::after { transform: scale(1.35) translate(-14px, 14px); opacity: 0.3; }
+
+.card-accent { border-left: 0; }
+/* each tone re-fruits its own orb — two pigments per surface, max (rule 2) */
+.card-accent.tone-emerald::after { background: linear-gradient(135deg, var(--lime), var(--emerald)); }
+.card-accent.tone-amber::after { background: var(--orb-2); }
+.card-accent.tone-red::after { background: linear-gradient(135deg, var(--red), var(--blue)); }
+.card-accent.tone-cyan::after { background: var(--orb-3); }
+.card-accent.tone-muted::after { opacity: 0.06; }
+/* Citrus = the coach. Its card is lit from the corner and breathes. */
+.card-accent.tone-cyan {
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--cyan-dim), var(--shadow-1), var(--glow-ai);
+}
+.card h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variation-settings: 'SOFT' 60, 'WONK' 1, 'opsz' 28;
+}
 
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.2rem;
-  margin: 1.5rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--s4);
+  margin: var(--s5) 0;
 }
 
-/* ---------- stat tiles — glowing readouts ---------- */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+/* ---------- stat tiles — jewels ----------
+   Each tile is its own little confection with its own fruit, cycling the
+   arc in order so a row reads as a ripening sequence, not a random set. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s3);
+  margin: 0 0 var(--s5);
+  border: 0;
+}
 .stat-card {
-  background: var(--card-glass);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 1.05rem 1.2rem 0.95rem;
-  box-shadow: var(--shadow-1), var(--card-highlight);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
   position: relative;
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--r-md);
+  padding: var(--s4);
   overflow: hidden;
+  isolation: isolate;
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--border), var(--shadow-1);
 }
 /* No hover-lift: stat tiles are display-only — a lift would promise a
    click that doesn't exist. Only .card-hover (real links) lifts. */
-/* each readout carries a bloom in its own hue */
 .stat-card::before {
   content: '';
   position: absolute;
-  top: -34px; right: -34px;
-  width: 130px; height: 130px;
+  top: -60px; right: -60px;
+  width: 170px; height: 170px;
   border-radius: 50%;
   pointer-events: none;
+  filter: blur(26px);
+  opacity: var(--orb-opacity);
+  mix-blend-mode: var(--orb-blend);
 }
-.stat-card:nth-child(4n+1)::before { background: radial-gradient(closest-side, var(--emerald-dim), transparent); }
-.stat-card:nth-child(4n+2)::before { background: radial-gradient(closest-side, var(--cyan-dim), transparent); }
-.stat-card:nth-child(4n+3)::before { background: radial-gradient(closest-side, var(--amber-dim), transparent); }
-.stat-card:nth-child(4n)::before   { background: radial-gradient(closest-side, var(--blue-dim), transparent); }
+/* a row ripens along the arc, in order — the ramps themselves re-pitch
+   per theme so the ornament always stays adjacent to its ground */
+.stat-card:nth-child(4n+1)::before { background: var(--orb-1); }
+.stat-card:nth-child(4n+2)::before { background: var(--orb-2); }
+.stat-card:nth-child(4n+3)::before { background: var(--orb-3); }
+.stat-card:nth-child(4n)::before   { background: var(--orb-4); }
 .stat-label {
+  position: relative;
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--navy);
 }
 .stat-value {
+  position: relative;
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
-  font-size: 2rem;
+  font-size: 2.6rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin-top: 0.25rem;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  margin-top: var(--s1);
+  font-variation-settings: 'SOFT' 90, 'WONK' 1, 'opsz' 100;
 }
-.stat-sub { font-family: var(--font-hand); font-style: italic; font-size: 0.88rem; color: var(--muted); margin-top: 0.2rem; }
+.stat-sub {
+  position: relative;
+  font-family: var(--font-hand);
+  font-style: italic;
+  font-size: 0.92rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 14;
+}
 
 /* ---------- tones, chips, notices ---------- */
 .tone-emerald-text { color: var(--tone-emerald-ink); }
@@ -652,194 +791,225 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 .tone-cyan-text { color: var(--tone-cyan-ink); }
 .tone-lime-text { color: var(--tone-lime-ink); }
 
+/* a chip is a jelly bean */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.28rem 0.7rem;
+  padding: 0.35rem 0.85rem;
   border-radius: var(--r-pill);
-  border: 1px solid var(--border);
+  border: 0;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: var(--surface);
+  background: var(--surface2);
   color: var(--muted);
+  box-shadow: inset 0 0 0 2px var(--border), var(--gloss);
 }
-.chip.tone-emerald { background: var(--emerald-dim); color: var(--tone-emerald-ink); border-color: transparent; box-shadow: 0 0 14px -6px var(--emerald-dim); }
-.chip.tone-amber { background: var(--amber-dim); color: var(--tone-amber-ink); border-color: transparent; }
-.chip.tone-red { background: var(--red-dim); color: var(--tone-red-ink); border-color: transparent; }
-.chip.tone-cyan { background: var(--cyan-dim); color: var(--tone-cyan-ink); border-color: transparent; box-shadow: 0 0 14px -6px var(--cyan-dim); }
-.chip.tone-blue { background: var(--blue-dim); color: var(--tone-blue-ink); border-color: transparent; }
+.chip.tone-emerald { background: var(--emerald-dim); color: var(--tone-emerald-ink); box-shadow: inset 0 0 0 2px var(--emerald-dim), var(--gloss); }
+.chip.tone-amber { background: var(--amber-dim); color: var(--tone-amber-ink); box-shadow: inset 0 0 0 2px var(--amber-dim), var(--gloss); }
+.chip.tone-red { background: var(--red-dim); color: var(--tone-red-ink); box-shadow: inset 0 0 0 2px var(--red-dim), var(--gloss); }
+.chip.tone-cyan { background: var(--cyan-dim); color: var(--tone-cyan-ink); box-shadow: inset 0 0 0 2px var(--cyan-dim), var(--gloss); }
+.chip.tone-blue { background: var(--blue-dim); color: var(--tone-blue-ink); box-shadow: inset 0 0 0 2px var(--blue-dim), var(--gloss); }
 
+/* a notice is a wrapped sweet — rounded, filled, with a fruit stripe */
 .notice {
-  font-size: 0.88rem;
-  padding: 0.7rem 1rem;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--amber);
+  position: relative;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: var(--s3) var(--s4) var(--s3) var(--s5);
+  border: 0;
   border-radius: var(--r-md);
   background: var(--amber-dim);
-  margin: 0.65rem 0;
+  margin: var(--s3) 0;
+  overflow: hidden;
+  box-shadow: var(--gloss);
 }
-.notice.tone-emerald { background: var(--emerald-dim); border-left-color: var(--emerald); }
-.notice.tone-cyan { background: var(--cyan-dim); border-left-color: var(--cyan); }
-.notice.tone-red { background: var(--red-dim); border-left-color: var(--red); }
+.notice::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 8px;
+  background: var(--grad-sunrise);
+}
+.notice.tone-emerald { background: var(--emerald-dim); }
+.notice.tone-emerald::before { background: linear-gradient(180deg, var(--lime), var(--emerald)); }
+.notice.tone-cyan { background: var(--cyan-dim); }
+.notice.tone-cyan::before { background: linear-gradient(180deg, var(--amber), var(--cyan)); }
+.notice.tone-red { background: var(--red-dim); }
+.notice.tone-red::before { background: linear-gradient(180deg, var(--red), var(--blue)); }
 
-/* ---------- progress — a charged filament ---------- */
+/* ---------- progress — the ripening bar ----------
+   The metaphor made literal: the fill travels the arc, so a bar near
+   completion is visibly riper than one just begun. */
 .progress-track {
   background: var(--bg1);
   border-radius: var(--r-pill);
-  height: 9px;
+  height: 14px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(20, 14, 50, 0.1);
+  box-shadow: inset 0 2px 4px rgba(120, 20, 70, 0.14);
 }
-:root[data-theme='dark'] .progress-track { background: var(--surface2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45); }
+:root[data-theme='dark'] .progress-track { background: var(--bg1); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); }
 .progress-fill {
   position: relative;
   height: 100%;
   border-radius: var(--r-pill);
-  background: linear-gradient(90deg, var(--gold-deep), var(--gold-hi));
-  box-shadow: 0 0 12px -2px var(--blue-dim);
+  background: var(--grad-nectar);
+  box-shadow: var(--gloss);
   animation: fill-in var(--slow) var(--ease) both;
-  transition: width var(--slow) var(--ease);
+  transition: width var(--slow) var(--ease-spring);
   overflow: hidden;
 }
-/* current runs down the filament — the bar is live, not painted */
+/* sugar running down the glaze — the bar is alive */
 .progress-fill::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
   background-size: 200% 100%;
-  animation: filament 2.6s var(--ease-soft) infinite;
+  animation: glaze 2.8s var(--ease-soft) infinite;
 }
-@keyframes filament { from { background-position: 130% 0; } to { background-position: -70% 0; } }
-.progress-fill.tone-emerald { background: linear-gradient(90deg, var(--emerald), var(--tone-emerald-ink)); box-shadow: 0 0 12px -2px var(--emerald-dim); }
-.progress-fill.tone-amber { background: linear-gradient(90deg, var(--amber), var(--tone-amber-ink)); box-shadow: 0 0 12px -2px var(--amber-dim); }
-.progress-fill.tone-red { background: linear-gradient(90deg, var(--red), var(--tone-red-ink)); box-shadow: 0 0 12px -2px var(--red-dim); }
+@keyframes glaze { from { background-position: 130% 0; } to { background-position: -70% 0; } }
+.progress-fill.tone-emerald { background: linear-gradient(90deg, var(--lime), var(--emerald)); }
+.progress-fill.tone-amber { background: var(--grad-sunrise); }
+.progress-fill.tone-red { background: linear-gradient(90deg, var(--red), var(--blue)); }
 @keyframes fill-in { from { transform: translateX(-8%); opacity: 0.7; } to { transform: none; opacity: 1; } }
-.progress-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin-top: 0.4rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--navy);
+  margin-top: var(--s1);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
 
-/* ---------- checklist ---------- */
+/* ---------- checklist — the day's box of sweets ---------- */
 .daily-checklist {
   position: relative;
-  background: var(--card-glass);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 0;
   border-radius: var(--r-lg);
-  padding: 1.5rem 1.6rem;
-  box-shadow: var(--shadow-1), var(--card-highlight);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  padding: var(--s5);
+  overflow: hidden;
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--border), var(--shadow-2);
 }
+/* the day's own ripening rides the head of the box — the full arc, and the
+   only place in the app licensed to use it outside the hero */
 .daily-checklist::before {
   content: '';
   position: absolute;
-  top: -1px; left: 10%; right: 10%;
-  height: 1px;
-  border-radius: 1px;
-  background: linear-gradient(90deg, transparent, var(--blue-dim), var(--cyan-dim), transparent);
+  top: 0; left: 0; right: 0;
+  height: 6px;
+  background: var(--grad-spectrum);
   pointer-events: none;
 }
-.daily-checklist h3 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
-.daily-checklist ul { list-style: none; margin: 0.6rem 0; padding: 0; }
-.check-row { display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid var(--border); transition: background var(--normal) var(--ease); }
+.daily-checklist h3 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 48;
+}
+.daily-checklist ul { list-style: none; margin: var(--s3) 0; padding: 0; }
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  border-bottom: 2px solid var(--border);
+  border-radius: var(--r-sm);
+  transition: background var(--normal) var(--ease), transform var(--fast) var(--ease-spring);
+}
 .check-row:last-child { border-bottom: 0; }
-.check-row label { display: flex; align-items: center; gap: 0.85rem; min-height: 48px; cursor: pointer; padding: 0.2rem 0.3rem; flex: 1; min-width: 0; }
-.check-row.done { background: linear-gradient(90deg, var(--emerald-dim), transparent 80%); }
+.check-row label { display: flex; align-items: center; gap: var(--s2); min-height: 56px; cursor: pointer; padding: 0.25rem 0.5rem; flex: 1; min-width: 0; }
+.check-row:hover { background: var(--amber-dim); }
+/* a cleared item ripens across the row — the visual reward */
+.check-row.done { background: linear-gradient(90deg, var(--emerald-dim), transparent 82%); }
 .check-row.done .check-label { color: var(--muted); }
-/* typed value beside a measurable item — compact, right-aligned */
-.check-value { display: inline-flex; align-items: center; gap: 0.35rem; margin-left: auto; padding-right: 0.3rem; }
-.check-value input { width: 5rem; min-height: 36px; padding: 0.3rem 0.6rem; font-size: 0.88rem; text-align: right; font-variant-numeric: tabular-nums; }
-/* weigh-in + notes block under the list */
-.checklist-manual { border-top: 1px solid var(--border); margin-top: 0.4rem; padding-top: 0.6rem; }
-.checklist-manual .check-value input { width: 6rem; }
+.check-value { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; padding-right: 0.3rem; }
+.check-value input { width: 5.2rem; min-height: 40px; padding: 0.35rem 0.7rem; font-size: 0.9rem; text-align: right; font-variant-numeric: tabular-nums; }
+.checklist-manual { border-top: 2px solid var(--border); margin-top: var(--s2); padding-top: var(--s3); }
+.checklist-manual .check-value input { width: 6.2rem; }
 .checklist-manual .check-row { border-bottom: 0; }
-.checklist-manual input { min-height: 36px; padding: 0.3rem 0.6rem; font-size: 0.88rem; text-align: right; font-variant-numeric: tabular-nums; }
-.checklist-manual textarea { font-size: 0.9rem; }
-.checklist-score { font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); margin: 0.7rem 0 0; letter-spacing: 0.04em; }
+.checklist-manual input { min-height: 40px; padding: 0.35rem 0.7rem; font-size: 0.9rem; text-align: right; font-variant-numeric: tabular-nums; }
+.checklist-manual textarea { font-size: 0.94rem; text-align: left; }
+.checklist-score { font-family: var(--font-mono); font-size: 0.72rem; color: var(--navy); font-weight: 700; margin: var(--s2) 0 0; letter-spacing: 0.14em; text-transform: uppercase; }
 
-/* ---------- chat — the console conversation ---------- */
-.chat-thread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.9rem; padding: 0.5rem 0.5rem 1.4rem; }
+/* ---------- chat ---------- */
+.chat-thread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s3); padding: var(--s1) var(--s1) var(--s4); }
 .chat-bubble {
   position: relative;
-  max-width: 84%;
-  padding: 0.75rem 1.05rem;
+  max-width: 82%;
+  padding: var(--s3) var(--s4);
   border-radius: var(--r-lg);
-  font-size: 0.95rem;
+  font-size: 0.97rem;
   white-space: pre-wrap;
-  line-height: 1.55;
+  line-height: 1.6;
   animation: rise-in var(--normal) var(--ease) both;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--gloss), var(--shadow-1);
 }
 .chat-bubble.user {
   align-self: flex-end;
-  background: linear-gradient(135deg, var(--gold-hi), var(--gold) 55%, var(--gold-deep));
+  background: var(--grad-nectar);
   color: var(--on-gold);
   border-bottom-right-radius: var(--r-sm);
-  box-shadow: 0 8px 24px -8px var(--gold-deep);
 }
 .chat-bubble.coach {
   align-self: flex-start;
-  background: var(--card-glass);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--cyan);
+  background: var(--surface);
   border-bottom-left-radius: var(--r-sm);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-1), 0 0 22px -10px var(--cyan-dim);
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--cyan-dim), var(--shadow-1), var(--glow-ai);
 }
 .chat-bubble.error { align-self: flex-start; background: var(--red-dim); color: var(--tone-red-ink); box-shadow: none; }
-.chat-meta { margin-top: 0.45rem; font-size: 0.66rem; font-family: var(--font-mono); color: var(--muted); letter-spacing: 0.04em; }
-.chat-bubble.user .chat-meta { color: var(--on-gold); opacity: 0.66; }
+.chat-meta { margin-top: var(--s1); font-size: 0.62rem; font-family: var(--font-mono); color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; }
+.chat-bubble.user .chat-meta { color: var(--on-gold); opacity: 0.7; }
 .mode-pill {
-  padding: 0.35rem 1rem;
+  padding: 0.45rem 1.1rem;
   border-radius: var(--r-pill);
-  border: 1px solid var(--border2);
+  border: 0;
   background: var(--surface);
   color: var(--muted);
   font: inherit;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: color var(--fast) var(--ease), background var(--fast) var(--ease), border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease);
+  box-shadow: inset 0 0 0 2px var(--border);
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease), transform var(--fast) var(--ease-spring), box-shadow var(--fast) var(--ease);
 }
-.mode-pill:hover { color: var(--text); transform: translateY(-1px); box-shadow: var(--shadow-1); }
-.mode-pill.active {
-  background: var(--cyan-dim);
-  border-color: var(--cyan);
-  color: var(--tone-cyan-ink);
-  box-shadow: 0 0 0 3px var(--seafoam), 0 0 18px -6px var(--cyan-dim);
-}
-.thinking { display: inline-flex; gap: 6px; align-items: center; padding: 0.7rem 0.3rem; }
-.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan-dim); animation: think 1.25s infinite var(--ease); }
-.thinking i:nth-child(2) { animation-delay: 0.16s; }
-.thinking i:nth-child(3) { animation-delay: 0.32s; }
-@keyframes think { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+.mode-pill:hover { color: var(--text); transform: translateY(-2px); box-shadow: inset 0 0 0 2px var(--border2), var(--shadow-1); }
+.mode-pill.active { background: var(--grad-sunrise); color: var(--on-gold); box-shadow: var(--gloss), 0 8px 20px -8px var(--cyan); }
+.thinking { display: inline-flex; gap: 7px; align-items: center; padding: var(--s2) 0.3rem; }
+.thinking i { width: 9px; height: 9px; border-radius: 50%; background: var(--cyan); animation: think 1.25s infinite var(--ease-spring); }
+.thinking i:nth-child(2) { animation-delay: 0.16s; background: var(--red); }
+.thinking i:nth-child(3) { animation-delay: 0.32s; background: var(--blue); }
+@keyframes think { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0) scale(1); } 30% { opacity: 1; transform: translateY(-7px) scale(1.2); } }
 
 /* ---------- misc ---------- */
 .plan-day {
-  background: var(--card-glass);
-  border: 1px solid var(--border);
+  position: relative;
+  background: var(--surface);
+  border: 0;
   border-radius: var(--r-lg);
-  padding: 1rem 1.25rem;
-  margin: 0.9rem 0;
-  box-shadow: var(--shadow-1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: var(--s4) var(--s5);
+  margin: var(--s3) 0;
+  overflow: hidden;
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--border), var(--shadow-1);
 }
-.plan-day h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
-.plan-day ul { margin: 0.45rem 0 0; padding-left: 1.2rem; color: var(--muted); }
-.plan-day li { margin: 0.22rem 0; }
+.plan-day h3 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; }
+.plan-day ul { margin: var(--s1) 0 0; padding-left: 1.2rem; color: var(--muted); }
+.plan-day li { margin: 0.3rem 0; }
 
 .list-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.15rem;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.9rem;
+  gap: var(--s1);
+  padding: var(--s2) 0.15rem;
+  border-bottom: 2px solid var(--border);
+  font-size: 0.93rem;
 }
 .list-row:last-child { border-bottom: 0; }
 
@@ -847,65 +1017,110 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
 @keyframes shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
 .page-loading {
-  padding: 5rem 2rem;
+  padding: var(--s8) var(--s5);
   text-align: center;
-  color: var(--muted);
+  color: var(--navy);
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   animation: breathe 2.2s infinite var(--ease-soft);
 }
-@keyframes breathe { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-.dashboard-empty { max-width: 480px; margin: 6rem auto; text-align: center; padding: 0 1.5rem; }
+@keyframes breathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+/* the empty state is a place to want to be, not an apology */
+.dashboard-empty { max-width: 520px; margin: var(--s8) auto; text-align: center; padding: 0 var(--s4); position: relative; }
+.dashboard-empty::before {
+  content: '';
+  position: absolute;
+  top: -70px; left: 50%;
+  width: 240px; height: 240px;
+  margin-left: -120px;
+  border-radius: var(--r-blob);
+  background: var(--grad-spectrum);
+  opacity: 0.18;
+  filter: blur(14px);
+  z-index: -1;
+  animation: blob-morph 14s var(--ease-soft) infinite, float-slow 8s ease-in-out infinite alternate;
+}
 
 .checklist-skeleton, .checklist-error {
-  background: var(--card-glass);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 0;
   border-radius: var(--r-lg);
-  padding: 1.4rem;
-  color: var(--muted);
+  padding: var(--s5);
+  color: var(--navy);
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--gloss), inset 0 0 0 2px var(--border), var(--shadow-1);
 }
-.checklist-error { color: var(--tone-red-ink); font-family: var(--font-body); font-size: 0.95rem; letter-spacing: 0; text-transform: none; }
+.checklist-error { color: var(--tone-red-ink); font-family: var(--font-body); font-size: 0.96rem; letter-spacing: 0; text-transform: none; }
 
 /* ---------- footer ---------- */
 .site-footer {
-  margin-top: 5rem;
-  padding: 2rem 1.5rem 1.75rem;
-  border-top: 1px solid var(--border);
+  margin-top: var(--s8);
+  padding: var(--s6) var(--s4) var(--s5);
+  border-top: 2px solid var(--border);
   text-align: center;
   background: transparent;
 }
-.site-footer-links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.6rem; }
-.site-footer-links a { color: var(--muted); font-size: 0.82rem; font-weight: 600; }
+.site-footer-links { display: flex; gap: var(--s4); justify-content: center; flex-wrap: wrap; margin-bottom: var(--s2); }
+.site-footer-links a { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
 .site-footer-links a:hover { color: var(--blue); }
-.site-footer p { margin: 0; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; color: var(--faint); }
+.site-footer p { margin: 0; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.16em; color: var(--faint); text-transform: uppercase; }
 
 /* ---------- prose ---------- */
-.prose { line-height: 1.7; }
-.prose h2 { font-size: 1.3rem; margin-top: 2.4rem; font-weight: 600; }
-.prose p, .prose li { color: var(--muted); font-size: 0.97rem; }
-.prose strong { color: var(--text); }
+.prose { line-height: 1.75; max-width: 66ch; }
+.prose h2 {
+  font-size: 1.7rem;
+  margin-top: var(--s7);
+  margin-bottom: var(--s2);
+  font-weight: 700;
+  font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 48;
+}
+.prose p, .prose li { color: var(--muted); font-size: 1rem; }
+.prose strong { color: var(--text); font-weight: 800; }
 .prose ol, .prose ul { padding-left: 1.35rem; }
-.prose li { margin: 0.4rem 0; }
-.prose > p:first-of-type { font-size: 1.1rem; color: var(--text); }
+.prose li { margin: var(--s1) 0; }
+.prose li::marker { color: var(--blue); font-weight: 700; }
+/* the standfirst — big, expressive, the reason you keep reading */
+.prose > p:first-of-type {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text);
+  font-variation-settings: 'SOFT' 80, 'WONK' 1, 'opsz' 40;
+  margin-bottom: var(--s4);
+}
+
+/* the blob never rests — organic forms that hold still look like mistakes */
+@keyframes blob-morph {
+  0%, 100% { border-radius: 62% 38% 54% 46% / 48% 56% 44% 52%; }
+  33% { border-radius: 42% 58% 38% 62% / 58% 42% 62% 38%; }
+  66% { border-radius: 56% 44% 62% 38% / 40% 60% 40% 60%; }
+}
 
 @media (max-width: 640px) {
-  .page { margin: 1.75rem auto; padding: 0 1.1rem; }
-  .page-form { margin-top: 3rem; }
-  .app-nav { top: 8px; width: calc(100% - 16px); margin-top: 8px; padding: 0.5rem 0.7rem; border-radius: var(--r-lg); }
-  .stat-grid { grid-template-columns: repeat(2, 1fr); }
-  /* thumbs, not cursors: inline value inputs grow to a full touch target */
-  .check-value input, .checklist-manual input { min-height: 44px; }
+  .page { margin: var(--s5) auto var(--s7); padding: 0 var(--s4); }
+  .page-form { margin-top: var(--s6); }
+  .app-nav { padding: var(--s2) var(--s4); }
+  .nav-brand { margin-right: var(--s2); font-size: 1.3rem; }
+  .card { padding: var(--s4); }
+  .daily-checklist { padding: var(--s4); }
+  .page-title { font-size: clamp(2.2rem, 10vw, 2.9rem); }
+  /* the manifesto stacks on a phone; the separator dots would then lead
+     each line like stray bullets, so they go */
+  .manifesto-dot { display: none !important; }
+  .nav-cta { padding: 0.35rem 0.95rem; }
 
-  /* mission rows restack: the label owns its line and the input + save
-     cluster drops to a right-aligned line of its own (wrapping again if a
-     chip makes it long) — nothing ever pokes out of the card */
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-value { font-size: 2rem; }
+
+  .check-value input, .checklist-manual input { min-height: 44px; }
   .check-row { flex-wrap: wrap; row-gap: 0; }
   .check-value {
     flex: 1 1 100%;
@@ -916,52 +1131,48 @@ input[type='file'] { min-height: 0; padding: 0.5rem; background: transparent; bo
     padding: 0 0.3rem 0.6rem;
   }
 
-  /* nav collapses behind a hamburger: brand left, burger + theme toggle right */
   .nav-hamburger {
     display: inline-flex;
     flex-direction: column;
     justify-content: center;
     gap: 5px;
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
     margin-left: auto;
-    padding: 0 9px;
-    border-radius: var(--r-md);
-    border: 1px solid var(--border);
+    padding: 0 10px;
+    border-radius: var(--r-pill);
+    border: 2px solid var(--border);
     background: var(--surface);
     cursor: pointer;
     box-shadow: var(--shadow-1);
   }
   .nav-hamburger span {
     display: block;
-    height: 2px;
+    height: 2.5px;
     border-radius: 2px;
-    background: var(--muted);
+    background: var(--blue);
     transition: transform var(--fast) var(--ease), opacity var(--fast) var(--ease);
   }
-  .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-hamburger.open span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
   .nav-hamburger.open span:nth-child(2) { opacity: 0; }
-  .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-  .theme-toggle { margin-left: 0.5rem; }
+  .nav-hamburger.open span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+  .theme-toggle { margin-left: var(--s1); }
 
   .nav-links {
     display: none;
     position: absolute;
-    top: calc(100% + 8px);
+    top: 100%;
     left: 0;
     right: 0;
     flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.6rem 0.7rem 0.8rem;
-    background: var(--nav-glass);
-    backdrop-filter: blur(22px) saturate(1.6);
-    -webkit-backdrop-filter: blur(22px) saturate(1.6);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
+    gap: var(--s1);
+    padding: var(--s3) var(--s4) var(--s4);
+    background: var(--bg0);
+    border-bottom: 2px solid var(--border);
     box-shadow: var(--shadow-2);
   }
   .nav-links.open { display: flex; }
-  .nav-links .nav-link { padding: 0.65rem 0.8rem; font-size: 0.95rem; border-radius: var(--r-md); }
+  .nav-links .nav-link { padding: var(--s2) var(--s3); font-size: 1.05rem; border-radius: var(--r-md); }
 }
 
 @media (prefers-reduced-motion: reduce) {

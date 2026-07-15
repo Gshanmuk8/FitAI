@@ -18,9 +18,15 @@ function currentTheme() {
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* private mode */ }
-  // Browser chrome (mobile address bar) follows the surface.
+  // Browser chrome (mobile address bar) follows the surface. These two are
+  // the only literals that must track --bg0 by hand: <meta> can't read a
+  // CSS variable, so they are read off the computed root instead of being
+  // copied — a hardcoded pair here silently rots on every reskin.
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b0d13' : '#F4F5F8');
+  if (meta) {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg0').trim();
+    if (bg) meta.setAttribute('content', bg);
+  }
 }
 
 export default function ThemeToggle() {

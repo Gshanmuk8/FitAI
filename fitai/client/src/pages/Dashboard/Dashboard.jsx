@@ -31,7 +31,7 @@ function BriefingCard({ briefing, loading }) {
           <span
             className="pulse-live"
             aria-hidden="true"
-            style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cyan)', boxShadow: '0 0 10px var(--cyan)', display: 'inline-block' }}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', display: 'inline-block', flex: 'none' }}
           />
           Coach's briefing
         </h3>

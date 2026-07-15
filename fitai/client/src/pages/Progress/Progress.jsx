@@ -60,15 +60,15 @@ function WeightChart({ weighIns, targetKg }) {
       ))}
       {targetKg != null && (
         <g>
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--amber, #d97706)" strokeDasharray="5 4" opacity="0.7" />
-          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #d97706)">
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--amber)" strokeDasharray="5 4" opacity="0.7" />
+          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--amber)">
             target {targetKg}kg
           </text>
         </g>
       )}
-      <path d={path} fill="none" stroke="var(--gold, #5a5ce0)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={path} fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       {weighIns.map((p, i) => (
-        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold, #5a5ce0)" />
+        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold)" />
       ))}
       <text x={PAD.left} y={H - 8} fontSize="11" fill="currentColor" opacity="0.5">{first.date}</text>
       <text x={W - PAD.right} y={H - 8} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">{last.date}</text>
@@ -124,8 +124,8 @@ function CoachChart({ chart }) {
         ))}
         {chart.targetValue != null && (
           <g>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--amber, #d97706)" strokeDasharray="5 4" opacity="0.7" />
-            <text x={W - PAD.right} y={y(chart.targetValue) - 5} textAnchor="end" fontSize="11" fill="var(--amber, #d97706)">
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--amber)" strokeDasharray="5 4" opacity="0.7" />
+            <text x={W - PAD.right} y={y(chart.targetValue) - 5} textAnchor="end" fontSize="11" fill="var(--amber)">
               target {fmtAxis(chart.targetValue)}{chart.unit ? ` ${chart.unit}` : ''}
             </text>
           </g>
@@ -139,15 +139,15 @@ function CoachChart({ chart }) {
               width={barW}
               height={Math.max(1.5, Math.abs(y(p.value) - y(0)))}
               rx="3"
-              fill="var(--gold, #5a5ce0)"
+              fill="var(--gold)"
               opacity="0.85"
             />
           ))
         ) : (
           <>
-            <path d={linePath} fill="none" stroke="var(--gold, #5a5ce0)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            <path d={linePath} fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
             {points.map((p, i) => (
-              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.6" fill="var(--gold, #5a5ce0)" />
+              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.6" fill="var(--gold)" />
             ))}
           </>
         )}

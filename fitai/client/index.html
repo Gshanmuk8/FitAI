@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f4f3fa" />
+    <meta name="theme-color" content="#fff4ec" />
     <title>FitAI — Your AI Fitness Coach</title>
     <script>
       // Apply the saved (or OS-preferred) theme BEFORE first paint — a
@@ -15,15 +15,19 @@
           document.documentElement.dataset.theme = t;
           if (t === 'dark') {
             var m = document.querySelector('meta[name="theme-color"]');
-            if (m) m.setAttribute('content', '#0a0813');
+            if (m) m.setAttribute('content', '#1a0716');
           }
         } catch (e) { /* default light */ }
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Ambrosia: Fraunces (display, opsz+SOFT+WONK axes) · Karla (UI/body)
+         · Space Mono (labels). Variable axes are requested in full so the
+         type scale can address opsz/SOFT/WONK per size — SOFT and WONK are
+         the whole personality of the display face. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..700,0..100,0..1;1,9..144,300..700,0..100,0..1&family=Karla:ital,wght@0,300..700;1,300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
       rel="stylesheet"
     />
   </head>
