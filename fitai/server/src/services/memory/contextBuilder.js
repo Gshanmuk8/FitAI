@@ -6,6 +6,38 @@
  * the user's own history.
  */
 const { getFullMemoryContext } = require('./memoryRetriever');
+const { buildDietTargets } = require('../../../../shared/calculations/dietTargets');
+const logger = require('../../utils/logger');
+
+// The live plan's diet layer if it has one, else recompute from the profile.
+// The plan's copy is preferred because the user may have edited their
+// targets — coaching against numbers the user can see edited is the point.
+function resolveDiet(permanent) {
+  try {
+    const plan = permanent.ai_plan
+      ? typeof permanent.ai_plan === 'string' ? JSON.parse(permanent.ai_plan) : permanent.ai_plan
+      : null;
+    // Older plans stored a diet without the maintenance/direction context;
+    // recompute in that case so the coach always has the full picture.
+    if (plan?.diet?.calorieTarget && plan.diet.calorieDirection) return plan.diet;
+  } catch { /* unparseable plan — fall through to computing */ }
+
+  try {
+    return buildDietTargets({
+      weightKg: permanent.weight_kg != null ? Number(permanent.weight_kg) : null,
+      heightCm: permanent.height_cm != null ? Number(permanent.height_cm) : null,
+      age: permanent.age,
+      sex: permanent.sex || 'other',
+      activityLevel: permanent.activity_level,
+      goal: permanent.goal,
+    });
+  } catch (err) {
+    // Incomplete legacy profile — the coach simply gets no MEASURED FACTS
+    // block rather than a wrong one.
+    logger.warn('diet context unavailable for coach prompt', { error: err.message });
+    return undefined;
+  }
+}
 
 function formatProfileForPrompt(memory) {
   const { permanent, semiPermanent, temporal, exercisePreferences, todayBriefing } = memory;
@@ -13,10 +45,22 @@ function formatProfileForPrompt(memory) {
 
   const profile = {
     age: permanent.age,
+    sex: permanent.sex || undefined,
+    heightCm: permanent.height_cm != null ? Number(permanent.height_cm) : undefined,
     weightKg: permanent.weight_kg != null ? Number(permanent.weight_kg) : undefined,
     targetWeightKg: permanent.target_weight_kg != null ? Number(permanent.target_weight_kg) : undefined,
     activityLevel: permanent.activity_level,
-    goal: semiPermanent?.current_phase || 'unspecified',
+    // The PROFILE is authoritative, not user_state.current_phase.
+    // current_phase is a snapshot written when the plan was generated; a
+    // user who switches lose_fat -> build_muscle from the Profile page (which
+    // deliberately does NOT regenerate the plan) left it stale, so the coach
+    // went on advising for the abandoned goal — including telling someone on
+    // a cut to eat in a surplus. The user's stated goal wins; current_phase
+    // is only a fallback for rows that predate the column.
+    goal: permanent.goal || semiPermanent?.current_phase || 'unspecified',
+    // The deterministic nutrition figures, so every coaching surface argues
+    // from the same numbers the dashboard shows.
+    diet: resolveDiet(permanent),
     injuries: permanent.injuries ? permanent.injuries.split(',').map((s) => s.trim()) : [],
     dietaryRestrictions: permanent.dietary_restrictions || undefined,
     equipment: permanent.gym_availability,
@@ -34,7 +78,11 @@ function formatProfileForPrompt(memory) {
 
   const lines = [
     semiPermanent?.current_program ? `Current program: ${semiPermanent.current_program}` : null,
-    semiPermanent?.calorie_target ? `Daily calorie target: ${semiPermanent.calorie_target} kcal` : null,
+    // Deliberately NOT semiPermanent.calorie_target: that is written at
+    // plan-generation time and goes stale the moment the user edits their
+    // profile or diet targets. profile.diet is resolved from the live plan
+    // (or recomputed), so the coach quotes the number the user can see.
+    profile.diet?.calorieTarget ? `Daily calorie target: ${profile.diet.calorieTarget} kcal` : null,
     temporal && temporal.workout_completed === false
       ? 'Has not completed the current workout yet.'
       : null,

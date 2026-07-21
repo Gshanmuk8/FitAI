@@ -20,9 +20,14 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ maxWidth: 480, margin: '6rem auto', padding: '0 2rem', textAlign: 'center' }}>
-          <h2 className="page-title">Something went wrong</h2>
-          <p className="muted">The error has been logged. Your data is safe.</p>
+        // The system's own empty-state frame: a narrow centred column with
+        // real air around it. The old hardcoded 6rem/2rem margins were the
+        // last measurements in this file that didn't come from the scale.
+        <div className="dashboard-empty page-enter">
+          <h1 className="page-title">Something went wrong</h1>
+          <p className="muted" style={{ margin: '0 0 var(--s5)' }}>
+            The error has been logged. Your data is safe.
+          </p>
           {/* '/' is safe for both auth states — a crashed marketing page
               must not shove a logged-out visitor into the login wall. */}
           <Button

@@ -12,8 +12,21 @@ const DIET_FIELDS = [
   { key: 'sleepHours', label: 'Sleep (hours)', min: 5, max: 12 },
 ];
 
-const inputStyle = { width: '100%', marginBottom: '0.5rem' };
-const smallInput = { width: 70, marginRight: '0.5rem' };
+// The plan is a DOCUMENT you can type into, not a form. So the fields state
+// their edge as a hairline and nothing else until you engage them — the
+// focus ring in theme.css is what announces "you are editing this".
+const quietField = {
+  width: '100%',
+  background: 'transparent',
+  borderColor: 'var(--border)',
+};
+const numberField = {
+  ...quietField,
+  width: 64,
+  textAlign: 'center',
+  fontVariantNumeric: 'tabular-nums',
+  padding: '0.5rem 0.35rem',
+};
 
 export default function Plan() {
   const [days, setDays] = useState(null);
@@ -102,12 +115,14 @@ export default function Plan() {
     return (
       <div className="page page-mid page-enter">
         <h2 className="page-title">Your plan</h2>
-        <p className="muted">{status.error}</p>
-        {noPlanYet ? (
-          <ButtonLink to="/onboarding">Complete onboarding</ButtonLink>
-        ) : (
-          <Button type="button" onClick={() => window.location.reload()}>Try again</Button>
-        )}
+        <div className="notice tone-red" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)' }}>
+          <p className="muted" style={{ margin: '0 0 var(--s3)' }}>{status.error}</p>
+          {noPlanYet ? (
+            <ButtonLink to="/onboarding">Complete onboarding</ButtonLink>
+          ) : (
+            <Button type="button" onClick={() => window.location.reload()}>Try again</Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -115,7 +130,10 @@ export default function Plan() {
   return (
     <div className="page page-mid page-enter">
       <header className="page-header">
-        <h2 className="page-title">Your plan</h2>
+        <div>
+          <p className="eyebrow" style={{ margin: '0 0 var(--s1)' }}>Editable · saved to your live plan</p>
+          <h2 className="page-title" style={{ marginBottom: 0 }}>Your plan</h2>
+        </div>
         <Link to="/dashboard" className="small">Go to Today →</Link>
       </header>
 
@@ -126,49 +144,173 @@ export default function Plan() {
       )}
       {arrival.notice && <p className="notice">{arrival.notice}</p>}
 
-      {meta && (
-        <p className="muted">
-          Goal: {meta.goal?.replace(/_/g, ' ')} · Timeframe: {meta.timeframe?.weeks || meta.timeframeWeeks || '—'} weeks
-          {meta.customized ? ' · customized by you' : ''}
+      {/* The document's colophon: what this plan is, and what editing it
+          does. Set as metadata under a rule, not as body copy. */}
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)', marginTop: 'var(--s4)' }}>
+        {meta && (
+          <p className="eyebrow" style={{ margin: '0 0 var(--s2)' }}>
+            Goal: {meta.goal?.replace(/_/g, ' ')} · Timeframe: {meta.timeframe?.weeks || meta.timeframeWeeks || '—'} weeks
+            {meta.customized ? ' · customized by you' : ''}
+          </p>
+        )}
+        <p className="small muted" style={{ margin: 0, maxWidth: '58ch' }}>
+          Your edits are saved to your live plan — tomorrow's daily mission uses them, and the coach learns which
+          exercises you add or remove. Editing never resets your goal timeline.
         </p>
-      )}
-      <p className="small muted">
-        Your edits are saved to your live plan — tomorrow's daily mission uses them, and the coach learns which
-        exercises you add or remove. Editing never resets your goal timeline.
-      </p>
+      </div>
 
       <section>
         <h3 className="section-title">Workout days</h3>
+
         {days.map((day, dayIdx) => (
-          <div key={dayIdx} className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input value={day.name} onChange={(e) => updateDay(dayIdx, { name: e.target.value })} style={{ flex: 1, minWidth: 0 }} />
-              <Button variant="ghost" type="button" onClick={() => removeDay(dayIdx)}>Remove day</Button>
+          // A day is a section of the document: its name is set at heading
+          // size in the field itself, on a rule, with its exercises as rows
+          // beneath. No card edge — the rule is the structure.
+          <div key={dayIdx} style={{ marginBottom: 'var(--s6)' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 'var(--s2)',
+                alignItems: 'center',
+                paddingBottom: 'var(--s2)',
+                borderBottom: '1px solid var(--border2)',
+              }}
+            >
+              <input
+                value={day.name}
+                aria-label={`Name of day ${dayIdx + 1}`}
+                onChange={(e) => updateDay(dayIdx, { name: e.target.value })}
+                style={{
+                  ...quietField,
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: 'var(--t-h2)',
+                  fontWeight: 600,
+                  letterSpacing: '-0.024em',
+                  borderColor: 'transparent',
+                  padding: '0.35rem 0.5rem',
+                  margin: '0 0 0 -0.5rem',
+                }}
+              />
+              <button type="button" className="ghost-button" onClick={() => removeDay(dayIdx)} style={{ flex: 'none' }}>
+                Remove day
+              </button>
             </div>
+
             {day.exercises.map((ex, exIdx) => (
-              <div key={exIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-                <input value={ex.name} onChange={(e) => updateExercise(dayIdx, exIdx, { name: e.target.value })} style={{ flex: 2, minWidth: 140 }} />
-                <input type="number" min="1" max="10" value={ex.sets} onChange={(e) => updateExercise(dayIdx, exIdx, { sets: e.target.value })} style={smallInput} title="Sets" />
-                <span style={{ opacity: 0.6 }}>×</span>
-                <input type="number" min="1" max="50" value={ex.reps} onChange={(e) => updateExercise(dayIdx, exIdx, { reps: e.target.value })} style={smallInput} title="Reps" />
-                <Button variant="ghost" type="button" aria-label={`Remove ${ex.name || 'exercise'}`} onClick={() => removeExercise(dayIdx, exIdx)}>✕</Button>
+              <div
+                key={exIdx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--s2)',
+                  padding: 'var(--s2) 0',
+                  borderBottom: '1px solid var(--border)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <input
+                  value={ex.name}
+                  aria-label="Exercise name"
+                  onChange={(e) => updateExercise(dayIdx, exIdx, { name: e.target.value })}
+                  style={{ ...quietField, flex: '2 1 150px', minWidth: 120, borderColor: 'transparent', margin: '0 0 0 -0.5rem' }}
+                />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flex: 'none' }}>
+                  <input type="number" min="1" max="10" value={ex.sets} onChange={(e) => updateExercise(dayIdx, exIdx, { sets: e.target.value })} style={numberField} title="Sets" aria-label="Sets" />
+                  <span className="faint mono" aria-hidden="true">×</span>
+                  <input type="number" min="1" max="50" value={ex.reps} onChange={(e) => updateExercise(dayIdx, exIdx, { reps: e.target.value })} style={numberField} title="Reps" aria-label="Reps" />
+                </span>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  aria-label={`Remove ${ex.name || 'exercise'}`}
+                  onClick={() => removeExercise(dayIdx, exIdx)}
+                  style={{ flex: 'none', minWidth: 32, color: 'var(--faint)' }}
+                >
+                  ✕
+                </button>
               </div>
             ))}
-            <Button variant="ghost" type="button" onClick={() => addExercise(dayIdx)}>+ Add exercise</Button>
+
+            <button type="button" className="ghost-button" onClick={() => addExercise(dayIdx)} style={{ marginTop: 'var(--s2)' }}>
+              + Add exercise
+            </button>
           </div>
         ))}
+
         {days.length < 7 && <Button variant="ghost" type="button" onClick={addDay}>+ Add workout day</Button>}
         {days.length === 0 && (
-          <p className="small muted">A plan needs at least one workout day — add one to enable saving.</p>
+          <p
+            className="small muted"
+            style={{
+              margin: 'var(--s3) 0 0',
+              padding: 'var(--s6) var(--s4)',
+              textAlign: 'center',
+              border: '1px dashed var(--border2)',
+              borderRadius: 'var(--r-lg)',
+            }}
+          >
+            A plan needs at least one workout day — add one to enable saving.
+          </p>
         )}
       </section>
 
       {diet && (
-        <section style={{ marginTop: '1.5rem' }}>
-          <h3 className="section-title">Daily diet & lifestyle targets</h3>
+        <section>
+          <h3 className="section-title">Daily diet &amp; lifestyle targets</h3>
+
+          {/* A bare calorie number invites the wrong reading. A very active
+              user on a cut gets ~2,700 kcal and reasonably asks why their
+              "deficit plan" feeds them more than they currently eat. Stating
+              the target against maintenance turns it from an assertion into
+              an argument — and it is the same pair of figures the coach is
+              given, so the page and the AI can never disagree. */}
+          {diet.maintenanceCalories != null && (
+            <p className="notice" style={{ marginBottom: 'var(--s4)' }}>
+              Your maintenance is about{' '}
+              <span className="mono" style={{ color: 'var(--text)' }}>
+                {Number(diet.maintenanceCalories).toLocaleString()}
+              </span>{' '}
+              kcal/day.{' '}
+              {diet.calorieDirection === 'deficit' && (
+                <>
+                  This plan targets{' '}
+                  <span className="mono" style={{ color: 'var(--text)' }}>
+                    {Number(diet.calorieTarget).toLocaleString()}
+                  </span>{' '}
+                  — a {Math.abs(diet.calorieDelta).toLocaleString()} kcal daily deficit.
+                </>
+              )}
+              {diet.calorieDirection === 'surplus' && (
+                <>
+                  This plan targets{' '}
+                  <span className="mono" style={{ color: 'var(--text)' }}>
+                    {Number(diet.calorieTarget).toLocaleString()}
+                  </span>{' '}
+                  — a {Math.abs(diet.calorieDelta).toLocaleString()} kcal daily surplus to fuel the build.
+                </>
+              )}
+              {diet.calorieDirection === 'maintenance' && <>This plan holds you there.</>}
+            </p>
+          )}
+          {/* Label left, value right, on a rule: the same ledger reading as
+              the rest of the document, so the numbers form one column. */}
           {DIET_FIELDS.map(({ key, label, min, max }) => (
-            <label key={key} style={{ display: 'block', marginBottom: '0.25rem' }}>
-              <span style={{ fontSize: '0.85rem' }}>{label} <em style={{ opacity: 0.5 }}>({min}–{max})</em></span>
+            <label
+              key={key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 'var(--s3)',
+                padding: 'var(--s2) 0',
+                borderBottom: '1px solid var(--border)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span className="small" style={{ minWidth: 0 }}>
+                {label} <em className="faint" style={{ fontStyle: 'italic' }}>({min}–{max})</em>
+              </span>
               <input
                 type="number"
                 min={min}
@@ -178,18 +320,32 @@ export default function Plan() {
                   setStatus((s) => (s.saved ? { ...s, saved: false } : s));
                   setDiet((d) => ({ ...d, [key]: e.target.value }));
                 }}
-                style={inputStyle}
+                style={{ ...quietField, width: 120, textAlign: 'right', fontVariantNumeric: 'tabular-nums', flex: 'none' }}
               />
             </label>
           ))}
         </section>
       )}
 
-      {status.error && <p className="error-text">{status.error}</p>}
-      {status.saved && <p className="success-text">Plan saved.</p>}
-      <Button type="button" onClick={handleSave} disabled={status.saving || !days.length}>
-        {status.saving ? 'Saving…' : 'Save plan'}
-      </Button>
+      {/* The save bar: the document's one committing action, under a rule,
+          with its status beside it rather than floating above it. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--s3)',
+          flexWrap: 'wrap',
+          marginTop: 'var(--s6)',
+          paddingTop: 'var(--s4)',
+          borderTop: '1px solid var(--border)',
+        }}
+      >
+        <Button type="button" onClick={handleSave} disabled={status.saving || !days.length}>
+          {status.saving ? 'Saving…' : 'Save plan'}
+        </Button>
+        {status.saved && <p className="small muted" style={{ margin: 0 }}>Plan saved.</p>}
+        {status.error && <p className="error-text small" style={{ margin: 0 }}>{status.error}</p>}
+      </div>
     </div>
   );
 }

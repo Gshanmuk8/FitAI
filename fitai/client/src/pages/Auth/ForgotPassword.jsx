@@ -27,21 +27,37 @@ export default function ForgotPassword() {
   if (sent) {
     return (
       <div className="page page-form page-enter">
-        <h2 className="page-title">Check your email</h2>
-        <p>If an account exists for <strong>{email}</strong>, a password-reset link is on its way.</p>
-        <p><Link to="/login">Back to sign in</Link></p>
+        <div className="auth-card">
+          <h1 className="page-title">Check your email</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            If an account exists for <strong style={{ color: 'var(--text)' }}>{email}</strong>, a password-reset link is on its way.
+          </p>
+        </div>
+        <p className="small" style={{ margin: 'var(--s4) 0 0', textAlign: 'center' }}>
+          <Link to="/login">Back to sign in</Link>
+        </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="page page-form page-enter">
-      <h2 className="page-title">Reset password</h2>
-      <label className="label" htmlFor="forgot-email">Email</label>
-      <input id="forgot-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required style={{ width: '100%' }} />
-      {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Sending…' : 'Send reset link'}</Button>
-      <p style={{ marginTop: '1rem' }}><Link to="/login">Back to sign in</Link></p>
-    </form>
+    <div className="page page-form page-enter">
+      <form onSubmit={handleSubmit}>
+        <h1 className="page-title">Reset password</h1>
+
+        <label className="label" htmlFor="forgot-email">Email</label>
+        <input className="field" id="forgot-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required />
+
+        {error && <p className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+
+        <Button type="submit" disabled={busy} style={{ width: '100%', marginTop: 'var(--s5)' }}>
+          {busy ? 'Sending…' : 'Send reset link'}
+        </Button>
+      </form>
+
+      <p className="small" style={{ margin: 'var(--s4) 0 0', textAlign: 'center' }}>
+        <Link to="/login">Back to sign in</Link>
+      </p>
+    </div>
   );
 }

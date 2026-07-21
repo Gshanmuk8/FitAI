@@ -10,8 +10,14 @@ const ACTIVITY_LEVELS = ['sedentary', 'lightly_active', 'moderately_active', 've
 const SEXES = ['male', 'female', 'other'];
 const EQUIPMENT = ['gym', 'home', 'minimal'];
 
-const inputStyle = { width: '100%', marginBottom: '0.75rem' };
-const labelStyle = { display: 'block', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.15rem' };
+// Settings read as groups, not as a scroll. Short fields pair up; the
+// section rule does the grouping so no box is needed around anything.
+const PAIR = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  gap: '0 var(--s4)',
+};
+const SECTION = { marginBottom: 'var(--s1)' };
 
 export default function Profile() {
   const [form, setForm] = useState(null);
@@ -123,8 +129,10 @@ export default function Profile() {
   if (noProfile) {
     return (
       <div className="dashboard-empty page-enter">
-        <h2 className="page-title">Finish setting up first</h2>
-        <p className="muted">Your profile is created when you complete onboarding.</p>
+        <h1 className="page-title">Finish setting up first</h1>
+        <p className="muted" style={{ margin: '0 0 var(--s5)' }}>
+          Your profile is created when you complete onboarding.
+        </p>
         <ButtonLink to="/onboarding">Complete onboarding</ButtonLink>
       </div>
     );
@@ -132,8 +140,8 @@ export default function Profile() {
   if (status.error && !form) {
     return (
       <div className="dashboard-empty page-enter">
-        <h2 className="page-title">Couldn't load your profile</h2>
-        <p className="muted">{status.error}</p>
+        <h1 className="page-title">Couldn't load your profile</h1>
+        <p className="muted" style={{ margin: '0 0 var(--s5)' }}>{status.error}</p>
         <Button type="button" onClick={loadProfile}>Try again</Button>
       </div>
     );
@@ -141,75 +149,140 @@ export default function Profile() {
   if (!form) return <p className="page-loading">Loading profile…</p>;
 
   return (
-    <div className="page page-narrow page-enter">
-      <h2 className="page-title">Profile</h2>
+    <div className="page page-mid page-enter">
+      <h1 className="page-title">Profile</h1>
 
       <form onSubmit={handleSave}>
-        <label style={labelStyle}>Age</label>
-        <input type="number" min="13" max="100" value={form.age} onChange={(e) => update('age', e.target.value)} required style={inputStyle} />
-        <label style={labelStyle}>Sex</label>
-        <select value={form.sex} onChange={(e) => update('sex', e.target.value)} style={inputStyle}>
-          {SEXES.map((s) => <option key={s} value={s}>{s === 'other' ? 'prefer not to say' : s}</option>)}
-        </select>
-        <label style={labelStyle}>Height (cm)</label>
-        <input type="number" min="100" max="250" value={form.heightCm} onChange={(e) => update('heightCm', e.target.value)} required style={inputStyle} />
-        <label style={labelStyle}>Current weight (kg) — daily weigh-ins go on the dashboard's Today's Mission</label>
-        <input type="number" step="0.1" min="30" max="300" value={form.weightKg} onChange={(e) => update('weightKg', e.target.value)} required style={inputStyle} />
-        <label style={labelStyle}>Goal</label>
-        <select value={form.goal} onChange={(e) => update('goal', e.target.value)} style={inputStyle}>
-          {GOALS.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}
-        </select>
-        <label style={labelStyle}>Target weight (kg)</label>
-        <input type="number" step="0.1" min="30" max="300" value={form.targetWeightKg} onChange={(e) => update('targetWeightKg', e.target.value)} style={inputStyle} />
-        <label style={labelStyle}>Timeframe (weeks)</label>
-        <input type="number" min="1" max="200" value={form.timeframeWeeks} onChange={(e) => update('timeframeWeeks', e.target.value)} style={inputStyle} />
-        <label style={labelStyle}>Activity level</label>
-        <select value={form.activityLevel} onChange={(e) => update('activityLevel', e.target.value)} style={inputStyle}>
-          {ACTIVITY_LEVELS.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
-        </select>
-        <label style={labelStyle}>Equipment</label>
-        <select value={form.gymAvailability} onChange={(e) => update('gymAvailability', e.target.value)} style={inputStyle}>
-          {EQUIPMENT.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
-        </select>
-        <label style={labelStyle}>Training days per week</label>
-        <input type="number" min="1" max="7" value={form.trainingDaysPerWeek} onChange={(e) => update('trainingDaysPerWeek', e.target.value)} placeholder="e.g. 4" style={inputStyle} />
-        <label style={labelStyle}>Your training, in your own words</label>
+        <h2 className="section-title" style={SECTION}>Body</h2>
+        <div style={PAIR}>
+          <div>
+            <label className="label" htmlFor="pf-age">Age</label>
+            <input className="field" id="pf-age" type="number" min="13" max="100" value={form.age} onChange={(e) => update('age', e.target.value)} required />
+          </div>
+          <div>
+            <label className="label" htmlFor="pf-sex">Sex</label>
+            <select className="field" id="pf-sex" value={form.sex} onChange={(e) => update('sex', e.target.value)}>
+              {SEXES.map((s) => <option key={s} value={s}>{s === 'other' ? 'prefer not to say' : s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="pf-height">Height (cm)</label>
+            <input className="field" id="pf-height" type="number" min="100" max="250" value={form.heightCm} onChange={(e) => update('heightCm', e.target.value)} required />
+          </div>
+          <div>
+            {/* The label states the field; the aside about where daily
+                weigh-ins live drops beneath it as a hint, so a tracked
+                uppercase label isn't carrying a whole sentence. */}
+            <label className="label" htmlFor="pf-weight">Current weight (kg)</label>
+            <input className="field" id="pf-weight" type="number" step="0.1" min="30" max="300" value={form.weightKg} onChange={(e) => update('weightKg', e.target.value)} required />
+            <p className="tiny muted" style={{ margin: 'var(--s1) 0 0' }}>
+              Daily weigh-ins go on the dashboard's Today's Mission.
+            </p>
+          </div>
+        </div>
+
+        <h2 className="section-title" style={SECTION}>Goal</h2>
+        <div style={PAIR}>
+          <div>
+            <label className="label" htmlFor="pf-goal">Goal</label>
+            <select className="field" id="pf-goal" value={form.goal} onChange={(e) => update('goal', e.target.value)}>
+              {GOALS.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="pf-target">Target weight (kg)</label>
+            <input className="field" id="pf-target" type="number" step="0.1" min="30" max="300" value={form.targetWeightKg} onChange={(e) => update('targetWeightKg', e.target.value)} />
+          </div>
+          <div>
+            <label className="label" htmlFor="pf-timeframe">Timeframe (weeks)</label>
+            <input className="field" id="pf-timeframe" type="number" min="1" max="200" value={form.timeframeWeeks} onChange={(e) => update('timeframeWeeks', e.target.value)} />
+          </div>
+        </div>
+
+        <h2 className="section-title" style={SECTION}>Training</h2>
+        <div style={PAIR}>
+          <div>
+            <label className="label" htmlFor="pf-activity">Activity level</label>
+            <select className="field" id="pf-activity" value={form.activityLevel} onChange={(e) => update('activityLevel', e.target.value)}>
+              {ACTIVITY_LEVELS.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="pf-equipment">Equipment</label>
+            <select className="field" id="pf-equipment" value={form.gymAvailability} onChange={(e) => update('gymAvailability', e.target.value)}>
+              {EQUIPMENT.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="pf-days">Training days per week</label>
+            <input className="field" id="pf-days" type="number" min="1" max="7" value={form.trainingDaysPerWeek} onChange={(e) => update('trainingDaysPerWeek', e.target.value)} placeholder="e.g. 4" />
+          </div>
+        </div>
+        <label className="label" htmlFor="pf-style">Your training, in your own words</label>
         <textarea
+          className="field"
+          id="pf-style"
           maxLength={500}
           rows={3}
           value={form.trainingStyle}
           onChange={(e) => update('trainingStyle', e.target.value)}
           placeholder="e.g. powerlifting 3 days, yoga on rest days — regenerating rebuilds your plan around this"
-          style={{ ...inputStyle, resize: 'vertical' }}
+          style={{ resize: 'vertical' }}
         />
-        <label style={labelStyle}>Injuries (comma separated)</label>
-        <input value={form.injuries} onChange={(e) => update('injuries', e.target.value)} style={inputStyle} />
-        <label style={labelStyle}>Dietary restrictions</label>
-        <input value={form.dietaryRestrictions} onChange={(e) => update('dietaryRestrictions', e.target.value)} style={inputStyle} />
 
-        {status.error && <p className="error-text">{status.error}</p>}
-        {status.saved && <p className="success-text">Profile saved. Your current plan and goal timeline are unchanged.</p>}
+        <h2 className="section-title" style={SECTION}>Constraints</h2>
+        <label className="label" htmlFor="pf-injuries">Injuries (comma separated)</label>
+        <input className="field" id="pf-injuries" value={form.injuries} onChange={(e) => update('injuries', e.target.value)} />
+        <label className="label" htmlFor="pf-diet">Dietary restrictions</label>
+        <input className="field" id="pf-diet" value={form.dietaryRestrictions} onChange={(e) => update('dietaryRestrictions', e.target.value)} />
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Button type="submit" disabled={Boolean(status.busy)}>
-            {status.busy === 'saving' ? 'Saving…' : 'Save profile'}
-          </Button>
-          <Button type="button" variant="ghost" disabled={Boolean(status.busy)} onClick={handleRegenerate}>
-            {status.busy === 'regenerating' ? 'Regenerating…' : 'Life changed? Regenerate plan'}
-          </Button>
+        {/* The action bar. The explanation of what the two actions DO now
+            sits above them rather than below — a caveat read after the click
+            is not a caveat. Regenerate stays ghost: it restarts the goal
+            clock, and a second filled button would make the two look
+            equivalent. */}
+        <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--s7)', paddingTop: 'var(--s5)' }}>
+          <p className="tiny muted" style={{ margin: '0 0 var(--s4)', maxWidth: '62ch' }}>
+            "Save profile" updates your facts without touching the plan. "Regenerate plan" builds a new program from
+            this profile (respecting injuries and your learned exercise preferences) and starts the goal timeline over.
+          </p>
+
+          {status.error && <p className="error-text" style={{ margin: '0 0 var(--s3)' }}>{status.error}</p>}
+          {status.saved && (
+            <p className="success-text" style={{ margin: '0 0 var(--s3)' }}>
+              Profile saved. Your current plan and goal timeline are unchanged.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
+            <Button type="submit" disabled={Boolean(status.busy)}>
+              {status.busy === 'saving' ? 'Saving…' : 'Save profile'}
+            </Button>
+            <Button type="button" variant="ghost" disabled={Boolean(status.busy)} onClick={handleRegenerate}>
+              {status.busy === 'regenerating' ? 'Regenerating…' : 'Life changed? Regenerate plan'}
+            </Button>
+          </div>
         </div>
       </form>
 
-      <p className="tiny muted" style={{ marginTop: '1rem' }}>
-        "Save profile" updates your facts without touching the plan. "Regenerate plan" builds a new program from
-        this profile (respecting injuries and your learned exercise preferences) and starts the goal timeline over.
-      </p>
-
-      <section className="card" style={{ marginTop: '2rem' }}>
-        <h3 style={{ marginTop: 0 }}>Account</h3>
-        <p className="muted small">{user?.email}</p>
-        <Button variant="ghost" type="button" onClick={handleSignOut}>Sign out</Button>
-        {signOutError && <p className="error-text small">{signOutError}</p>}
+      {/* Account is a different object from the profile facts, so it gets a
+          surface of its own — and sign-out stays ghost. A destructive action
+          should be findable, never eye-catching. */}
+      <h2 className="section-title" style={SECTION}>Account</h2>
+      <section className="card">
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 'var(--s3)', flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <p className="eyebrow" style={{ margin: 0 }}>Signed in as</p>
+            <p style={{ margin: 'var(--s1) 0 0', overflowWrap: 'anywhere' }}>{user?.email}</p>
+          </div>
+          <Button variant="ghost" type="button" onClick={handleSignOut}>Sign out</Button>
+        </div>
+        {signOutError && <p className="error-text small" style={{ margin: 'var(--s3) 0 0' }}>{signOutError}</p>}
       </section>
     </div>
   );

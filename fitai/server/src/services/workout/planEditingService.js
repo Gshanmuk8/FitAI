@@ -1,3 +1,4 @@
+const { withCalorieContext } = require('../../../../shared/calculations/dietTargets');
 /**
  * User edits to the live plan: merge, persist, and learn from the diff.
  * "Learn" is deterministic behavior memory — an exercise the user removes
@@ -44,7 +45,11 @@ async function applyPlanEdit(userId, edit) {
     ...currentPlan,
     ...(edit.days ? { days: edit.days } : {}),
     ...(edit.notes !== undefined ? { notes: edit.notes } : {}),
-    diet: edit.diet ? { ...currentPlan.diet, ...edit.diet } : currentPlan.diet,
+    // withCalorieContext re-derives delta/direction against the unchanged
+    // maintenance figure, so an edited target can never keep the old label.
+    diet: edit.diet
+      ? withCalorieContext({ ...currentPlan.diet, ...edit.diet })
+      : currentPlan.diet,
     customized: true,
     lastEditedAt: new Date().toISOString(),
   };

@@ -10,9 +10,20 @@ const ACTIVITY_LEVELS = ['sedentary', 'lightly_active', 'moderately_active', 've
 const EQUIPMENT = ['gym', 'home', 'minimal'];
 const SEXES = ['male', 'female', 'other'];
 
-const inputStyle = { width: '100%', marginBottom: '0.75rem' };
-const labelStyle = { display: 'block', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.15rem' };
 const isWeightGoal = (goal) => goal === 'lose_fat' || goal === 'build_muscle';
+
+// Short fields pair up on a line so the form is four readable groups rather
+// than a fourteen-item vertical crawl. auto-fit collapses to one column on a
+// phone without a second breakpoint.
+const PAIR = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  gap: '0 var(--s4)',
+};
+
+// .section-title carries its own bottom margin sized for prose; the first
+// .label under it adds another, so the pair is pulled back to one step.
+const SECTION = { marginBottom: 'var(--s1)' };
 
 export default function Onboarding() {
   const [form, setForm] = useState({
@@ -83,78 +94,123 @@ export default function Onboarding() {
 
   if (alreadyOnboarded) {
     return (
-      <div className="page page-form page-enter" style={{ textAlign: 'center' }}>
-        <h2 className="page-title">You already have a plan</h2>
-        <p className="muted">
-          Re-running onboarding would generate a new plan and restart your goal timeline.
-          If life changed, update your profile and regenerate from there.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1rem' }}>
-          <ButtonLink to="/dashboard">Go to Today</ButtonLink>
-          <ButtonLink to="/profile" variant="ghost">Update profile</ButtonLink>
+      <div className="page page-form page-enter">
+        <div className="auth-card">
+          <h1 className="page-title">You already have a plan</h1>
+          <p className="muted" style={{ margin: '0 0 var(--s5)' }}>
+            Re-running onboarding would generate a new plan and restart your goal timeline.
+            If life changed, update your profile and regenerate from there.
+          </p>
+          {/* One primary, one alternative — the primary carries the screen's
+              only pigment. */}
+          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
+            <ButtonLink to="/dashboard">Go to Today</ButtonLink>
+            <ButtonLink to="/profile" variant="ghost">Update profile</ButtonLink>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Four numbered groups on a ruled column. The numbering is the sense of
+  // progress: you can see how much form is left without a fake progress bar,
+  // and each rule gives the eye a place to rest. Nothing here is a step in a
+  // wizard — it is one submit, as it always was.
   return (
-    <form onSubmit={handleSubmit} className="page page-form page-enter">
-      <h2 className="page-title">Tell us about you</h2>
-      <label style={labelStyle}>Age</label>
-      <input type="number" min="13" max="100" value={form.age} onChange={(e) => update('age', e.target.value)} required style={inputStyle} />
-      <label style={labelStyle}>Sex</label>
-      <select value={form.sex} onChange={(e) => update('sex', e.target.value)} style={inputStyle}>
-        {SEXES.map((s) => <option key={s} value={s}>{s === 'other' ? 'prefer not to say' : s}</option>)}
-      </select>
-      <label style={labelStyle}>Height (cm)</label>
-      <input type="number" min="100" max="250" value={form.heightCm} onChange={(e) => update('heightCm', e.target.value)} required style={inputStyle} />
-      <label style={labelStyle}>Weight (kg)</label>
-      <input type="number" step="0.1" min="30" max="300" value={form.weightKg} onChange={(e) => update('weightKg', e.target.value)} required style={inputStyle} />
-      <label style={labelStyle}>Goal</label>
-      <select value={form.goal} onChange={(e) => update('goal', e.target.value)} style={inputStyle}>
-        {GOALS.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}
-      </select>
-      {isWeightGoal(form.goal) && (
-        <>
-          <label style={labelStyle}>Target weight (kg)</label>
-          <input type="number" step="0.1" min="30" max="300" value={form.targetWeightKg} onChange={(e) => update('targetWeightKg', e.target.value)} style={inputStyle} />
-        </>
-      )}
-      <label style={labelStyle}>In how many weeks do you want to reach this goal?</label>
-      <input type="number" min="1" max="200" value={form.timeframeWeeks} onChange={(e) => update('timeframeWeeks', e.target.value)} required style={inputStyle} />
-      <p className="tiny muted" style={{ marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
+    <form onSubmit={handleSubmit} className="page page-narrow page-enter">
+      <h1 className="page-title">Tell us about you</h1>
+
+      <h2 className="section-title" style={SECTION}>01 · You</h2>
+      <div style={PAIR}>
+        <div>
+          <label className="label" htmlFor="ob-age">Age</label>
+          <input className="field" id="ob-age" type="number" min="13" max="100" value={form.age} onChange={(e) => update('age', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label" htmlFor="ob-sex">Sex</label>
+          <select className="field" id="ob-sex" value={form.sex} onChange={(e) => update('sex', e.target.value)}>
+            {SEXES.map((s) => <option key={s} value={s}>{s === 'other' ? 'prefer not to say' : s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="ob-height">Height (cm)</label>
+          <input className="field" id="ob-height" type="number" min="100" max="250" value={form.heightCm} onChange={(e) => update('heightCm', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label" htmlFor="ob-weight">Weight (kg)</label>
+          <input className="field" id="ob-weight" type="number" step="0.1" min="30" max="300" value={form.weightKg} onChange={(e) => update('weightKg', e.target.value)} required />
+        </div>
+      </div>
+
+      <h2 className="section-title" style={SECTION}>02 · Goal</h2>
+      <div style={PAIR}>
+        <div>
+          <label className="label" htmlFor="ob-goal">Goal</label>
+          <select className="field" id="ob-goal" value={form.goal} onChange={(e) => update('goal', e.target.value)}>
+            {GOALS.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        {isWeightGoal(form.goal) && (
+          <div>
+            <label className="label" htmlFor="ob-target">Target weight (kg)</label>
+            <input className="field" id="ob-target" type="number" step="0.1" min="30" max="300" value={form.targetWeightKg} onChange={(e) => update('targetWeightKg', e.target.value)} />
+          </div>
+        )}
+      </div>
+      <label className="label" htmlFor="ob-timeframe">In how many weeks do you want to reach this goal?</label>
+      <input className="field" id="ob-timeframe" type="number" min="1" max="200" value={form.timeframeWeeks} onChange={(e) => update('timeframeWeeks', e.target.value)} required />
+      <p className="tiny muted" style={{ margin: 'var(--s1) 0 0' }}>
         We'll extend this automatically if it would require an unsafe pace.
       </p>
-      <label style={labelStyle}>Activity level</label>
-      <select value={form.activityLevel} onChange={(e) => update('activityLevel', e.target.value)} style={inputStyle}>
-        {ACTIVITY_LEVELS.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
-      </select>
-      <label style={labelStyle}>Equipment</label>
-      <select value={form.equipment} onChange={(e) => update('equipment', e.target.value)} style={inputStyle}>
-        {EQUIPMENT.map((eq) => <option key={eq} value={eq}>{eq === 'gym' ? 'full gym access' : eq === 'home' ? 'home equipment' : 'minimal / bodyweight'}</option>)}
-      </select>
-      <label style={labelStyle}>How many days a week can you train?</label>
-      <input type="number" min="1" max="7" value={form.trainingDaysPerWeek} onChange={(e) => update('trainingDaysPerWeek', e.target.value)} placeholder="e.g. 4" style={inputStyle} />
-      <label style={labelStyle}>Your training, in your own words (optional)</label>
+
+      <h2 className="section-title" style={SECTION}>03 · Training</h2>
+      <div style={PAIR}>
+        <div>
+          <label className="label" htmlFor="ob-activity">Activity level</label>
+          <select className="field" id="ob-activity" value={form.activityLevel} onChange={(e) => update('activityLevel', e.target.value)}>
+            {ACTIVITY_LEVELS.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="ob-equipment">Equipment</label>
+          <select className="field" id="ob-equipment" value={form.equipment} onChange={(e) => update('equipment', e.target.value)}>
+            {EQUIPMENT.map((eq) => <option key={eq} value={eq}>{eq === 'gym' ? 'full gym access' : eq === 'home' ? 'home equipment' : 'minimal / bodyweight'}</option>)}
+          </select>
+        </div>
+      </div>
+      <label className="label" htmlFor="ob-days">How many days a week can you train?</label>
+      <input className="field" id="ob-days" type="number" min="1" max="7" value={form.trainingDaysPerWeek} onChange={(e) => update('trainingDaysPerWeek', e.target.value)} placeholder="e.g. 4" />
+      <label className="label" htmlFor="ob-style">Your training, in your own words (optional)</label>
       <textarea
+        className="field"
+        id="ob-style"
         maxLength={500}
         rows={3}
         value={form.trainingStyle}
         onChange={(e) => update('trainingStyle', e.target.value)}
         placeholder="e.g. powerlifting 3 days, yoga on rest days · calisthenics and running · anything you want your plan built around"
-        style={{ ...inputStyle, resize: 'vertical' }}
+        style={{ resize: 'vertical' }}
       />
-      <label style={labelStyle}>Injuries (comma separated, optional)</label>
-      <input maxLength={500} value={form.injuries} onChange={(e) => update('injuries', e.target.value)} style={inputStyle} />
-      <label style={labelStyle}>Dietary restrictions (optional)</label>
-      <input maxLength={500} value={form.dietaryRestrictions} onChange={(e) => update('dietaryRestrictions', e.target.value)} style={inputStyle} />
-      {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={loading}>{loading ? 'Generating your plan…' : 'Generate my plan'}</Button>
-      {loading && (
-        <p className="tiny muted" style={{ marginTop: '0.5rem' }}>
-          Your coach is building your program — this usually takes under a minute.
-        </p>
-      )}
+
+      <h2 className="section-title" style={SECTION}>04 · Constraints</h2>
+      <label className="label" htmlFor="ob-injuries">Injuries (comma separated, optional)</label>
+      <input className="field" id="ob-injuries" maxLength={500} value={form.injuries} onChange={(e) => update('injuries', e.target.value)} />
+      <label className="label" htmlFor="ob-diet">Dietary restrictions (optional)</label>
+      <input className="field" id="ob-diet" maxLength={500} value={form.dietaryRestrictions} onChange={(e) => update('dietaryRestrictions', e.target.value)} />
+
+      {/* The close: a rule, then one action across the full measure. There is
+          nothing else to press on this screen and the layout says so. */}
+      <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--s7)', paddingTop: 'var(--s5)' }}>
+        {error && <p className="error-text" style={{ margin: '0 0 var(--s3)' }}>{error}</p>}
+        <Button type="submit" disabled={loading} style={{ width: '100%' }}>
+          {loading ? 'Generating your plan…' : 'Generate my plan'}
+        </Button>
+        {loading && (
+          <p className="tiny muted" style={{ margin: 'var(--s2) 0 0', textAlign: 'center' }}>
+            Your coach is building your program — this usually takes under a minute.
+          </p>
+        )}
+      </div>
     </form>
   );
 }

@@ -25,6 +25,16 @@ function buildDietTargets(profile) {
     calorieTargetForGoal(tdee, profile.goal)
   );
 
+  // The target on its own is a bare number, and a bare number invites the
+  // wrong reading: a very active user on a cut gets ~2,700 kcal and
+  // reasonably asks why their "deficit plan" is feeding them more than they
+  // eat now. Shipping maintenance alongside it — and the signed delta from
+  // it — lets every surface state the target as an ARGUMENT ("2,700, which
+  // is 500 below your 3,200 maintenance") instead of an assertion. It also
+  // gives the AI the same two numbers, so its prose can no longer contradict
+  // the arithmetic.
+  const calorieDelta = calorieTarget - tdee;
+
   const proteinPerKg = profile.goal === 'build_muscle' ? 2.0 : 1.8;
   const proteinGrams = roundTo(profile.weightKg * proteinPerKg, 5);
 
@@ -33,7 +43,42 @@ function buildDietTargets(profile) {
 
   const stepsTarget = profile.goal === 'lose_fat' ? 10000 : 8000;
 
-  return { calorieTarget, proteinGrams, waterMl, stepsTarget, sleepHours: 8 };
+  return {
+    calorieTarget,
+    proteinGrams,
+    waterMl,
+    stepsTarget,
+    sleepHours: 8,
+    // Context, not targets. Never user-editable — they are derived facts.
+    maintenanceCalories: tdee,
+    bmr,
+    calorieDelta,
+    // The direction the target actually cuts, stated once here so no
+    // surface has to re-derive it from the goal enum and risk disagreeing.
+    calorieDirection: calorieDelta < 0 ? 'deficit' : calorieDelta > 0 ? 'surplus' : 'maintenance',
+  };
+}
+
+/**
+ * Re-derive the calorie CONTEXT after a user edits their target.
+ *
+ * maintenance is a property of the body, so it survives an edit — but the
+ * delta and the direction are relationships between the target and
+ * maintenance, and both go stale the moment the target moves. Without this,
+ * a user on a cut who raises their target above maintenance keeps being told
+ * they are in "a 500 kcal deficit" while eating in a surplus: the same
+ * contradiction the deterministic layer exists to prevent.
+ *
+ * Pure and idempotent — safe to run on any diet object, edited or not.
+ */
+function withCalorieContext(diet) {
+  if (!diet || diet.calorieTarget == null || diet.maintenanceCalories == null) return diet;
+  const calorieDelta = Math.round(Number(diet.calorieTarget) - Number(diet.maintenanceCalories));
+  return {
+    ...diet,
+    calorieDelta,
+    calorieDirection: calorieDelta < 0 ? 'deficit' : calorieDelta > 0 ? 'surplus' : 'maintenance',
+  };
 }
 
 // Bounds for user-edited diet targets — the plan editor accepts overrides
@@ -46,4 +91,4 @@ const DIET_EDIT_BOUNDS = {
   sleepHours: { min: 5, max: 12 },
 };
 
-module.exports = { buildDietTargets, DIET_EDIT_BOUNDS };
+module.exports = { buildDietTargets, withCalorieContext, DIET_EDIT_BOUNDS };

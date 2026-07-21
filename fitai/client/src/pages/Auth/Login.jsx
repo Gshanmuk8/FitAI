@@ -36,19 +36,41 @@ export default function Login() {
     }
   }
 
+  // The form is the DIRECT child of .page-form — that is what puts it on a
+  // surface, centres it in the viewport, and collapses it to a bare form on
+  // a phone. The secondary routes sit outside the card: they are ways off
+  // this page, not part of the task on it.
   return (
-    <form onSubmit={handleSubmit} className="page page-form page-enter">
-      <h2 className="page-title">Sign in</h2>
-      {notice && <p className="notice">{notice}</p>}
-      <label className="label" htmlFor="login-email">Email</label>
-      <input id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required style={{ width: '100%' }} />
-      <label className="label" htmlFor="login-password">Password</label>
-      <input id="login-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" type="password" autoComplete="current-password" required style={{ width: '100%' }} />
-      {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Signing in…' : 'Sign in'}</Button>
-      <p style={{ marginTop: '1rem' }}>
-        <Link to="/signup">Need an account?</Link> · <Link to="/forgot-password">Forgot password?</Link>
+    <div className="page page-form page-enter">
+      <form onSubmit={handleSubmit}>
+        <h1 className="page-title">Sign in</h1>
+        {notice && <p className="notice">{notice}</p>}
+
+        <label className="label" htmlFor="login-email">Email</label>
+        <input className="field" id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required />
+
+        <label className="label" htmlFor="login-password">Password</label>
+        <input className="field" id="login-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" type="password" autoComplete="current-password" required />
+
+        {error && <p className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+
+        {/* The one pigment moment on the screen, full width so there is no
+            question about what to do next. */}
+        <Button type="submit" disabled={busy} style={{ width: '100%', marginTop: 'var(--s5)' }}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </Button>
+      </form>
+
+      <p
+        className="small"
+        style={{
+          display: 'flex', justifyContent: 'space-between', gap: 'var(--s3)',
+          flexWrap: 'wrap', margin: 'var(--s4) 0 0',
+        }}
+      >
+        <Link to="/signup">Need an account?</Link>
+        <Link to="/forgot-password">Forgot password?</Link>
       </p>
-    </form>
+    </div>
   );
 }

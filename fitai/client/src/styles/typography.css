@@ -1,111 +1,143 @@
-/* FitAI typography — an editorial technology voice.
+/* FitAI typography — an instrument voice.
 
-   THE PAIRING
-   Fraunces   — display only. Set with SOFT near zero and WONK OFF, it stops
-                being a novelty face and becomes what it actually is: a
-                well-drawn old-style serif with real optical sizing. The
-                previous system ran it at SOFT 100 / WONK 1 — poured-sugar
-                terminals and a canted ear — which is precisely why the UI
-                read as childish. Same typeface, adult setting.
-   Geist      — the UI voice. Drawn for interface work: closed apertures,
-                even rhythm, tight default tracking, and figures that hold a
-                column. It replaces Karla, whose quirks (the splayed 'a', the
-                loose fit) read informal at every size.
-   Geist Mono — labels and measurements. Replaces Space Mono, which is a
-                display mono wearing a label's clothes.
+   THE CHANGE
+   Fraunces is gone. An old-style serif is a MAGAZINE voice: it frames text
+   as something to be read and admired. This product is something to be
+   read at a glance and trusted — a number, a status, a next action. That
+   wants a grotesque with closed apertures and an even colour, set with
+   confidence at size.
 
-   THE RULE
-   Hierarchy is built from SIZE, WEIGHT, and SPACE — never from colour.
-   If a heading needs a pigment to outrank the paragraph under it, the
-   typography has failed and the colour is covering for it.               */
+   Geist does both jobs. It was drawn for interface work, it carries a real
+   300–700 range, and at 600 with tight tracking it holds a display line as
+   well as any dedicated display face. Dropping Fraunces also drops a
+   five-axis variable font from the critical path.
+
+   THE RULE, unchanged and now actually enforceable:
+   Hierarchy is SIZE, WEIGHT and SPACE. Never pigment. If a heading needs
+   colour to outrank the paragraph beneath it, the typography has failed.
+
+   THE NUMBERS RULE
+   Every figure a user might compare against another figure is tabular.
+   A weight, a macro, a percentage, a date. Proportional digits make a
+   column of numbers ripple, and a rippling column reads as imprecise —
+   which is fatal for a product asking to be trusted with a body. */
 
 :root {
-  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --font-body: 'Geist', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, Consolas, monospace;
-  /* the aside — Fraunces italic, still restrained */
-  --font-hand: 'Fraunces', Georgia, serif;
+  /* One family for voice, one for measurement. The display stack is Geist
+     too — the difference between display and UI here is setting, not face,
+     which is why the page reads as one object. */
+  --font-display: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  /* Legacy alias — the aside voice is no longer a separate face. */
+  --font-hand: var(--font-body);
 
-  /* ---- THE TYPE SCALE ----
-     A modular scale, not a pile of ad-hoc rem values. Every size in the
-     app resolves to one of these, which is what makes the page feel
-     measured instead of assembled. */
-  --t-hero: clamp(2.5rem, 4.6vw, 3.9rem);
-  --t-title: clamp(1.9rem, 2.6vw, 2.45rem);
-  --t-h2: 1.45rem;
-  --t-h3: 1.075rem;
+  /* ---- THE SCALE ----
+     Ratio widens as it climbs: body sizes sit close together so a page of
+     text stays even, display sizes leap so a heading is unmistakably a
+     heading. Fluid where it needs to survive a phone. */
+  --t-display: clamp(2.75rem, 7vw, 5rem);
+  --t-hero: clamp(2.25rem, 5vw, 3.5rem);
+  --t-title: clamp(1.75rem, 3vw, 2.25rem);
+  --t-h2: 1.375rem;
+  --t-h3: 1.0625rem;
   --t-body: 1rem;
-  --t-small: 0.9rem;
-  --t-tiny: 0.8rem;
+  --t-small: 0.9375rem;
+  --t-tiny: 0.8125rem;
   --t-label: 0.6875rem;
+
+  /* Measure. Prose beyond ~72ch stops being readable and starts being
+     work; the eye loses the line return. */
+  --measure: 68ch;
+  --measure-tight: 54ch;
 }
 
-body, .btn, input, select, textarea { font-family: var(--font-body); }
+body, .btn, input, select, textarea, button { font-family: var(--font-body); }
+
 body {
   font-size: 16px;
   line-height: 1.6;
-  /* Geist is drawn tight; a hair of negative tracking at body size keeps
-     the colour of the text even without closing up the counters */
-  letter-spacing: -0.006em;
+  /* Geist sets tight; a hair of negative tracking at body size keeps an
+     even colour without closing the counters. */
+  letter-spacing: -0.011em;
   font-variant-numeric: proportional-nums;
-  font-feature-settings: 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* ---- Display: Fraunces, adult setting ----
-   SOFT low, WONK off, weight in the 400–500 range. `opsz` tracks the
-   rendered size so the serifs thin correctly as the type grows. */
+/* ---- Display ----
+   Tracking tightens as size grows — the optical correction that makes
+   large type look drawn rather than scaled. This is the single highest-
+   leverage detail in the whole system. */
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.018em;
-  line-height: 1.2;
-  font-variation-settings: 'SOFT' 12, 'WONK' 0, 'opsz' 40;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
 }
+
 h1 {
   font-size: var(--t-title);
-  font-weight: 450;
-  letter-spacing: -0.026em;
-  line-height: 1.1;
-  font-variation-settings: 'SOFT' 8, 'WONK' 0, 'opsz' 96;
+  font-weight: 620;
+  line-height: 1.06;
+  letter-spacing: -0.032em;
 }
+
 h2 {
   font-size: var(--t-h2);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  font-variation-settings: 'SOFT' 10, 'WONK' 0, 'opsz' 48;
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  line-height: 1.25;
 }
-/* Small display sizes want a touch more weight to hold their own against
-   Geist's even colour, and a lower opsz so the serifs stay sturdy. */
+
 h3, h4 {
   font-size: var(--t-h3);
   font-weight: 600;
-  letter-spacing: -0.012em;
-  font-variation-settings: 'SOFT' 14, 'WONK' 0, 'opsz' 18;
+  letter-spacing: -0.014em;
+  line-height: 1.35;
 }
 
-/* The aside — a margin note, not a flourish. */
+/* The aside — italic, quiet, no longer a different typeface. */
 .font-accent {
-  font-family: var(--font-hand);
   font-style: italic;
   font-weight: 400;
-  letter-spacing: 0;
-  font-variation-settings: 'SOFT' 20, 'WONK' 0, 'opsz' 14;
+  letter-spacing: -0.01em;
+  color: var(--muted);
 }
 
 /* ---- The label voice ----
-   Geist Mono, small, widely tracked, and QUIET. Labels sat in berry
-   pigment before; a label is metadata and metadata does not outrank the
-   value it labels. It is grey now, and the hierarchy reads instantly. */
+   Mono, small, widely tracked, quiet. A label is metadata; metadata must
+   never outrank the value it labels. */
 .eyebrow {
   font-family: var(--font-mono);
   font-size: var(--t-label);
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--faint);
 }
 
 code, kbd, .mono { font-family: var(--font-mono); }
 
-/* Measurements align in a column — figures in a table must be tabular. */
-.mono, .stat-value, [class*='-value'] { font-variant-numeric: tabular-nums; }
+/* Anything comparable is tabular. Broad on purpose — a missed figure in a
+   column is worse than a slightly wide one in a sentence. */
+.mono,
+.stat-value,
+.check-value,
+.chat-meta,
+time,
+[class*='-value'],
+[class*='-figure'],
+[class*='-metric'] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
+}
+
+/* Prose gets a measure and a comfortable leading; nothing else does. */
+.prose {
+  max-width: var(--measure);
+  line-height: 1.7;
+}
+.prose p + p { margin-top: var(--s3); }

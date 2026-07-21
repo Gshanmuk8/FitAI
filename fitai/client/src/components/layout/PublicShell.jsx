@@ -20,7 +20,14 @@ export default function PublicShell({ children }) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <nav className="app-nav">
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <span className="nav-brand">Fit<em>AI</em></span>
+          {/* Mark in ink, wordmark in ink, the italic AI in pigment — the
+              chrome's single tinted glyph, and the same brand object the
+              signed-in rail carries. */}
+          <span className="nav-brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)' }}>
+            <BrandMark />
+            {/* One flex item — see NavBar. */}
+            <span>Fit<em>AI</em></span>
+          </span>
         </Link>
 
         {/* display:contents on desktop — these sit inline in the rail; on
@@ -64,5 +71,20 @@ export default function PublicShell({ children }) {
       <main style={{ flex: 1 }}>{children}</main>
       <Footer />
     </div>
+  );
+}
+
+// A bezel and a rising trace — see NavBar. Duplicated rather than shared
+// because it is four elements and the two shells are otherwise independent.
+function BrandMark() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ flex: 'none' }}>
+      <rect x="1" y="1" width="18" height="18" rx="5.5" stroke="currentColor" strokeOpacity="0.24" strokeWidth="1.25" />
+      <path
+        d="M5 13.6 L8.4 9.8 L11.4 11.9 L15.2 6.4"
+        stroke="currentColor" strokeWidth="1.6"
+        strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
   );
 }

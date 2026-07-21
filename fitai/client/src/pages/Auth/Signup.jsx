@@ -41,28 +41,44 @@ export default function Signup() {
     }
   }
 
+  // .auth-card is the non-form sibling of the form treatment: same surface,
+  // same hairline, same collapse on a phone. A confirmation message is a
+  // destination too, and it should not read as a stripped-down error page.
   if (needsConfirmation) {
     return (
       <div className="page page-form page-enter">
-        <h2 className="page-title">Confirm your email</h2>
-        <p>
-          We sent a confirmation link to <strong>{email}</strong>. Click it, then{' '}
-          <Link to="/login">sign in</Link> to start onboarding.
-        </p>
+        <div className="auth-card">
+          <h1 className="page-title">Confirm your email</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            We sent a confirmation link to <strong style={{ color: 'var(--text)' }}>{email}</strong>. Click it, then{' '}
+            <Link to="/login">sign in</Link> to start onboarding.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="page page-form page-enter">
-      <h2 className="page-title">Sign up</h2>
-      <label className="label" htmlFor="signup-email">Email</label>
-      <input id="signup-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required style={{ width: '100%' }} />
-      <label className="label" htmlFor="signup-password">Password</label>
-      <input id="signup-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required style={{ width: '100%' }} />
-      {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Creating account…' : 'Sign up'}</Button>
-      <p style={{ marginTop: '1rem' }}><Link to="/login">Already have an account?</Link></p>
-    </form>
+    <div className="page page-form page-enter">
+      <form onSubmit={handleSubmit}>
+        <h1 className="page-title">Sign up</h1>
+
+        <label className="label" htmlFor="signup-email">Email</label>
+        <input className="field" id="signup-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required />
+
+        <label className="label" htmlFor="signup-password">Password</label>
+        <input className="field" id="signup-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required />
+
+        {error && <p className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+
+        <Button type="submit" disabled={busy} style={{ width: '100%', marginTop: 'var(--s5)' }}>
+          {busy ? 'Creating account…' : 'Sign up'}
+        </Button>
+      </form>
+
+      <p className="small" style={{ margin: 'var(--s4) 0 0', textAlign: 'center' }}>
+        <Link to="/login">Already have an account?</Link>
+      </p>
+    </div>
   );
 }

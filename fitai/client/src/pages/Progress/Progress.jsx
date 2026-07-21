@@ -8,13 +8,33 @@ import Button from '../../components/ui/Button';
 // headline, statusLabel, every number, every chart — are the coach's.
 const STATUS_TONE = { ahead: 'emerald', on_track: 'emerald', behind: 'amber', no_data: 'cyan' };
 
-// Tone → text class. Everything the page shows as a number is the coach's
-// own arithmetic (analysis.stats / analysis.charts) — this file only
-// renders; it deliberately computes nothing from the raw data.
-const toneClass = (tone) => (tone && tone !== 'neutral' ? `tone-${tone}-text` : '');
+// Tone → a token, for the 4px dot beside a stat's label. The coach's tone is
+// information and must survive, but a wall of pigmented 38px numerals is the
+// screen shouting six things at once. The dot keeps the meaning; the figure
+// stays ink, so the stat row reads as one tabular ledger. Whitelisted so an
+// unexpected tone name can never emit an undefined custom property.
+const TONE_VAR = {
+  emerald: 'var(--emerald)',
+  amber: 'var(--amber)',
+  red: 'var(--red)',
+  cyan: 'var(--cyan)',
+  lime: 'var(--lime)',
+  blue: 'var(--blue)',
+};
+const toneDot = (tone) => (tone && tone !== 'neutral' ? TONE_VAR[tone] : null);
 
 const fmtAxis = (v) =>
   Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : Number.isInteger(v) ? String(v) : v.toFixed(1);
+
+// Chart type, in the label voice: mono, tracked, quiet, and — because these
+// are axis figures — tabular. An axis set in the body face at a browser
+// default size is the tell of a chart nobody drew on purpose.
+const AXIS_TEXT = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 'var(--t-label)',
+  fontVariantNumeric: 'tabular-nums',
+  letterSpacing: '0.04em',
+};
 
 /**
  * Weigh-in trend as a plain SVG — no chart dependency for one line. Used
@@ -24,12 +44,16 @@ const fmtAxis = (v) =>
  */
 function WeightChart({ weighIns, targetKg }) {
   if (!weighIns || weighIns.length < 2) {
+    // An empty chart is not an error — it is a chart waiting for its second
+    // point. Given room and a rule, the absence reads as designed.
     return (
-      <p className="small muted">
-        {weighIns?.length === 1
-          ? 'One weigh-in so far — log a few more on the dashboard and the trend appears here.'
-          : 'No weigh-ins yet — log today\'s weight on the dashboard\'s Today\'s Mission.'}
-      </p>
+      <div style={{ padding: 'var(--s6) 0', borderTop: '1px solid var(--border)' }}>
+        <p className="small muted" style={{ margin: 0, maxWidth: '44ch' }}>
+          {weighIns?.length === 1
+            ? 'One weigh-in so far — log a few more on the dashboard and the trend appears here.'
+            : 'No weigh-ins yet — log today\'s weight on the dashboard\'s Today\'s Mission.'}
+        </p>
+      </div>
     );
   }
 
@@ -52,26 +76,29 @@ function WeightChart({ weighIns, targetKg }) {
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Weight trend chart" style={{ width: '100%', height: 'auto' }}>
       {gridKgs.map((kg) => (
         <g key={kg}>
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(kg)} y2={y(kg)} stroke="currentColor" opacity="0.08" />
-          <text x={PAD.left - 6} y={y(kg) + 4} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">
+          {/* hairlines, at the same weight as every other rule on the page */}
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(kg)} y2={y(kg)} stroke="var(--border)" />
+          <text x={PAD.left - 8} y={y(kg) + 4} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>
             {kg.toFixed(1)}
           </text>
         </g>
       ))}
       {targetKg != null && (
         <g>
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--amber)" strokeDasharray="5 4" opacity="0.7" />
-          <text x={W - PAD.right} y={y(targetKg) - 5} textAnchor="end" fontSize="11" fill="var(--amber)">
+          {/* The target is a REFERENCE, not a warning — it gets a dashed rule
+              in ink, leaving the series as the only pigment in the frame. */}
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--border2)" strokeDasharray="4 4" />
+          <text x={W - PAD.right} y={y(targetKg) - 6} textAnchor="end" fill="var(--muted)" style={AXIS_TEXT}>
             target {targetKg}kg
           </text>
         </g>
       )}
-      <path d={path} fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={path} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {weighIns.map((p, i) => (
-        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold)" />
+        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.2" fill="var(--gold)" />
       ))}
-      <text x={PAD.left} y={H - 8} fontSize="11" fill="currentColor" opacity="0.5">{first.date}</text>
-      <text x={W - PAD.right} y={H - 8} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">{last.date}</text>
+      <text x={PAD.left} y={H - 6} fill="var(--faint)" style={AXIS_TEXT}>{first.date}</text>
+      <text x={W - PAD.right} y={H - 6} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>{last.date}</text>
     </svg>
   );
 }
@@ -108,24 +135,28 @@ function CoachChart({ chart }) {
   const linePath = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
 
   return (
-    <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-      <div className="page-header">
+    // A plate, not a card. Six charts in six boxes is six containers of equal
+    // rank stacked down a page; the same six under hairlines read as one
+    // continuous report — which is what they are.
+    <figure style={{ margin: '0 0 var(--s6)', borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)' }}>
+      <figcaption className="page-header" style={{ marginBottom: 'var(--s3)' }}>
         <h3 style={{ margin: 0 }}>{chart.title}</h3>
-        {chart.unit && <span className="chip">{chart.unit}</span>}
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chart.title} style={{ width: '100%', height: 'auto', marginTop: '0.4rem' }}>
+        {/* a unit is metadata, not a status — it belongs in the label voice */}
+        {chart.unit && <span className="eyebrow">{chart.unit}</span>}
+      </figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chart.title} style={{ width: '100%', height: 'auto' }}>
         {gridVals.map((v) => (
           <g key={v}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="currentColor" opacity="0.08" />
-            <text x={PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.5">
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" />
+            <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>
               {fmtAxis(v)}
             </text>
           </g>
         ))}
         {chart.targetValue != null && (
           <g>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--amber)" strokeDasharray="5 4" opacity="0.7" />
-            <text x={W - PAD.right} y={y(chart.targetValue) - 5} textAnchor="end" fontSize="11" fill="var(--amber)">
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--border2)" strokeDasharray="4 4" />
+            <text x={W - PAD.right} y={y(chart.targetValue) - 6} textAnchor="end" fill="var(--muted)" style={AXIS_TEXT}>
               target {fmtAxis(chart.targetValue)}{chart.unit ? ` ${chart.unit}` : ''}
             </text>
           </g>
@@ -138,16 +169,16 @@ function CoachChart({ chart }) {
               y={Math.min(y(p.value), y(0))}
               width={barW}
               height={Math.max(1.5, Math.abs(y(p.value) - y(0)))}
-              rx="3"
+              rx="2"
               fill="var(--gold)"
-              opacity="0.85"
+              opacity="0.9"
             />
           ))
         ) : (
           <>
-            <path d={linePath} fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            <path d={linePath} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
             {points.map((p, i) => (
-              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.6" fill="var(--gold)" />
+              <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.value)} r="2.2" fill="var(--gold)" />
             ))}
           </>
         )}
@@ -156,29 +187,45 @@ function CoachChart({ chart }) {
             <text
               key={`lbl-${p.label}-${i}`}
               x={chart.type === 'bar' ? barX(i) + barW / 2 : x(i)}
-              y={H - 8}
+              y={H - 6}
               textAnchor="middle"
-              fontSize="11"
-              fill="currentColor"
-              opacity="0.5"
+              fill="var(--faint)"
+              style={AXIS_TEXT}
             >
               {p.label}
             </text>
           ) : null
         )}
       </svg>
-      {chart.note && <p className="small muted" style={{ margin: '0.5rem 0 0' }}>{chart.note}</p>}
-    </div>
+      {chart.note && <p className="small muted" style={{ margin: 'var(--s3) 0 0', maxWidth: '62ch' }}>{chart.note}</p>}
+    </figure>
   );
 }
 
+// One column of the coach's read: an eyebrow, a rule above it, and the
+// items on ruled rows. Returns null when the coach didn't author this list —
+// the grid simply closes up, so an absent array never leaves a titled void.
 function AnalysisList({ title, items, tone }) {
   if (!items?.length) return null;
   return (
-    <div style={{ marginTop: '0.6rem' }}>
-      <span className="stat-label">{title}</span>
-      <ul className={`small ${tone || 'muted'}`} style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
-        {items.map((s, i) => <li key={i}>{s}</li>)}
+    <div style={{ minWidth: 0, borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)' }}>
+      <p className="eyebrow" style={{ margin: '0 0 var(--s2)' }}>{title}</p>
+      <ul className={`small ${tone || 'muted'}`} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {items.map((s, i) => (
+          <li
+            key={i}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '0.9rem minmax(0, 1fr)',
+              gap: 'var(--s1)',
+              alignItems: 'baseline',
+              padding: '0.35rem 0',
+            }}
+          >
+            <span className="faint" aria-hidden="true">·</span>
+            <span>{s}</span>
+          </li>
+        ))}
       </ul>
     </div>
   );
@@ -249,7 +296,9 @@ export default function Progress() {
     return (
       <div className="page page-mid page-enter">
         <h2 className="page-title">Progress</h2>
-        <p className="muted">{notOnboarded ? 'Complete onboarding first — progress tracking starts with your plan.' : error}</p>
+        <p className="muted" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--t-h3)', fontWeight: 400, lineHeight: 1.6, maxWidth: '48ch', margin: '0 0 var(--s5)' }}>
+          {notOnboarded ? 'Complete onboarding first — progress tracking starts with your plan.' : error}
+        </p>
         {notOnboarded
           ? <Link to="/onboarding"><Button>Complete onboarding</Button></Link>
           : <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Try again'}</Button>}
@@ -264,11 +313,16 @@ export default function Progress() {
 
   // A failed background refresh is a note above the page, never a
   // replacement for it — everything below is still the user's real data.
+  // A margin note, not a card: a card here outranked the analysis it was
+  // apologising for.
   const refreshBanner = refreshError ? (
-    <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
-      <p className="small" style={{ margin: 0 }}>
+    <div
+      className="notice tone-amber"
+      style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', flexWrap: 'wrap', marginBottom: 'var(--s5)' }}
+    >
+      <span style={{ flex: 1, minWidth: '18ch' }}>
         Couldn't refresh just now — showing your last loaded analysis. {refreshError}
-      </p>
+      </span>
       <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Refresh'}</Button>
     </div>
   ) : null;
@@ -287,65 +341,81 @@ export default function Progress() {
     const latestWeight = weighIns.length ? weighIns[weighIns.length - 1].kg : null;
     return (
       <div className="page page-wide page-enter">
-        <header className="page-header">
-          <h2 className="page-title">Progress</h2>
-          <Link to="/plan">Edit plan →</Link>
-        </header>
-        {refreshBanner}
-        <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
-          <h3 style={{ marginTop: 0 }}>Your coach couldn't be reached</h3>
-          <p className="small" style={{ margin: '0.5rem 0' }}>
-            Nothing here is made up while the AI is away — your logged data below is safe, and the full
-            analysis, stats and charts are generated the moment the coach is back.
-          </p>
-          <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Try again now'}</Button>
+        {/* In this state the ONE thing that needs answering is that the coach
+            is away — so it takes the headline slot instead of being a card
+            wedged under a generic page title. */}
+        <div className="page-header" style={{ marginBottom: 'var(--s3)' }}>
+          <p className="eyebrow" style={{ margin: 0 }}>Progress</p>
+          <Link to="/plan" className="small muted">Edit plan →</Link>
         </div>
-        <section className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-          <div className="page-header">
+        {refreshBanner}
+        <h2 className="page-title" style={{ maxWidth: '18ch' }}>Your coach couldn't be reached</h2>
+        <p className="muted" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--t-h3)', fontWeight: 400, lineHeight: 1.6, maxWidth: '56ch', margin: '0 0 var(--s5)' }}>
+          Nothing here is made up while the AI is away — your logged data below is safe, and the full
+          analysis, stats and charts are generated the moment the coach is back.
+        </p>
+        <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Try again now'}</Button>
+
+        <figure style={{ margin: 'var(--s7) 0 0' }}>
+          <figcaption className="page-header" style={{ marginBottom: 'var(--s3)' }}>
             <h3 style={{ margin: 0 }}>Weight trend</h3>
-            {latestWeight != null && <span className="chip">{latestWeight}kg now</span>}
-          </div>
+            {latestWeight != null && <span className="eyebrow">{latestWeight}kg now</span>}
+          </figcaption>
           <WeightChart weighIns={weighIns} targetKg={goal.targetWeightKg} />
-          <p className="tiny faint" style={{ margin: '0.5rem 0 0' }}>
+          <p className="tiny faint" style={{ margin: 'var(--s3) 0 0', maxWidth: '62ch' }}>
             Weigh in each morning on <Link to="/dashboard">Today's Mission</Link> — every entry lands in the coach's next analysis.
           </p>
-        </section>
+        </figure>
       </div>
     );
   }
 
   return (
     <div className="page page-wide page-enter">
-      <header className="page-header">
-        <h2 className="page-title">Progress</h2>
-        <Link to="/plan">Edit plan →</Link>
+      {/* ---- The masthead ----
+              The coach's headline IS the page title: "am I on track?" has to
+              be answerable before the eye reaches a number. "Progress" drops
+              to the eyebrow — it names the screen, it isn't the news. The
+              status chip is this page's single pigment moment. ---- */}
+      <header style={{ marginBottom: 'var(--s6)' }}>
+        <div className="page-header" style={{ marginBottom: 'var(--s3)' }}>
+          <p className="eyebrow" style={{ margin: 0 }}>Progress</p>
+          <Link to="/plan" className="small muted">Edit plan →</Link>
+        </div>
+
+        {refreshBanner}
+
+        {/* ---- Stale: a REAL past analysis served while a refresh is blocked
+                by a provider outage — say so plainly and offer the retry ---- */}
+        {report.stale && (
+          <div
+            className="notice tone-amber"
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', flexWrap: 'wrap', marginBottom: 'var(--s5)' }}
+          >
+            <span style={{ flex: 1, minWidth: '18ch' }}>
+              Showing your last analysis{report.staleDate ? ` (${report.staleDate})` : ''} — the coach couldn't be
+              reached to fold in your latest changes yet.
+            </span>
+            <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Refresh now'}</Button>
+          </div>
+        )}
+
+        <h2 className="page-title" style={{ maxWidth: '20ch', marginBottom: 'var(--s3)' }}>
+          {analysis.headline || goal.type?.replace(/_/g, ' ')}
+        </h2>
+        {analysis.statusLabel && <span className={`chip tone-${tone}`}>{analysis.statusLabel}</span>}
+        <p
+          className="muted"
+          style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--t-h3)', fontWeight: 400, lineHeight: 1.6, maxWidth: '58ch', margin: 'var(--s4) 0 0' }}
+        >
+          {analysis.summary}
+        </p>
       </header>
-      {refreshBanner}
 
-      {/* ---- Stale: a REAL past analysis served while a refresh is blocked
-              by a provider outage — say so plainly and offer the retry ---- */}
-      {report.stale && (
-        <div className="notice tone-amber" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <span className="small" style={{ flex: 1 }}>
-            Showing your last analysis{report.staleDate ? ` (${report.staleDate})` : ''} — the coach couldn't be
-            reached to fold in your latest changes yet.
-          </span>
-          <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Refresh now'}</Button>
-        </div>
-      )}
-
-      {/* ---- The coach's analysis — the heart of the page. Headline and
-              status label are its words too; the only non-AI text on this
-              path is the raw goal type shown while a pre-headline stored
-              analysis is served stale during an outage. ---- */}
-      <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
-        <div className="page-header">
-          <h3 style={{ margin: 0 }}>{analysis.headline || goal.type?.replace(/_/g, ' ')}</h3>
-          {analysis.statusLabel && (
-            <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>{analysis.statusLabel}</span>
-          )}
-        </div>
-        <p className="small" style={{ margin: '0.5rem 0' }}>{analysis.summary}</p>
+      {/* ---- The coach's read, in three ruled columns. Bullets stacked in a
+              tinted card made three different kinds of advice look like one
+              undifferentiated list. ---- */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'var(--s5)', marginBottom: 'var(--s7)' }}>
         <AnalysisList title="Going well" items={analysis.wins} />
         <AnalysisList title="Watch out" items={analysis.risks} />
         <AnalysisList title="Do next" items={analysis.recommendations} />
@@ -353,42 +423,58 @@ export default function Progress() {
 
       {/* ---- The coach's numbers — every figure computed by the AI from the
               logs (implausible entries excluded by its own judgment), so a
-              tile can never contradict the analysis above ---- */}
+              tile can never contradict the analysis above. Optional: when the
+              coach authored none, the ledger simply isn't there. ---- */}
       {stats.length > 0 && (
-        <div className="stat-grid" style={{ marginBottom: '1rem' }}>
-          {stats.map((s, i) => (
-            <div key={`${s.label}-${i}`} className="stat-card">
-              <div className="stat-label">{s.label}</div>
-              <div className={`stat-value ${toneClass(s.tone)}`}>{s.value}</div>
-              {s.detail && <div className="stat-sub">{s.detail}</div>}
-            </div>
-          ))}
+        <div className="stat-grid" style={{ marginBottom: 'var(--s6)' }}>
+          {stats.map((s, i) => {
+            const dot = toneDot(s.tone);
+            return (
+              <div key={`${s.label}-${i}`} className="stat-card">
+                <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {dot && (
+                    <span
+                      aria-hidden="true"
+                      style={{ width: 4, height: 4, borderRadius: '50%', background: dot, flex: 'none' }}
+                    />
+                  )}
+                  {s.label}
+                </div>
+                <div className="stat-value">{s.value}</div>
+                {s.detail && <div className="stat-sub">{s.detail}</div>}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* ---- The coach's charts — the page's ONLY graphs: series it chose,
               values it computed. The weight line (with the target rule) is
-              chart #1 by the prompt's contract. ---- */}
+              chart #1 by the prompt's contract. Also optional. ---- */}
       {charts.map((chart, i) => (
         <CoachChart key={`${chart.title}-${i}`} chart={chart} />
       ))}
 
-      {/* ---- Weight, training & nutrition — the coach's read, in words ---- */}
-      <div className="grid-cards" style={{ marginBottom: '1rem' }}>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Weight</h3>
-          <p className="small muted" style={{ marginBottom: 0 }}>{analysis.weightTrend}</p>
+      {/* ---- Weight, training & nutrition — the coach's read, in words.
+              Three ruled columns rather than three cards: this is supporting
+              prose, and it should sit under the numbers, not beside them in
+              matching containers. ---- */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--s5)', marginBottom: 'var(--s5)' }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)', minWidth: 0 }}>
+          <p className="eyebrow" style={{ margin: '0 0 var(--s2)' }}>Weight</p>
+          <p className="small muted" style={{ margin: 0 }}>{analysis.weightTrend}</p>
         </div>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Training</h3>
-          <p className="small muted" style={{ marginBottom: 0 }}>{analysis.trainingAnalysis}</p>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)', minWidth: 0 }}>
+          <p className="eyebrow" style={{ margin: '0 0 var(--s2)' }}>Training</p>
+          <p className="small muted" style={{ margin: 0 }}>{analysis.trainingAnalysis}</p>
         </div>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Nutrition</h3>
-          <p className="small muted" style={{ marginBottom: 0 }}>{analysis.nutritionAnalysis}</p>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)', minWidth: 0 }}>
+          <p className="eyebrow" style={{ margin: '0 0 var(--s2)' }}>Nutrition</p>
+          <p className="small muted" style={{ margin: 0 }}>{analysis.nutritionAnalysis}</p>
         </div>
       </div>
-      <p className="tiny faint" style={{ margin: '0 0 1rem' }}>
+
+      <p className="tiny faint" style={{ margin: 'var(--s5) 0 0', maxWidth: '62ch' }}>
         Everything above is your coach's own read of your logs. Weigh in each morning on{' '}
         <Link to="/dashboard">Today's Mission</Link> — the analysis regenerates as soon as new data lands.
       </p>

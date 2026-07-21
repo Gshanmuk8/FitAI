@@ -1,88 +1,104 @@
-/* FitAI — a crafted editorial instrument.
+/* FitAI — a clinical instrument.
 
-   THE PALETTE IS UNCHANGED. Every pigment value below is byte-identical to
-   the previous system. What changed is how much of it gets spent, and that
-   alone is the difference between "candy" and "premium" — the colours were
-   never the problem.
+   WHAT CHANGED, AND WHY
+   The previous system was a warm fruit palette: coral, magenta, orange on
+   a peach ground, set in an old-style serif. It was well built and it was
+   the wrong identity. This product asks to be trusted with someone's body
+   — a weight, a deficit, a recovery call. That trust is built by looking
+   MEASURED, and a candy palette in a magazine face reads as a lifestyle
+   brand, not an instrument.
 
-   WHERE THE QUALITY COMES FROM, in order:
-     1. TYPOGRAPHY  — hierarchy is size, weight and space. Never pigment.
-     2. SPACE       — the margin is the luxury. Nothing is cramped.
-     3. TEXTURE     — a fine grain over everything so surfaces read as
-                      material, not as flat vector fills.
-     4. LAYERING    — a surface, a hairline, a considered shadow. Depth is
-                      light behaving correctly, not a glow.
-     5. RESTRAINT   — colour is a signal. The moment it decorates, it stops
-                      meaning anything, and the UI reads as a toy.
+   So: the ground is near-white paper, the ink is graphite, and the ONLY
+   saturated things on any screen are the user's own data and the one
+   action they should take next. Colour is now information, exclusively.
 
-   THE SPEND RULE
-   A screen may carry ONE pigment moment: the primary action, or the one
-   status that needs answering — not both, and never a third. Everything
-   else is ink, paper, and hairline. Pigment is a full stop, not a texture.
-
-   Class and variable NAMES are the stable API — the app reskins from this
-   file. One colour, one meaning (legacy names, unchanged values):
+   THE NAMES TELL THE TRUTH AGAIN
+   The old system had --blue set to magenta, --cyan to orange and --gold to
+   red — the vocabulary fought every future change. Each name below is now
+   the colour it says it is:
      --blue    = interactive anchor      --cyan  = the coach
      --emerald = on track                --amber = attention/behind
      --red     = at risk                 --lime  = streaks/energy
      --navy    = quiet emphasis
-     --gold-*  = the CTA ramp (name kept from the gold era)               */
+     --gold-*  = the CTA ramp (name kept; the ramp is indigo now)
+
+   WHERE THE QUALITY COMES FROM, in order:
+     1. TYPOGRAPHY  — hierarchy is size, weight and space. Never pigment.
+     2. SPACE       — the margin is the luxury. Nothing is cramped.
+     3. LAYERING    — a surface, a hairline, a considered shadow. Depth is
+                      light behaving correctly, not a glow.
+     4. RESTRAINT   — colour is a signal. The moment it decorates it stops
+                      meaning anything.
+
+   THE SPEND RULE
+   A screen may carry ONE pigment moment: the primary action, or the one
+   status that needs answering — not both, and never a third.
+
+   Class and variable NAMES are the stable API — the app reskins from this
+   file. Never hardcode a hex in a component.                            */
 
 :root {
-  /* ---- grounds ---- */
-  --bg0: #fff4ec;
-  --bg1: #ffe6d8;
+  /* ---- grounds ----
+     Not pure white. #fbfbfd is a paper white — a hair of blue keeps it
+     from glaring, and gives pure-white surfaces something to sit ON. */
+  --bg0: #fbfbfd;
+  --bg1: #f1f2f6;
   --surface: #ffffff;
-  --surface2: #fff1e7;
-  --inkline: #2a0e1e;
+  --surface2: #f7f8fa;
+  --inkline: #14151a;
   /* hairlines, not borders. A 2px rule is a box; a 1px rule at low alpha
-     is an edge, and edges are what make a surface look cut rather than
-     drawn. */
-  --border: rgba(160, 30, 90, 0.1);
-  --border2: rgba(160, 30, 90, 0.18);
+     is an edge, and edges make a surface look cut rather than drawn. */
+  --border: rgba(20, 21, 26, 0.08);
+  --border2: rgba(20, 21, 26, 0.14);
 
-  /* ---- ink ---- */
-  --text: #2a0e1e;
-  --muted: #7a4a5e;
-  --faint: #b08497;
+  /* ---- ink ----
+     Graphite, not black. #000 on white vibrates; #14151a reads as solid
+     and lets the muted tier sit clearly below it. */
+  --text: #14151a;
+  --muted: #6a6d78;
+  --faint: #9296a1;
 
-  /* ---- pigments — UNCHANGED VALUES, rationed usage ---- */
-  --amber: #f5a300;
-  --cyan: #f26b00;
-  --red: #e8340d;
-  --blue: #e0126a;
-  --navy: #8e2a6b;
-  --emerald: #46b82e;
-  --lime: #a8cc1b;
+  /* ---- pigments — each one now IS its name, and each carries exactly
+     one meaning. All state colours clear 4.5:1 on paper as -ink below. */
+  --amber: #b07400;
+  --cyan: #0a84c4;
+  --red: #c0271e;
+  --blue: #3a3aff;
+  --navy: #2c3550;
+  --emerald: #1a7f4b;
+  --lime: #5c8a1f;
 
-  --gold-hi: #ffa51f;
-  --gold: #ff4e27;
-  --gold-deep: #e0126a;
+  /* the CTA ramp — one indigo, three stops */
+  --gold-hi: #5b5bff;
+  --gold: #3a3aff;
+  --gold-deep: #2a2ae0;
   --on-gold: #ffffff;
 
-  /* washes — thinned much further. A wash should be felt, not seen. */
-  --blue-dim: rgba(224, 18, 106, 0.07);
-  --cyan-dim: rgba(242, 107, 0, 0.07);
-  --emerald-dim: rgba(70, 184, 46, 0.08);
-  --amber-dim: rgba(245, 163, 0, 0.09);
-  --red-dim: rgba(232, 52, 13, 0.07);
-  --lime-dim: rgba(168, 204, 27, 0.09);
-  --seafoam: rgba(242, 107, 0, 0.05);
+  /* washes — a wash should be felt, not seen */
+  --blue-dim: rgba(58, 58, 255, 0.06);
+  --cyan-dim: rgba(10, 132, 196, 0.07);
+  --emerald-dim: rgba(26, 127, 75, 0.07);
+  --amber-dim: rgba(176, 116, 0, 0.08);
+  --red-dim: rgba(192, 39, 30, 0.06);
+  --lime-dim: rgba(92, 138, 31, 0.08);
+  --seafoam: rgba(10, 132, 196, 0.04);
 
-  /* atmosphere — the ambient light is now a whisper. It was four saturated
-     pools; that is why the page read as a poster rather than a product. */
-  --atmo-1: rgba(245, 163, 0, 0.07);
-  --atmo-2: rgba(224, 18, 106, 0.05);
-  --atmo-3: rgba(232, 52, 13, 0.035);
+  /* atmosphere — all but gone, and cool. Warm pools on paper read as a
+     stain; these are the faintest suggestion that light comes from above. */
+  --atmo-1: rgba(58, 58, 255, 0.026);
+  --atmo-2: rgba(10, 132, 196, 0.02);
+  --atmo-3: rgba(20, 21, 26, 0.012);
 
-  --ink-grad-a: #e0126a;
-  --ink-grad-b: #f26b00;
+  --ink-grad-a: #14151a;
+  --ink-grad-b: #3a3aff;
 
-  /* ---- shape: cut, not moulded. 26px reads as a toy; these read as a
-     considered edge. ---- */
-  --r-sm: 5px;
-  --r-md: 8px;
-  --r-lg: 12px;
+  /* ---- shape ----
+     Slightly softer than the old cut edge. A 16px card corner at this
+     scale reads considered; it is the radius a physical instrument's
+     bezel would have. */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
   --r-pill: 999px;
 
   /* ---- SPACE — the 8px rhythm every gap resolves to ---- */
@@ -102,17 +118,18 @@
      bounces a little warmth, but a saturated shadow is a glow, and a glow
      is the fastest way to look synthetic. */
   --shadow-1:
-    0 1px 1px rgba(42, 14, 30, 0.04),
-    0 2px 6px -2px rgba(42, 14, 30, 0.05);
+    0 1px 2px rgba(20, 21, 26, 0.04),
+    0 1px 3px -1px rgba(20, 21, 26, 0.03);
   --shadow-2:
-    0 1px 2px rgba(42, 14, 30, 0.05),
-    0 8px 24px -8px rgba(42, 14, 30, 0.09);
+    0 1px 2px rgba(20, 21, 26, 0.04),
+    0 8px 24px -8px rgba(20, 21, 26, 0.08);
   --shadow-lift:
-    0 1px 2px rgba(42, 14, 30, 0.05),
-    0 18px 40px -12px rgba(42, 14, 30, 0.14);
-  /* the material: a single hairline of light along the top edge — how a
-     real surface catches a light source above it. Not a gloss. */
-  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 1px 2px rgba(20, 21, 26, 0.05),
+    0 20px 44px -12px rgba(20, 21, 26, 0.12);
+  /* On a white surface over paper white there is no light to catch — a
+     top sheen would be inventing a highlight that physically isn't there.
+     The edge does the work in light mode; dark mode restores it. */
+  --sheen: 0 0 rgba(0, 0, 0, 0);
   --gloss: var(--sheen);
   --mat: var(--sheen);
 
@@ -126,14 +143,17 @@
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* strong tone inks — unchanged */
-  --tone-emerald-ink: #2c7a1c;
-  --tone-amber-ink: #9a5d00;
-  --tone-red-ink: #b32409;
-  --tone-cyan-ink: #a34700;
-  --tone-lime-ink: #5f7a0a;
-  --tone-blue-ink: #b00b54;
+  /* Text-weight versions of each state. Every one clears 4.5:1 on both
+     --surface and --bg0 — a status a user acts on must never be a colour
+     they have to squint at. */
+  --tone-emerald-ink: #14663c;
+  --tone-amber-ink: #7a5000;
+  --tone-red-ink: #9c1f18;
+  --tone-cyan-ink: #06638f;
+  --tone-lime-ink: #47691a;
+  --tone-blue-ink: #2a2ae0;
 
-  --nav-glass: rgba(255, 244, 236, 0.85);
+  --nav-glass: rgba(251, 251, 253, 0.72);
   --glow-cta: none;
   --glow-ai: none;
 
@@ -141,8 +161,13 @@
      page reads as material. It is the cheapest richness in the system and
      the only one that never competes with content. */
   --grain-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E");
-  --grain-opacity: 0.045;
-  --grain-blend: multiply;
+  /* The grain is off. It was the last ornament: a texture that made the
+     ground read as pressed paper. That is a lovely idea for an editorial
+     brand and the wrong one here — a clinical surface is clean, and grain
+     over data is noise sitting on top of a measurement. Kept as a token
+     so the ornament can be dialled back in without touching markup. */
+  --grain-opacity: 0;
+  --grain-blend: normal;
 
   /* older aliases */
   --slate: var(--muted);
@@ -156,66 +181,74 @@
 /* ---------- dark ----------
    Same grounds, same pigments. The difference is that nothing glows. */
 :root[data-theme='dark'] {
-  --bg0: #1a0716;
-  --bg1: #12040f;
-  --surface: #2a0f24;
-  --surface2: #200a1b;
-  --inkline: #ffeef6;
-  --border: rgba(255, 160, 210, 0.11);
-  --border2: rgba(255, 160, 210, 0.2);
+  /* Graphite, not a tinted dark. A coloured dark ground makes every
+     surface above it read as tinted glass; a neutral one lets the data be
+     the only colour in the room — the same rule as light mode, inverted. */
+  --bg0: #0a0b0d;
+  --bg1: #111318;
+  --surface: #141619;
+  --surface2: #1a1d22;
+  --inkline: #f2f3f5;
+  --border: rgba(255, 255, 255, 0.09);
+  --border2: rgba(255, 255, 255, 0.16);
 
-  --text: #ffeef6;
-  --muted: #c79bb4;
-  --faint: #8a5e77;
+  --text: #f2f3f5;
+  --muted: #9ba0ab;
+  --faint: #6b7080;
 
-  --amber: #ffbe3d;
-  --cyan: #ff9a3d;
-  --red: #ff6a45;
-  --blue: #ff4d96;
-  --navy: #d96bb0;
-  --emerald: #7fe05a;
-  --lime: #d7ee4a;
+  /* Lifted and desaturated for a dark ground: a colour that reads correct
+     on paper is muddy on graphite, and one that reads correct on graphite
+     is neon on paper. Same meanings, re-tuned. */
+  --amber: #e0a020;
+  --cyan: #38b6e8;
+  --red: #f0705f;
+  --blue: #7c7cff;
+  --navy: #9aa4c4;
+  --emerald: #3fc27c;
+  --lime: #a3ce4a;
 
-  --gold-hi: #ffc25c;
-  --gold: #ff6a45;
-  --gold-deep: #ff2e86;
-  --on-gold: #2a0715;
+  --gold-hi: #9a9aff;
+  --gold: #7c7cff;
+  --gold-deep: #5b5bff;
+  --on-gold: #0a0b0d;
 
-  --blue-dim: rgba(255, 77, 150, 0.1);
-  --cyan-dim: rgba(255, 154, 61, 0.09);
-  --emerald-dim: rgba(127, 224, 90, 0.1);
-  --amber-dim: rgba(255, 190, 61, 0.1);
-  --red-dim: rgba(255, 106, 69, 0.1);
-  --lime-dim: rgba(215, 238, 74, 0.09);
-  --seafoam: rgba(255, 154, 61, 0.05);
+  --blue-dim: rgba(124, 124, 255, 0.11);
+  --cyan-dim: rgba(56, 182, 232, 0.1);
+  --emerald-dim: rgba(63, 194, 124, 0.11);
+  --amber-dim: rgba(224, 160, 32, 0.11);
+  --red-dim: rgba(240, 112, 95, 0.1);
+  --lime-dim: rgba(163, 206, 74, 0.1);
+  --seafoam: rgba(56, 182, 232, 0.05);
 
-  --atmo-1: rgba(255, 190, 61, 0.05);
-  --atmo-2: rgba(255, 77, 150, 0.06);
-  --atmo-3: rgba(255, 106, 69, 0.04);
+  --atmo-1: rgba(124, 124, 255, 0.05);
+  --atmo-2: rgba(56, 182, 232, 0.035);
+  --atmo-3: rgba(255, 255, 255, 0.015);
 
-  --ink-grad-a: #ff8ec0;
-  --ink-grad-b: #ffc25c;
+  --ink-grad-a: #f2f3f5;
+  --ink-grad-b: #7c7cff;
 
-  --shadow-1: 0 1px 1px rgba(0, 0, 0, 0.3), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -8px rgba(0, 0, 0, 0.5);
-  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4), 0 20px 44px -12px rgba(0, 0, 0, 0.6);
-  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 26px -8px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.45), 0 22px 48px -14px rgba(0, 0, 0, 0.62);
+  /* Dark mode DOES get the top hairline of light — here there is a real
+     tonal step for it to describe. */
+  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --gloss: var(--sheen);
   --mat: var(--sheen);
 
-  --tone-emerald-ink: #a9f08a;
-  --tone-amber-ink: #ffd583;
-  --tone-red-ink: #ff9e7f;
-  --tone-cyan-ink: #ffc28a;
-  --tone-lime-ink: #e6f58a;
-  --tone-blue-ink: #ff9ac4;
+  --tone-emerald-ink: #6ee0a0;
+  --tone-amber-ink: #f0c060;
+  --tone-red-ink: #ff9b8c;
+  --tone-cyan-ink: #74cef2;
+  --tone-lime-ink: #c4e274;
+  --tone-blue-ink: #a5a5ff;
 
-  --nav-glass: rgba(26, 7, 22, 0.85);
+  --nav-glass: rgba(10, 11, 13, 0.72);
   --glow-cta: none;
   --glow-ai: none;
 
-  --grain-opacity: 0.05;
-  --grain-blend: overlay;
+  --grain-opacity: 0;
+  --grain-blend: normal;
 
   color-scheme: dark;
 }
@@ -387,7 +420,7 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
   margin: var(--s4) 0 var(--s2);
 }
 .field { width: 100%; margin-bottom: var(--s1); }
-.hint { font-family: var(--font-hand); font-style: italic; font-size: var(--t-small); color: var(--muted); margin: var(--s2) 0 0; font-variation-settings: 'SOFT' 20, 'WONK' 0, 'opsz' 14; }
+.hint { font-size: var(--t-small); color: var(--muted); margin: var(--s2) 0 0; max-width: var(--measure-tight); }
 .error-text { color: var(--tone-red-ink); font-size: var(--t-small); font-weight: 500; }
 .success-text { color: var(--tone-emerald-ink); font-size: var(--t-small); font-weight: 500; }
 
@@ -481,7 +514,6 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
   font-weight: 500;
   font-size: 1.075rem;
   letter-spacing: -0.025em;
-  font-variation-settings: 'SOFT' 8, 'WONK' 0, 'opsz' 24;
   margin: 0 var(--s5) 0 0;
   color: var(--text);
 }
@@ -555,10 +587,9 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
 .page-title {
   font-family: var(--font-display);
   font-size: var(--t-title);
-  font-weight: 450;
-  letter-spacing: -0.026em;
+  font-weight: 620;
+  letter-spacing: -0.032em;
   line-height: 1.1;
-  font-variation-settings: 'SOFT' 8, 'WONK' 0, 'opsz' 96;
   color: var(--text);
   -webkit-text-fill-color: currentColor;
   background: none;
@@ -702,20 +733,17 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
 .stat-value {
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
-  font-size: 2.1rem;
-  font-weight: 450;
-  letter-spacing: -0.028em;
+  font-size: 2.375rem;
+  font-weight: 620;
+  letter-spacing: -0.036em;
   line-height: 1.1;
   margin-top: var(--s2);
-  font-variation-settings: 'SOFT' 8, 'WONK' 0, 'opsz' 72;
 }
 .stat-sub {
-  font-family: var(--font-hand);
-  font-style: italic;
-  font-size: var(--t-small);
+  font-size: var(--t-tiny);
   color: var(--muted);
-  margin-top: 0.2rem;
-  font-variation-settings: 'SOFT' 20, 'WONK' 0, 'opsz' 14;
+  margin-top: 0.35rem;
+  letter-spacing: -0.008em;
 }
 
 /* ---------- tones, chips, notices ---------- */
@@ -1006,7 +1034,6 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
   line-height: 1.55;
   font-weight: 400;
   color: var(--text);
-  font-variation-settings: 'SOFT' 12, 'WONK' 0, 'opsz' 30;
   margin-bottom: var(--s5);
 }
 
@@ -1083,3 +1110,360 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ============================================================
+   HERO — the argument beside the instrument
+   ============================================================
+   A landing hero that is one narrow column of text in a wide page reads
+   as unfinished: the whitespace has nothing to be generous *around*. Two
+   columns fix it, and the right-hand specimen does real work — it answers
+   "what do I actually get" in the same glance as the claim. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: var(--s8);
+  align-items: center;
+  padding: 12vh 0 10vh;
+  position: relative;
+}
+.hero-copy { min-width: 0; }
+
+.hero-title {
+  font-size: var(--t-hero);
+  font-weight: 620;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  max-width: 15ch;
+  margin: var(--s4) 0 0;
+}
+.hero-title em { font-style: italic; font-weight: 500; }
+
+.hero-standfirst {
+  max-width: 44ch;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  margin: var(--s4) 0 var(--s5);
+}
+.hero-actions { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+
+.hero-manifesto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  align-items: center;
+  margin: var(--s7) 0 0;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+.hero-manifesto > span { display: inline-flex; align-items: center; gap: var(--s3); white-space: nowrap; }
+.manifesto-dot {
+  width: 2px; height: 2px; border-radius: 50%;
+  background: var(--faint); display: inline-block; flex: none;
+}
+
+/* ---- the specimen ----
+   A real surface, not a mocked-up browser chrome. It is the product's own
+   card vocabulary shown at rest, which is why it needs no explanation. */
+.hero-specimen {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  box-shadow: var(--sheen), var(--shadow-2);
+  min-width: 0;
+}
+.specimen-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s3); margin-bottom: var(--s4);
+}
+.specimen-figure { display: flex; align-items: baseline; gap: var(--s2); }
+.specimen-value {
+  font-size: 3.25rem; font-weight: 620; letter-spacing: -0.04em;
+  line-height: 1; font-variant-numeric: tabular-nums;
+}
+.specimen-unit { font-size: var(--t-h3); color: var(--faint); font-weight: 500; }
+.specimen-caption {
+  margin: var(--s2) 0 0; font-size: var(--t-tiny); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The trend line. Stroke is non-scaling so stretching the viewBox to the
+   card width never thickens it — a sparkline whose weight changes with the
+   container is the tell of a chart that wasn't drawn on purpose. */
+.specimen-spark {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin: var(--s5) 0;
+  overflow: visible;
+}
+
+.specimen-rows { list-style: none; margin: 0; padding: 0; }
+.specimen-rows li {
+  display: flex; justify-content: space-between; gap: var(--s3);
+  padding: var(--s2) 0; border-top: 1px solid var(--border);
+  font-size: var(--t-small); color: var(--muted);
+}
+.specimen-metric { color: var(--text); font-weight: 500; }
+
+@media (max-width: 900px) {
+  /* The specimen drops below the argument rather than shrinking into
+     illegibility beside it. */
+  .hero { grid-template-columns: 1fr; gap: var(--s6); padding: 8vh 0 6vh; }
+  .hero-title { max-width: 18ch; }
+  .hero-manifesto { margin-top: var(--s5); }
+}
+
+/* ============================================================
+   AUTH — a form should sit in the frame, not float in it
+   ============================================================
+   .page-form was a 380px column with a 7rem top margin in a full-height
+   page: the form drifted high-left with a screen of emptiness beneath it.
+   Centring it in the viewport and giving it a surface makes it read as a
+   deliberate destination. */
+.page-form {
+  max-width: 420px;
+  margin: 0 auto;
+  /* Symmetric padding on purpose: box-sizing is border-box, so an
+     asymmetric pad eats the centring box from one side and the card ends up
+     riding high with a lake of space beneath it. */
+  padding: var(--s6) var(--s5);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100vh - 170px);
+}
+.page-form > form,
+.page-form > .auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  box-shadow: var(--sheen), var(--shadow-1);
+}
+.page-form .page-title { margin-bottom: var(--s4); }
+
+@media (max-width: 560px) {
+  /* On a phone the card edge costs more than it gives — the viewport IS
+     the card. */
+  .page-form { min-height: 0; padding: var(--s6) var(--s3) var(--s7); }
+  .page-form > form,
+  .page-form > .auth-card {
+    background: transparent; border: 0; box-shadow: none; padding: 0;
+  }
+}
+
+/* ============================================================
+   COMPONENT VOCABULARY — the pieces the pages kept re-inventing
+   ============================================================
+   Each of these was hand-rolled identically in three or four places. A
+   design system earns its keep by naming them once. */
+
+/* A field in a DOCUMENT, not a form. Plan's day names and exercise rows are
+   editable text that should look like text until you reach for it — a page
+   of boxed inputs reads as a form to fill in, not a plan to adjust. */
+.field-quiet {
+  background: transparent;
+  border-color: transparent;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.field-quiet:hover { border-color: var(--border); }
+.field-quiet:focus { background: var(--surface); border-color: var(--blue); }
+
+/* An action that belongs to a row — delete, remove. Present but recessive
+   until the row is engaged, so a list of twelve rows isn't a list of twelve
+   buttons. Always visible on touch, where there is no hover to reveal it. */
+.row-action {
+  opacity: 0.4;
+  transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.list-row:hover .row-action,
+.list-row:focus-within .row-action,
+.row-action:hover,
+.row-action:focus-visible { opacity: 1; }
+@media (hover: none) {
+  .row-action { opacity: 1; }
+}
+
+/* An empty state is a designed state. A dashed edge reads as a slot waiting
+   to be filled, where a solid card reads as a thing that failed to load. */
+.empty-state {
+  border: 1px dashed var(--border2);
+  border-radius: var(--r-lg);
+  padding: var(--s6) var(--s5);
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--t-small);
+}
+.empty-state p { margin: 0 auto; max-width: 42ch; }
+.empty-state > * + * { margin-top: var(--s3); }
+
+/* The coach speaks in the margin, not in a facing bubble. Two opposed
+   bubbles is a chat-app pastiche; one bubble (the user's) plus one stem
+   (the coach's) reads as a transcript, which is what this is. */
+.chat-bubble.coach--flat {
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--cyan);
+  border-radius: 0;
+  box-shadow: none;
+  padding: var(--s1) 0 var(--s1) var(--s3);
+  max-width: 60ch;
+}
+
+/* Mid-session targets. The workout screen is used one-handed, standing,
+   often with wet hands — 56px is the smallest thing that is reliably
+   hittable in that state. */
+.btn-lg {
+  min-height: 56px;
+  font-size: var(--t-body);
+  padding: 0 var(--s4);
+}
+
+/* ============================================================
+   THE LEDGER — rows, rules and the two display voices
+   ============================================================ */
+
+/* A full-width ruled row that responds to the pointer. This replaces the
+   pattern of reusing .card + .card-hover and then flattening six surface
+   properties inline: that worked only because inline styles outrank the
+   class, which is exactly the kind of dependency that breaks the day
+   someone adds !important to .card. A row is its own thing, so it gets its
+   own name. */
+.ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color var(--normal) var(--ease);
+}
+/* No lift, no shadow. A row is part of a list; lifting one out of the
+   sheet breaks the alignment that makes a ledger readable. The signal is
+   the rule darkening and the label taking the interactive colour. */
+a.ledger-row:hover { border-bottom-color: var(--border2); }
+a.ledger-row:hover .ledger-label { color: var(--blue); }
+.ledger-label { transition: color var(--fast) var(--ease); font-weight: 550; }
+.ledger-figure {
+  margin: 0;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* A block that opens with a hairline. Repeated everywhere three columns of
+   analysis or a chart plate need to sit under a rule. */
+.rule-block {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+}
+
+/* The two display voices below a heading.
+   .lead       — the sentence that IS the answer (a briefing summary).
+   .standfirst — the sentence that introduces the answer. */
+.lead {
+  font-size: var(--t-h2);
+  font-weight: 550;
+  line-height: 1.4;
+  letter-spacing: -0.022em;
+  max-width: 46ch;
+  margin: 0;
+}
+.standfirst {
+  font-size: var(--t-h3);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: -0.012em;
+  max-width: 56ch;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Axis text inside an SVG. A chart whose axis is browser-default 11px sans
+   is a chart nobody drew on purpose. */
+.svg-axis {
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  fill: var(--faint);
+}
+
+/* The 4px status dot. Carries the colour so the words beside it can stay
+   ink — the mechanism behind the spend rule. Tone modifiers mean no page
+   has to map a tone name to a custom property itself. */
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex: none;
+  display: inline-block;
+  background: var(--faint);
+}
+.dot.tone-emerald { background: var(--emerald); }
+.dot.tone-amber { background: var(--amber); }
+.dot.tone-red { background: var(--red); }
+.dot.tone-cyan { background: var(--cyan); }
+.dot.tone-lime { background: var(--lime); }
+.dot.tone-blue { background: var(--blue); }
+
+/* ============================================================
+   EDITORIAL & FORM STRUCTURE — the last four repeated patterns
+   ============================================================ */
+
+/* A prose page whose clauses are separated by rules rather than by
+   headings alone. Each <section> opens with a hairline; the heading loses
+   its top margin because the rule already provides the separation. */
+.prose-ruled > section {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s5);
+  margin-top: var(--s6);
+}
+.prose-ruled > section:first-of-type { border-top: 0; padding-top: 0; margin-top: var(--s5); }
+.prose-ruled > section > h2:first-child,
+.prose-ruled > section > h3:first-child { margin-top: 0; }
+
+/* A mono index beside a heading-and-body block. The two-column cousin of
+   .claim-row: baseline-aligned so the number sits on the heading's
+   baseline no matter how the heading is sized. */
+.index-row {
+  display: grid;
+  grid-template-columns: minmax(0, 3rem) minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: baseline;
+}
+@media (max-width: 640px) {
+  .index-row { grid-template-columns: minmax(0, 2rem) minmax(0, 1fr); gap: var(--s2); }
+}
+
+/* Short fields that belong together sit on one line until there isn't room.
+   Row gap is zero — the fields carry their own bottom margin, and doubling
+   it here opens a gap that reads as a section break inside a group. */
+.field-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0 var(--s4);
+}
+
+/* The block that closes a form or a page section: a rule, air, then the
+   action. Gives every form the same ending. */
+.form-actions {
+  border-top: 1px solid var(--border);
+  margin-top: var(--s7);
+  padding-top: var(--s5);
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* A .label following a .section-title stacks two top margins and opens a
+   gap that reads as a missing element. The section title yields, since the
+   label is the thing that must sit close to its field. */
+.section-title + .label,
+.section-title + .field-pair .label:first-child { margin-top: 0; }
+.section-title:has(+ .label),
+.section-title:has(+ .field-pair) { margin-bottom: var(--s1); }

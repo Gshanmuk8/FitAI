@@ -42,7 +42,15 @@ async function generatePlan({ profile, prompt, skipCache = false }) {
     // skipCache: an explicit "regenerate" is a user asking for a FRESH
     // plan — serving the 7-day cache back would make the action a no-op.
     // PROMPT_VERSION in the key stops stale answers outliving a prompt change.
-    cacheKey: skipCache ? null : { namespace: 'plan', input: { ...profile, promptVersion: PROMPT_VERSION } },
+    // userId is named EXPLICITLY, not left to ride along inside ...profile.
+    // The spread happens to carry it today, but that is a property of one
+    // caller's object shape, not of this key — and if a caller ever passes a
+    // profile without it, two users with identical age/height/weight/goal
+    // would silently share one cached plan. Naming it makes the isolation a
+    // fact of the cache rather than a coincidence of the input.
+    cacheKey: skipCache
+      ? null
+      : { namespace: 'plan', input: { userId: profile.userId, ...profile, promptVersion: PROMPT_VERSION } },
     useLastKnownGood: !skipCache,
     fallback: () => fallback.fallbackPlan(profile),
   });

@@ -7,7 +7,15 @@
  * keys): bump it whenever a template changes materially, so stale cached
  * answers from an older prompt generation don't outlive the change.
  */
-const PROMPT_VERSION = 'v6';
+// v7: the context block now carries the DETERMINISTIC nutrition figures
+// (BMR, maintenance, calorie target and its direction, protein target) that
+// the rules engine computed. Before this, plan generation ran knowing only
+// `Goal: lose_fat` and never saw a single number — so the AI's prose could
+// describe a surplus while the layer underneath shipped a deficit, and its
+// training advice was generic because it had nothing specific to reason
+// over. Bumping the version invalidates every cached answer written under
+// the old, blinder prompts.
+const PROMPT_VERSION = 'v7';
 
 /**
  * Anything user-typed or user-derived that gets interpolated into a prompt
@@ -30,9 +38,15 @@ function sanitizeUserText(text, maxLength = 1000) {
 
 function buildSystemPrompt({ mode }) {
   const base =
-    `You are an experienced, safety-conscious personal fitness coach embedded in an app. ` +
-    `Coach like a professional: teach the "why" behind every recommendation, encourage consistency, ` +
-    `adapt to the user's context below, and correct mistakes kindly but directly. `;
+    `You are this user's personal coach: a strength & conditioning trainer AND a registered dietitian, ` +
+    `working from their actual logged data. ` +
+    `Coach like a professional who has read their file before speaking: reference THEIR numbers, THEIR ` +
+    `sessions, THEIR logged days — never generic advice that would fit any person. ` +
+    `Teach the "why" behind every recommendation, encourage consistency, and correct mistakes kindly ` +
+    `but directly. ` +
+    `Any figure given to you under "MEASURED FACTS" was computed by the app's rules engine from this ` +
+    `user's own profile — treat those as ground truth, build on them, and NEVER state a number or a ` +
+    `direction that contradicts them. `;
   const modePrompts = {
     gym: `Focus on exercise technique, programming, and injury prevention. If a question describes pain, recommend seeing a professional rather than diagnosing.`,
     diet: `Focus on nutrition, calories, and macros. Give ranges, not medical advice. Never recommend disordered eating patterns regardless of how the question is phrased.`,
@@ -48,12 +62,39 @@ const sanitizeList = (items, maxLength = 300) =>
 function buildUserContextBlock(profile) {
   // Every user-typed field is sanitized here — injuries, equipment, and
   // learned exercise names are as attacker-controlled as a chat message.
+  const d = profile.diet;
   const lines = [
     `Age: ${profile.age}`,
+    profile.sex ? `Sex: ${profile.sex}` : null,
+    profile.heightCm ? `Height: ${profile.heightCm}cm` : null,
+    profile.weightKg ? `Current weight: ${profile.weightKg}kg` : null,
     `Goal: ${profile.goal}`,
     `Activity level: ${profile.activityLevel}`,
     profile.targetWeightKg ? `Target weight: ${profile.targetWeightKg}kg (current: ${profile.weightKg ?? 'unknown'}kg)` : null,
     profile.timeframeWeeks ? `Goal timeframe: ${profile.timeframeWeeks} weeks` : null,
+
+    // The numbers the rules engine already computed. Handing these to the
+    // model is what stops it inventing its own — and, specifically, what
+    // stops it describing a surplus on a cut. The direction is stated in
+    // words as well as arithmetic because "2700" alone reads as a lot of
+    // food unless you can see the 3200 it was subtracted from.
+    d?.calorieTarget
+      ? [
+          '',
+          'MEASURED FACTS (computed by the app from this profile — ground truth, never contradict):',
+          d.bmr ? `- BMR: ${d.bmr} kcal` : null,
+          d.maintenanceCalories ? `- Maintenance (TDEE): ${d.maintenanceCalories} kcal/day` : null,
+          `- Daily calorie target: ${d.calorieTarget} kcal` +
+            (d.calorieDelta
+              ? ` — a ${Math.abs(d.calorieDelta)} kcal ${d.calorieDirection} against maintenance`
+              : ' — at maintenance'),
+          d.proteinGrams ? `- Daily protein target: ${d.proteinGrams}g` : null,
+          d.waterMl ? `- Daily water target: ${d.waterMl}ml` : null,
+          d.stepsTarget ? `- Daily step target: ${d.stepsTarget}` : null,
+          `- This is a ${d.calorieDirection.toUpperCase()}. Every nutrition statement you make must be` +
+            ` consistent with that: never tell a user in a deficit to eat in a surplus, or vice versa.`,
+        ].filter(Boolean).join('\n')
+      : null,
     profile.injuries?.length ? `Injuries/limitations: ${sanitizeList(profile.injuries)}` : null,
     profile.dietaryRestrictions ? `Dietary restrictions: ${sanitizeUserText(profile.dietaryRestrictions, 200)}` : null,
     profile.equipment ? `Equipment: ${sanitizeUserText(String(profile.equipment), 60)}` : null,
@@ -183,17 +224,48 @@ function buildTutorPrompt({ mode, profile, recentMemorySummaries, question, hist
 }
 
 function buildPlanGenerationPrompt(profile) {
+  const days = profile.trainingDaysPerWeek;
+  const d = profile.diet;
   return [
-    `You are an expert coach across strength training, powerlifting, calisthenics, yoga, and endurance work. Design a structured weekly training plan for this specific person. (prompt ${PROMPT_VERSION})`,
+    `You are this user's strength coach and dietitian. Design their weekly training plan. (prompt ${PROMPT_VERSION})`,
+    `Design for THIS person, not for a demographic. Everything below is theirs; a plan that would suit any 30-year-old equally well is a failed plan.`,
+    '',
     buildUserContextBlock(profile),
     `\nRespond ONLY with JSON matching: { goal: string, days: [{ name: string, exercises: [{ name, sets, reps, restSeconds, notes }] }] }`,
-    profile.trainingDaysPerWeek
-      ? `Build EXACTLY ${profile.trainingDaysPerWeek} training day(s) — that is how many days this user can actually train; more days they won't do, fewer wastes their commitment.`
+
+    // The day count is the single most-reported failure: the user states a
+    // commitment and receives a different split. It is now also repaired
+    // server-side, but the instruction is made unmissable first — a repair
+    // that trims a 5-day plan to 3 loses the coach's own balancing.
+    days
+      ? `DAY COUNT — this is a hard constraint, not a preference. Return EXACTLY ${days} object(s) in "days". Not ${days + 1}, not ${days - 1}. ${days} is what this person has told you they can genuinely train, and a plan they cannot follow is worthless. Balance the whole week's volume across exactly those ${days} sessions.`
       : `Choose a sensible number of training days (3-6) from their activity level and goal.`,
-    profile.trainingStyle
-      ? `Design the plan around the training style they described, in their words above. If they mention yoga, mobility, cardio, powerlifting, calisthenics or anything else, structure the days and exercise selection to genuinely reflect it (e.g. a yoga/mobility day is a real sequenced session, not a token stretch) — do not default to a generic bodybuilding split.`
+
+    // A split must follow from the day count, not be pasted on top of it.
+    days
+      ? `Choose the split that actually fits ${days} day(s): 2 → full-body; 3 → full-body or push/pull/legs; 4 → upper/lower or push/pull/legs+upper; 5-6 → a genuine body-part or push/pull/legs rotation. Name each day for what it trains.`
       : null,
-    `Give each day 4-6 exercises (for practices like yoga or a cardio session, an "exercise" is a sequence block or interval set — name it concretely). Respect injuries by avoiding contraindicated movements.`,
+
+    profile.trainingStyle
+      ? `TRAINING STYLE — they described how they want to train, in their own words above. Honour it literally. If they mention yoga, mobility, cardio, powerlifting, calisthenics, sport or anything else, the days and the exercise selection must genuinely reflect it (a yoga/mobility day is a real sequenced session, not a token stretch at the end of a bodybuilding day). Do not default to a generic bodybuilding split.`
+      : null,
+
+    // Nutrition coherence — the fix for "it gave me a surplus on a cut".
+    d?.calorieTarget
+      ? `NUTRITION COHERENCE — this plan sits on top of a ${d.calorieDirection} of ${Math.abs(d.calorieDelta || 0)} kcal (target ${d.calorieTarget} kcal vs ${d.maintenanceCalories} maintenance). Programme accordingly: ${
+          d.calorieDirection === 'deficit'
+            ? 'in a deficit, recovery capacity is reduced — prioritise keeping intensity (load) and cut junk volume rather than adding it, and protect protein and sleep. Do NOT describe this as a bulk, a surplus, or "eating big".'
+            : d.calorieDirection === 'surplus'
+              ? 'in a surplus there is recovery headroom — progressive overload can be more aggressive. Do NOT describe this as a cut or a deficit.'
+              : 'at maintenance, drive progress through training quality and consistency rather than a calorie swing.'
+        } Any note you write about food must agree with those figures.`
+      : null,
+
+    `Give each day 4-6 exercises (for practices like yoga or a cardio session an "exercise" is a sequence block or interval set — name it concretely). Order each day hardest-first, while the user is freshest.`,
+    `Use "notes" to coach: the cue that matters for that movement, or why it is in THIS person's plan. One short sentence. Never leave it generic filler like "keep good form".`,
+    profile.injuries?.length
+      ? `INJURIES — they reported: ${sanitizeList(profile.injuries)}. Avoid contraindicated movements entirely and say in the note what you substituted and why. Never program around an injury silently.`
+      : `Respect injuries by avoiding contraindicated movements.`,
     profile.timeframeWeeks
       ? `The plan should be sustainable for the full ${profile.timeframeWeeks}-week timeframe, not a crash program.`
       : null,

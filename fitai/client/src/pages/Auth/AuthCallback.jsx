@@ -48,5 +48,12 @@ export default function AuthCallback() {
     return () => { cancelled = true; };
   }, [user, loading, urlError, navigate]);
 
-  return <div className="page-loading">Confirming your account…</div>;
+  // Centred in the frame like every other auth screen, so the moment
+  // between clicking the email link and landing somewhere doesn't read as
+  // a page that failed to render.
+  return (
+    <div className="page page-form page-enter">
+      <p className="page-loading" style={{ padding: 0, margin: 0 }}>Confirming your account…</p>
+    </div>
+  );
 }

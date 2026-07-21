@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fff4ec" />
+    <meta name="theme-color" content="#fbfbfd" />
     <title>FitAI — Your AI Fitness Coach</title>
     <script>
       // Apply the saved (or OS-preferred) theme BEFORE first paint — a
@@ -15,18 +15,20 @@
           document.documentElement.dataset.theme = t;
           if (t === 'dark') {
             var m = document.querySelector('meta[name="theme-color"]');
-            if (m) m.setAttribute('content', '#1a0716');
+            if (m) m.setAttribute('content', '#0a0b0d');
           }
         } catch (e) { /* default light */ }
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Fraunces (display only, opsz+SOFT+WONK axes — run at low SOFT and
-         WONK 0; the axes are requested so the scale can set them per size)
-         · Geist (UI/body) · Geist Mono (labels, measurements). -->
+    <!-- One family for voice, one for measurement. Geist carries both the
+         display and UI roles (the difference is setting, not face), and
+         Geist Mono handles labels and figures. Fraunces was dropped with
+         the editorial identity — it was a five-axis variable font on the
+         critical path serving headings alone. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..700,0..100,0..1;1,9..144,300..700,0..100,0..1&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap"
       rel="stylesheet"
     />
   </head>

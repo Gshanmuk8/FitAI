@@ -26,6 +26,11 @@ const MEASURE = {
   steps_completed: { col: 'steps_count', targetKey: 'stepsTarget', unit: 'steps', step: '100', toInput: (v) => v, fromInput: (n) => Math.round(n), fmtTarget: (t) => Number(t).toLocaleString() },
 };
 
+// Every inline "Save" in this component is the same quiet ghost control — a
+// row-scoped confirmation, sized from the type scale rather than a magic
+// 0.78rem. It must stay subordinate to the row's label.
+const ROW_SAVE = { padding: '0.2rem 0.7rem', fontSize: 'var(--t-tiny)', minHeight: '34px' };
+
 function ValueInput({ field, checklist, onSave, onError, onSaved }) {
   const cfg = MEASURE[field];
   const stored = checklist?.[cfg.col];
@@ -105,7 +110,10 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
         aria-label={`Log ${cfg.col}`}
       />
-      <span className="tiny faint" style={{ whiteSpace: 'nowrap' }}>
+      {/* "/ 144 g" is the denominator of the figure beside it, so it is set
+          in the mono label voice and stays faint — a target is a reference,
+          never a second value competing with the one just typed. */}
+      <span className="mono faint" style={{ whiteSpace: 'nowrap', fontSize: 'var(--t-tiny)' }}>
         {target != null ? `/ ${cfg.fmtTarget(Number(target))} ${cfg.unit}` : cfg.unit}
       </span>
       {chip && <span className={`tiny ${chip.cls}`} style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{chip.text}</span>}
@@ -114,7 +122,7 @@ function ValueInput({ field, checklist, onSave, onError, onSaved }) {
         variant="ghost"
         disabled={!dirty || saving}
         onClick={commit}
-        style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+        style={ROW_SAVE}
       >
         {saving ? 'Saving…' : 'Save'}
       </Button>
@@ -187,13 +195,13 @@ function WeighInAndNotes({ checklist, onSave, onError }) {
             onChange={(e) => setWeight(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveWeight(); } }}
           />
-          <span className="tiny faint">kg</span>
+          <span className="mono faint" style={{ fontSize: 'var(--t-tiny)' }}>kg</span>
           <Button
             type="button"
             variant="ghost"
             disabled={!weightDirty || savingWeight}
             onClick={saveWeight}
-            style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+            style={ROW_SAVE}
           >
             {savingWeight ? 'Saving…' : 'Save'}
           </Button>
@@ -206,15 +214,15 @@ function WeighInAndNotes({ checklist, onSave, onError }) {
         maxLength={1000}
         rows={2}
         disabled={savingNotes}
-        style={{ width: '100%', marginTop: '0.5rem', resize: 'vertical' }}
+        style={{ width: '100%', marginTop: 'var(--s2)', resize: 'vertical' }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginTop: 'var(--s1)' }}>
         <Button
           type="button"
           variant="ghost"
           disabled={!notesDirty || savingNotes}
           onClick={saveNotes}
-          style={{ padding: '0.2rem 0.7rem', fontSize: '0.78rem' }}
+          style={ROW_SAVE}
         >
           {savingNotes ? 'Saving…' : 'Save note'}
         </Button>
@@ -236,7 +244,21 @@ export default function DailyChecklist() {
     setTimeout(() => setSavedFlash(''), 1800);
   }
 
-  if (loading) return <div className="checklist-skeleton">Loading today's mission…</div>;
+  if (loading) {
+    // The loading state holds the shape of the list — a header rule and four
+    // row-height bars — so the mission doesn't pop into existence.
+    return (
+      <div className="checklist-skeleton">
+        <p className="eyebrow" style={{ margin: '0 0 var(--s3)' }}>Today's mission</p>
+        <p style={{ margin: '0 0 var(--s4)' }}>Loading today's mission…</p>
+        <div aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 12, width: `${72 - i * 9}%`, margin: 'var(--s4) 0' }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (error) return <div className="checklist-error">Couldn't load today's mission: {error}</div>;
 
   const items = checklist?.items?.length ? checklist.items : DEFAULT_ITEMS;
@@ -264,15 +286,56 @@ export default function DailyChecklist() {
 
   return (
     <div className="daily-checklist">
-      <div className="page-header">
+      {/* The score belongs at the TOP. It is the one-glance answer to "how is
+          today going" — at the foot of a long list it was the last thing
+          read instead of the first. */}
+      <div className="page-header" style={{ marginBottom: 'var(--s3)' }}>
         <h3 style={{ margin: 0 }}>Today's mission</h3>
-        {workout?.weekday && <span className="chip">{workout.weekday}</span>}
+        {workout?.weekday && <span className="eyebrow">{workout.weekday}</span>}
       </div>
+
+      <div className="progress-track" aria-hidden="true">
+        <div className={`progress-fill ${done === total ? 'tone-emerald' : ''}`} style={{ width: `${(done / total) * 100}%` }} />
+      </div>
+      {done === total ? (
+        <p className="checklist-score tone-emerald-text" style={{ margin: 'var(--s2) 0 var(--s4)' }}>Mission complete — see you tomorrow. ✓</p>
+      ) : (
+        <p className="checklist-score" style={{ margin: 'var(--s2) 0 var(--s4)' }}>{done} / {total} completed</p>
+      )}
 
       {adaptations.map((a) => (
         <p key={a.code} className="notice">{a.message}</p>
       ))}
 
+      {/* Today's prescribed session, collapsed, directly above the rows it
+          explains — it is context for the checklist, not an appendix to it. */}
+      {workout?.type === 'workout' && workout.exercises?.length > 0 && (
+        <details style={{ marginBottom: 'var(--s2)' }}>
+          <summary className="eyebrow" style={{ cursor: 'pointer', padding: 'var(--s2) 0' }}>Today's exercises</summary>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--s2)' }}>
+            {workout.exercises.map((ex) => (
+              <li
+                key={ex.name}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 'var(--s3)',
+                  padding: '0.35rem 0',
+                  borderTop: '1px solid var(--border)',
+                  fontSize: 'var(--t-small)',
+                }}
+              >
+                <span className="muted">{ex.name}</span>
+                <span className="mono faint" style={{ whiteSpace: 'nowrap' }}>{ex.sets}×{ex.reps}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {/* Rows, hairlines, 48px targets — the CSS owns all of it. A checked
+          item recedes (line-through in --faint) rather than lighting up, so
+          the eye lands on what is still outstanding. */}
       <ul>
         {items.map(({ field, label, detail }) => (
           <li key={field} className={`check-row${checklist?.[field] ? ' done' : ''}`}>
@@ -305,7 +368,7 @@ export default function DailyChecklist() {
               className="ghost-button tiny"
               aria-label={`Remove ${item.label}`}
               onClick={() => removeCustom(item.id).catch((err) => setSaveError(`Couldn't remove: ${err.message}`))}
-              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--muted)' }}
+              style={{ color: 'var(--faint)', marginLeft: 'auto' }}
             >
               ✕
             </button>
@@ -315,7 +378,8 @@ export default function DailyChecklist() {
 
       {/* The mission is the user's too: anything they want tracked today —
           "20 min yoga", "no sugar" — becomes a real item the AI sees in
-          history, not a note lost to a text field. */}
+          history, not a note lost to a text field. It sits below a rule as
+          the quiet continuation of the list. */}
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -332,7 +396,7 @@ export default function DailyChecklist() {
             setAddingItem(false);
           }
         }}
-        style={{ display: 'flex', gap: '0.4rem', margin: '0.5rem 0' }}
+        style={{ display: 'flex', gap: 'var(--s1)', margin: 0, paddingTop: 'var(--s3)', borderTop: '1px solid var(--border)' }}
       >
         <input
           value={newItem}
@@ -349,30 +413,8 @@ export default function DailyChecklist() {
 
       <WeighInAndNotes checklist={checklist} onSave={handleSave} onError={setSaveError} />
 
-      {savedFlash && <p className="tiny tone-emerald-text" style={{ margin: '0.4rem 0 0' }}>{savedFlash}</p>}
-      {saveError && <p className="error-text small" style={{ margin: '0.4rem 0 0' }}>{saveError}</p>}
-
-      {workout?.type === 'workout' && workout.exercises?.length > 0 && (
-        <details className="small" style={{ marginBottom: '0.5rem' }}>
-          <summary className="muted" style={{ cursor: 'pointer' }}>Today's exercises</summary>
-          <ul style={{ listStyle: 'disc', paddingLeft: '1.4rem', marginTop: '0.35rem' }}>
-            {workout.exercises.map((ex) => (
-              <li key={ex.name} className="check-row" style={{ border: 0 }}>
-                <span className="muted">{ex.name} — <span className="mono">{ex.sets}×{ex.reps}</span></span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      <div className="progress-track" aria-hidden="true">
-        <div className={`progress-fill ${done === total ? 'tone-emerald' : ''}`} style={{ width: `${(done / total) * 100}%` }} />
-      </div>
-      {done === total ? (
-        <p className="checklist-score tone-emerald-text">Mission complete — see you tomorrow. ✓</p>
-      ) : (
-        <p className="checklist-score">{done} / {total} completed</p>
-      )}
+      {savedFlash && <p className="tiny tone-emerald-text" style={{ margin: 'var(--s2) 0 0' }}>{savedFlash}</p>}
+      {saveError && <p className="error-text small" style={{ margin: 'var(--s2) 0 0' }}>{saveError}</p>}
     </div>
   );
 }

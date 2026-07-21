@@ -8,6 +8,7 @@
 const { generatePlan } = require('../ai/aiOrchestrator');
 const { buildPlanGenerationPrompt } = require('../../../../shared/prompts/templates');
 const { buildDietTargets } = require('../../../../shared/calculations/dietTargets');
+const planShape = require('../../../../shared/calculations/planShape');
 const { resolveTimeframeWeeks, expectedWeightAt, expectedWeeklyRateKg } = require('../../../../shared/calculations/paceTracking');
 const { getExercisePreferences } = require('../memory/memoryRetriever');
 const { upsertUserState } = require('../../models/UserState');
@@ -39,20 +40,48 @@ async function generateUserPlan(profile, { skipCache = false } = {}) {
     dislikedExercises: prefs.disliked,
     favoriteExercises: prefs.favorite,
   };
-  const prompt = buildPlanGenerationPrompt(promptProfile);
-  const aiPlan = await generatePlan({ profile: promptProfile, prompt, skipCache });
-
-  return attachDeterministicLayers(aiPlan, profile, timeframe);
-}
-
-function attachDeterministicLayers(plan, profile, timeframe) {
+  // The diet layer is computed BEFORE generation now, so the prompt can
+  // carry the actual numbers. Previously the AI designed a plan knowing only
+  // `Goal: lose_fat` and never saw the calorie target — so its prose could
+  // (and did) describe a surplus while the deterministic layer underneath
+  // shipped a deficit. The numbers must be in the room when it writes.
   let diet = null;
   try {
     diet = buildDietTargets(profile);
   } catch (err) {
-    // Missing sex/activity data on legacy profiles — plan still ships,
-    // just without the diet layer rather than failing onboarding.
-    logger.warn('diet targets unavailable for profile', { error: err.message });
+    logger.warn('diet targets unavailable for prompt', { error: err.message });
+  }
+
+  const prompt = buildPlanGenerationPrompt({ ...promptProfile, diet });
+  const aiPlan = await generatePlan({ profile: promptProfile, prompt, skipCache });
+
+  return attachDeterministicLayers(enforceDayCount(aiPlan, profile), profile, timeframe, diet);
+}
+
+// Correcting the shape is a pure rule (shared/calculations/planShape); the
+// service's job is only to record that a correction was needed, because a
+// provider that repeatedly ignores an explicit constraint is worth seeing.
+function enforceDayCount(plan, profile) {
+  const corrected = planShape.enforceDayCount(plan, profile);
+  if (corrected !== plan) {
+    logger.warn("plan day count corrected to the user's commitment", {
+      requested: profile.trainingDaysPerWeek,
+      returned: Array.isArray(plan?.days) ? plan.days.length : 0,
+    });
+  }
+  return corrected;
+}
+
+function attachDeterministicLayers(plan, profile, timeframe, precomputedDiet) {
+  let diet = precomputedDiet ?? null;
+  if (!diet) {
+    try {
+      diet = buildDietTargets(profile);
+    } catch (err) {
+      // Missing sex/activity data on legacy profiles — plan still ships,
+      // just without the diet layer rather than failing onboarding.
+      logger.warn('diet targets unavailable for profile', { error: err.message });
+    }
   }
 
   return {

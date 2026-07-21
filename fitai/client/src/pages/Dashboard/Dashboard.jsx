@@ -14,27 +14,37 @@ const STATUS_LABEL = { ahead: 'Ahead of schedule', on_track: 'On track', behind:
 function BriefingCard({ briefing, loading, error, onRetry }) {
   if (loading) {
     return (
-      <div className="card card-accent tone-cyan" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ marginTop: 0 }}>Coach's briefing</h3>
+      <section className="card" style={{ padding: 'var(--s6) var(--s5)', marginBottom: 'var(--s5)' }}>
+        <p className="eyebrow" style={{ margin: '0 0 var(--s3)' }}>Coach's briefing</p>
         {/* First look of the day runs the AI — set the expectation so the
-            wait reads as work being done, not a hang. */}
-        <p className="small muted">Your coach is reading your history — the first look of the day can take a moment…</p>
-      </div>
+            wait reads as work being done, not a hang. The skeleton rules
+            below hold the shape the answer will arrive in, so nothing
+            jumps when it does. */}
+        <p className="muted lead">
+          Your coach is reading your history — the first look of the day can take a moment…
+        </p>
+        <div style={{ marginTop: 'var(--s5)', borderTop: '1px solid var(--border)' }} aria-hidden="true">
+          <div className="skeleton" style={{ height: 12, width: '38%', margin: 'var(--s4) 0' }} />
+          <div className="skeleton" style={{ height: 12, width: '52%', marginBottom: 'var(--s2)' }} />
+        </div>
+      </section>
     );
   }
   // Never render nothing. A vanished card is indistinguishable from a
   // removed feature; an honest one-liner with a retry is actionable.
   if (!briefing) {
     return (
-      <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ marginTop: 0 }}>Coach's briefing</h3>
-        <p className="small muted" style={{ margin: '0.5rem 0' }}>
+      <section className="card card-accent tone-amber" style={{ padding: 'var(--s6) var(--s5)', marginBottom: 'var(--s5)' }}>
+        <p className="eyebrow" style={{ margin: '0 0 var(--s3)' }}>Coach's briefing</p>
+        <p className="lead">
           {error
             ? `Couldn't reach your coach just now — ${error}`
             : "Couldn't reach your coach just now."}
         </p>
-        <Button onClick={onRetry}>Try again</Button>
-      </div>
+        <div style={{ marginTop: 'var(--s4)' }}>
+          <Button onClick={onRetry}>Try again</Button>
+        </div>
+      </section>
     );
   }
   const tone = STATUS_TONE[briefing.status] || 'cyan';
@@ -42,50 +52,91 @@ function BriefingCard({ briefing, loading, error, onRetry }) {
   // disclaimers below are easy to miss, and a green pulse reads as "fresh".
   const degraded = Boolean(briefing.stale) || briefing.source === 'fallback';
   return (
-    <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
-      <div className="page-header">
-        <h3 style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.55rem' }}>
+    <section className={`card card-accent tone-${tone}`} style={{ padding: 'var(--s6) var(--s5)', marginBottom: 'var(--s5)' }}>
+      {/* The status is this screen's one pigment moment, and it is spent on
+          a chip — a 4px dot carrying the colour so the words stay ink. The
+          old bold tinted string competed with the summary for rank. */}
+      <div className="page-header" style={{ marginBottom: 'var(--s4)' }}>
+        <p className="eyebrow" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
           {!degraded && (
             <span
               className="pulse-live"
               aria-hidden="true"
-              style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', display: 'inline-block', flex: 'none' }}
+              style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cyan)', display: 'inline-block', flex: 'none' }}
             />
           )}
           Coach's briefing
-        </h3>
-        <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>
+        </p>
+        <span className={`chip tone-${tone}`}>
           {STATUS_LABEL[briefing.status] || 'Briefing ready'}
         </span>
       </div>
-      <p className="small" style={{ margin: '0.5rem 0' }}>{briefing.summary}</p>
-      <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-label">Plan pace</div>
-          <div className="small" style={{ fontWeight: 600 }}>{briefing.currentPace}</div>
+
+      <p className="lead">{briefing.summary}</p>
+
+      {/* Plan pace vs actual pace is a two-row comparison, not two big
+          numbers — they are phrases, and phrases in stat tiles read as
+          broken tiles. Ruled rows put them on one vertical to compare. */}
+      <dl style={{ margin: 'var(--s5) 0 0', borderTop: '1px solid var(--border)' }}>
+        <div className="list-row">
+          <dt className="muted">Plan pace</dt>
+          <dd className="ledger-figure">{briefing.currentPace}</dd>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">Your actual pace</div>
-          <div className="small" style={{ fontWeight: 600 }}>{briefing.actualPace}</div>
+        <div className="list-row">
+          <dt className="muted">Your actual pace</dt>
+          <dd className="ledger-figure">{briefing.actualPace}</dd>
         </div>
-      </div>
+      </dl>
+
       {briefing.focus?.length > 0 && (
-        <>
-          <span className="stat-label" style={{ marginTop: '0.5rem', display: 'block' }}>Focus today</span>
-          <ul className="small muted" style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
-            {briefing.focus.map((f, i) => <li key={i}>{f}</li>)}
-          </ul>
-        </>
+        <div style={{ marginTop: 'var(--s5)' }}>
+          <p className="eyebrow" style={{ margin: '0 0 var(--s2)' }}>Focus today</p>
+          {/* Numbered ruled rows rather than bullets: three ordered
+              instructions read as a sequence, and the mono index gives the
+              list a left vertical to hang on. */}
+          <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {briefing.focus.map((f, i) => (
+              <li
+                key={i}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.75rem minmax(0, 1fr)',
+                  gap: 'var(--s2)',
+                  alignItems: 'baseline',
+                  padding: 'var(--s2) 0',
+                  borderTop: '1px solid var(--border)',
+                  fontSize: 'var(--t-small)',
+                }}
+              >
+                <span
+                  className="mono faint"
+                  aria-hidden="true"
+                  style={{ fontSize: 'var(--t-label)', letterSpacing: '0.14em' }}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
-      {briefing.source === 'fallback' && (
-        <p className="tiny faint" style={{ marginTop: '0.5rem' }}>AI coach unreachable right now — this will refresh on the next visit.</p>
+
+      {(briefing.source === 'fallback' || briefing.stale) && (
+        // The provenance footnotes sit below a rule, in the footnote voice —
+        // present and findable, but never mistaken for the coach's read.
+        <div style={{ marginTop: 'var(--s5)', paddingTop: 'var(--s3)', borderTop: '1px solid var(--border)' }}>
+          {briefing.source === 'fallback' && (
+            <p className="tiny faint" style={{ margin: 0 }}>AI coach unreachable right now — this will refresh on the next visit.</p>
+          )}
+          {briefing.stale && (
+            <p className="tiny tone-amber-text" style={{ margin: briefing.source === 'fallback' ? 'var(--s1) 0 0' : 0 }}>
+              This is the day's earlier briefing — your latest changes fold in as soon as the coach is reachable again.
+            </p>
+          )}
+        </div>
       )}
-      {briefing.stale && (
-        <p className="tiny tone-amber-text" style={{ marginTop: '0.5rem' }}>
-          This is the day's earlier briefing — your latest changes fold in as soon as the coach is reachable again.
-        </p>
-      )}
-    </div>
+    </section>
   );
 }
 
@@ -145,7 +196,7 @@ export default function Dashboard() {
     return (
       <div className="dashboard-empty page-enter">
         <h2 className="page-title">Couldn't load your dashboard</h2>
-        <p className="muted">{error}</p>
+        <p className="muted" style={{ fontSize: 'var(--t-h3)', margin: '0 0 var(--s5)' }}>{error}</p>
         <Button onClick={reload} disabled={loading}>{loading ? 'Retrying…' : 'Try again'}</Button>
       </div>
     );
@@ -160,7 +211,9 @@ export default function Dashboard() {
     return (
       <div className="dashboard-empty page-enter">
         <h2 className="page-title">Finish setting up your plan</h2>
-        <p className="muted">Complete a quick onboarding and we'll generate your training and nutrition plan.</p>
+        <p className="muted" style={{ fontSize: 'var(--t-h3)', margin: '0 0 var(--s5)' }}>
+          Complete a quick onboarding and we'll generate your training and nutrition plan.
+        </p>
         <ButtonLink to="/onboarding">Complete onboarding</ButtonLink>
       </div>
     );
@@ -179,14 +232,15 @@ export default function Dashboard() {
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div className="page page-wide page-enter" style={{ position: 'relative' }}>
-      {/* The day's own light — the dashboard opens like a scene, not a form. */}
-      <div className="aurora" aria-hidden="true" style={{ opacity: 0.55 }} />
-      <p className="eyebrow reveal" style={{ margin: '0 0 0.3rem' }}>{dateLabel}</p>
-      <h1 className="page-title reveal" style={{ animationDelay: '70ms' }}>Today</h1>
+    <div className="page page-wide page-enter">
+      {/* The masthead: date, then the day. No atmosphere behind it — a wash
+          of coloured light over a page of measurements is decoration, and
+          decoration is the one thing this system will not spend on. */}
+      <p className="eyebrow reveal" style={{ margin: '0 0 var(--s1)' }}>{dateLabel}</p>
+      <h1 className="page-title reveal" style={{ animationDelay: '70ms', marginBottom: 'var(--s5)' }}>Today</h1>
 
       {planComplete && (
-        <p className="notice tone-emerald">
+        <p className="notice tone-emerald" style={{ marginBottom: 'var(--s5)' }}>
           Your <strong>{timeframeWeeks}-week plan is complete</strong> — well done for seeing it through.{' '}
           <Link to="/profile">Set your next goal →</Link>
         </p>
@@ -197,28 +251,30 @@ export default function Dashboard() {
       <DailyChecklist />
 
       {/* Today's two actions. The full weekly split lives on the Plan page —
-          this screen is about today only. */}
-      <div className="grid-cards">
-        <Link to="/workout" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card card-hover" style={{ height: '100%' }}>
-            <h3>Workout</h3>
-            <p className="small muted">
+          this screen is about today only. Set as a ruled ledger beneath the
+          briefing and the mission: still one tap, no longer competing for
+          the eye with the two things the user came for. */}
+      <nav style={{ marginTop: 'var(--s6)', borderTop: '1px solid var(--border)' }}>
+        <Link to="/workout" className="ledger-row">
+          <div style={{ minWidth: 0 }}>
+            <h3 className="ledger-label" style={{ margin: 0 }}>Workout</h3>
+            <p className="small muted" style={{ margin: '0.15rem 0 0' }}>
               {plan.days?.length ? <><span className="mono">{plan.days.length}</span>-day split · log today's sets</> : "Log today's sets"}
             </p>
-            <span className="small">Open today's workout →</span>
           </div>
+          <span className="small muted" style={{ whiteSpace: 'nowrap' }}>Open today's workout →</span>
         </Link>
-        <Link to="/nutrition" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card card-hover" style={{ height: '100%' }}>
-            <h3>Nutrition</h3>
-            <p className="small muted">
+        <Link to="/nutrition" className="ledger-row">
+          <div style={{ minWidth: 0 }}>
+            <h3 className="ledger-label" style={{ margin: 0 }}>Nutrition</h3>
+            <p className="small muted" style={{ margin: '0.15rem 0 0' }}>
               Daily target: <span className="mono">{calorieTarget ?? '—'}</span> kcal
               {plan.diet?.proteinGrams ? <> · <span className="mono">{plan.diet.proteinGrams}g</span> protein</> : null}
             </p>
-            <span className="small">Log a meal or analyze a photo →</span>
           </div>
+          <span className="small muted" style={{ whiteSpace: 'nowrap' }}>Log a meal or analyze a photo →</span>
         </Link>
-      </div>
+      </nav>
     </div>
   );
 }

@@ -33,19 +33,30 @@ export default function ResetPassword() {
   if (!user) {
     return (
       <div className="page page-form page-enter">
-        <h2 className="page-title">Link expired</h2>
-        <p>This reset link is invalid or has expired. Request a new one from the sign-in page.</p>
+        <div className="auth-card">
+          <h1 className="page-title">Link expired</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            This reset link is invalid or has expired. Request a new one from the sign-in page.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="page page-form page-enter">
-      <h2 className="page-title">Choose a new password</h2>
-      <label className="label" htmlFor="reset-password">New password</label>
-      <input id="reset-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required style={{ width: '100%' }} />
-      {error && <p className="error-text">{error}</p>}
-      <Button type="submit" disabled={busy} style={{ marginTop: '1.25rem' }}>{busy ? 'Saving…' : 'Set new password'}</Button>
-    </form>
+    <div className="page page-form page-enter">
+      <form onSubmit={handleSubmit}>
+        <h1 className="page-title">Choose a new password</h1>
+
+        <label className="label" htmlFor="reset-password">New password</label>
+        <input className="field" id="reset-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required />
+
+        {error && <p className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+
+        <Button type="submit" disabled={busy} style={{ width: '100%', marginTop: 'var(--s5)' }}>
+          {busy ? 'Saving…' : 'Set new password'}
+        </Button>
+      </form>
+    </div>
   );
 }

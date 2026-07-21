@@ -7,8 +7,16 @@ const { queryAs } = require('../../db/userAccess');
 
 async function getPermanentMemory(userId) {
   const { rows } = await queryAs(userId,
-    `SELECT age, height_cm, weight_kg, target_weight_kg, activity_level,
-            injuries, dietary_restrictions, gym_availability
+    // Every column the coach prompts actually read. This list was missing
+    // goal, sex, training_days_per_week, training_style and ai_plan, while
+    // contextBuilder read all of them — so they were silently undefined in
+    // EVERY prompt. That is why the coach's answers were generic (it never
+    // knew the training style or day count) and why the goal fell through to
+    // user_state.current_phase, a stale snapshot from plan-generation time.
+    // Any column added to the context builder must be added here too.
+    `SELECT age, sex, height_cm, weight_kg, target_weight_kg, activity_level,
+            goal, injuries, dietary_restrictions, gym_availability,
+            training_days_per_week, training_style, timeframe_weeks, ai_plan
      FROM users_profile WHERE user_id = $1`,
     [userId]
   );
