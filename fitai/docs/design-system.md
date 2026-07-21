@@ -158,7 +158,7 @@ confirms restate consequences in body text, never in the button label.
           Workout (today's session → per-exercise logging → finish)
           Nutrition (today so far → analyze/add → diary)
           Coach (chat with modes; memory link)
-          Progress (pace card → stats → weight chart → review → achievements → heat strip)
+          Progress (headline + status → AI-authored stats → AI-authored charts → wins/risks/next)
           Plan (edit days/exercises/diet; regenerate lives on Profile)
           Memory (what the coach knows; categorized timeline)
           Profile (facts + "life changed" regenerate)   Settings (account, theme)

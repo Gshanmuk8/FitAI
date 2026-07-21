@@ -4,23 +4,31 @@ const { z } = require('zod');
 // If Gemini's output doesn't parse against one of these, it gets retried
 // or routed to the fallback engine — it never reaches the frontend raw.
 
+// The length caps matter twice over. These schemas validate AI output, but
+// WorkoutDaySchema is ALSO what PUT /api/plan validates user input against
+// (see server/src/validators/requestSchemas.js) — user input and AI output
+// deliberately meet identical bounds. Without a ceiling the only limit was
+// the 2 MB JSON body, and the plan is re-read and JSON.parse'd on nearly
+// every request, so one oversized plan would permanently tax that account's
+// every call and the shared 10-connection pool. Sized well past any real
+// exercise name so a legitimate plan never trips them.
 const ExerciseSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(80),
   sets: z.number().int().min(1).max(10),
   reps: z.number().int().min(1).max(50),
   restSeconds: z.number().int().min(0).max(600).optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(300).optional(),
 });
 
 const WorkoutDaySchema = z.object({
-  name: z.string().min(1),
-  exercises: z.array(ExerciseSchema).min(1),
+  name: z.string().min(1).max(60),
+  exercises: z.array(ExerciseSchema).min(1).max(12),
 });
 
 const PlanSchema = z.object({
-  goal: z.string(),
+  goal: z.string().max(120),
   days: z.array(WorkoutDaySchema).min(1).max(7),
-  notes: z.string().optional(),
+  notes: z.string().max(2000).optional(),
 });
 
 const FoodItemSchema = z.object({

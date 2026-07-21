@@ -1,5 +1,25 @@
 # Upgrade 002 — Engineering Deliverables
 
+> **HISTORICAL — superseded. Do not build against this document.**
+> It records what the 002 upgrade set out to deliver, not what the tree does
+> today. For current behaviour see `architecture.md` and `api.md`.
+>
+> What has since changed:
+> - **Progress was rebuilt AI-first.** There is no deterministic pace/risk
+>   rule engine on that page and no `progress_snapshots` table. The analysis
+>   is authored by the AI and cached per user per day in `progress_analyses`
+>   (migration 007). `GET /api/progress` returns `{ data, analysis }`.
+> - **Weigh-ins live on `daily_checklists.weight_kg`** (migration 006), logged
+>   through `PATCH /api/checklist/today/values`. `POST /api/progress/weight`
+>   and `GET /api/progress/weights` never existed outside this document.
+> - **Weekly/monthly reviews and achievements were never implemented.** Their
+>   tables (`reviews`, `achievements`) sat unreferenced from 002 until
+>   migration 010 dropped them, along with `body_weight_logs` and
+>   `progress_snapshots`. `GET /api/reviews`, `/api/reviews/history` and
+>   `/api/achievements` do not exist.
+> - **The provider cascade grew** beyond the five listed here — see
+>   `ai-platform.md`.
+
 Per-feature breakdown of the 002 upgrade: architecture, schema, API, UI,
 migration, testing, compatibility, performance, extensibility. Everything
 here is **additive and backwards compatible** — no endpoint was removed or

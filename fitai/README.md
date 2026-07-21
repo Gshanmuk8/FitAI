@@ -3,7 +3,7 @@
 An AI fitness coach: tell it who you are, your goal, and **by when** — it
 builds a personalized workout + diet plan, then coaches you daily with an
 adaptive mission, photo food logging, honest pace tracking, long-term
-memory, weekly reviews, and achievements.
+memory, and an AI-authored progress review.
 
 **Works with zero AI keys.** Every AI feature degrades through a provider
 cascade (Gemini → OpenAI → Anthropic → OpenRouter → Groq → Cerebras →
@@ -34,7 +34,11 @@ npm install --workspaces
 
 Open your Supabase project → SQL Editor → paste the entire contents of
 `scripts/supabase-setup.sql` → Run. (Idempotent; safe to re-run. It bundles
-`server/migrations/000–004` in order.)
+`server/migrations/000–011` in order.)
+
+Only needed for a **fresh** database. An existing deploy applies pending
+migrations itself: the Docker image runs `scripts/migrate.js` before booting,
+and it skips anything already recorded in `schema_migrations`.
 
 **3. Configure environment**
 

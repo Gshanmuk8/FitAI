@@ -24,7 +24,7 @@ const { buildContextForUser } = require('../memory/contextBuilder');
 const { buildProgressAnalysisPrompt } = require('../../../../shared/prompts/templates');
 const { analyzeProgress } = require('../ai/aiOrchestrator');
 const { ymd, DAY_MS } = require('../analytics/adherence');
-const { localDateInZone } = require('../../utils/userDate');
+const { resolveUserDate } = require('../../utils/userDate');
 const { createExpiringMap } = require('../../utils/expiringMap');
 
 async function assembleData(userId, profileRow, userDate) {
@@ -34,8 +34,10 @@ async function assembleData(userId, profileRow, userDate) {
 
   const [history, training, nutrition] = await Promise.all([
     getHistory(userId, 90),
-    trainingDaySummary(userId, 28),
-    dailyTotalsRecent(userId, 14),
+    // Both windowed against the USER's today, so training/nutrition days
+    // line up with the checklist days the AI compares them against.
+    trainingDaySummary(userId, 28, userDate),
+    dailyTotalsRecent(userId, 14, userDate),
   ]);
 
   // Weigh-ins live on the daily checklist rows; oldest-first for the chart
@@ -99,7 +101,12 @@ async function assembleData(userId, profileRow, userDate) {
     .reverse();
 
   const timeframeWeeks = plan?.timeframe?.weeks || profileRow.timeframe_weeks || null;
-  const planStartedAt = profileRow.plan_started_at || profileRow.updated_at || null;
+  // plan_started_at only. updated_at was never a safe stand-in: it moves on
+  // every profile edit, so tweaking your height would have re-dated the plan
+  // and shifted "week 6 of 16" back to week 0. Migration 009 backfilled the
+  // legacy NULLs that fallback existed for; a NULL here now means "no plan
+  // yet", which reads as no week at all.
+  const planStartedAt = profileRow.plan_started_at || null;
   const weeksElapsed = planStartedAt
     ? Math.max(0, Math.round(((new Date(`${userDate}T12:00:00`) - new Date(planStartedAt)) / (7 * DAY_MS)) * 10) / 10)
     : null;
@@ -145,7 +152,7 @@ async function computeProgress(userId) {
   const profileRow = await getProfile(userId);
   if (!profileRow) return null;
 
-  const userDate = localDateInZone(profileRow.timezone) || ymd(new Date());
+  const userDate = (await resolveUserDate(userId, profileRow)) || ymd(new Date());
   const data = await assembleData(userId, profileRow, userDate);
   const inputHash = hashData(data);
 

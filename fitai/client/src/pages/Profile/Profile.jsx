@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../../utils/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
+import ButtonLink from '../../components/ui/ButtonLink';
 
 const GOALS = ['lose_fat', 'build_muscle', 'maintain', 'improve_endurance'];
 const ACTIVITY_LEVELS = ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'athlete'];
@@ -15,12 +16,14 @@ const labelStyle = { display: 'block', fontSize: '0.8rem', color: 'var(--muted)'
 export default function Profile() {
   const [form, setForm] = useState(null);
   const [status, setStatus] = useState({ busy: '', error: '', saved: false });
+  const [noProfile, setNoProfile] = useState(false);
   const [signOutError, setSignOutError] = useState('');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    apiFetch('/api/profile')
+  function loadProfile() {
+    setStatus((s) => ({ ...s, error: '' }));
+    return apiFetch('/api/profile')
       .then(({ profile }) =>
         setForm({
           age: profile.age ?? '',
@@ -38,8 +41,13 @@ export default function Profile() {
           trainingStyle: profile.training_style || '',
         })
       )
-      .catch((err) => setStatus((s) => ({ ...s, error: err.message })));
-  }, []);
+      .catch((err) => {
+        setNoProfile(Boolean(err.noProfile));
+        setStatus((s) => ({ ...s, error: err.message }));
+      });
+  }
+
+  useEffect(() => { loadProfile(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -108,12 +116,25 @@ export default function Profile() {
     }
   }
 
+  // An account that abandoned onboarding has no profile row. "Try again"
+  // would fail forever here — the only thing that helps is finishing
+  // onboarding, so offer that instead. Same branch Dashboard and Progress
+  // already had; Profile was the one dead end.
+  if (noProfile) {
+    return (
+      <div className="dashboard-empty page-enter">
+        <h2 className="page-title">Finish setting up first</h2>
+        <p className="muted">Your profile is created when you complete onboarding.</p>
+        <ButtonLink to="/onboarding">Complete onboarding</ButtonLink>
+      </div>
+    );
+  }
   if (status.error && !form) {
     return (
       <div className="dashboard-empty page-enter">
         <h2 className="page-title">Couldn't load your profile</h2>
         <p className="muted">{status.error}</p>
-        <Button type="button" onClick={() => window.location.reload()}>Try again</Button>
+        <Button type="button" onClick={loadProfile}>Try again</Button>
       </div>
     );
   }

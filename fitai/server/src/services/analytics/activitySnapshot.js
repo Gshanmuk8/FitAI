@@ -103,8 +103,8 @@ async function buildActivitySnapshot(userId) {
   const userDate = (await getUserToday(userId)) || ymd(new Date());
   const [history, training, nutrition, today] = await Promise.all([
     getHistory(userId, 28),
-    trainingDaySummary(userId, 14),
-    dailyTotalsRecent(userId, 7),
+    trainingDaySummary(userId, 14, userDate),
+    dailyTotalsRecent(userId, 7, userDate),
     // Live layer is enrichment like the rest: its failure degrades the
     // answer, never blocks the chat.
     buildTodayBlock(userId).catch(() => null),

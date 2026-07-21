@@ -1,13 +1,14 @@
 /**
- * End-to-end product smoke test. Boots a REAL embedded Postgres, runs all
- * four migrations from scratch, then walks the entire user journey through
+ * End-to-end product smoke test. Boots a REAL embedded Postgres, runs every
+ * migration from scratch, then walks the entire user journey through
  * the actual service layer with ZERO AI keys configured:
  *
  *   onboarding -> plan (fallback template + deterministic diet/timeframe)
  *   -> today's checklist from the plan -> meal diary + protein auto-check
- *   -> weigh-ins -> progress report (pace, snapshot, achievements)
+ *   -> weigh-ins -> progress report (raw journey data + AI analysis, which
+ *      degrades to a stored-stale or template analysis without keys)
  *   -> plan edit + preference learning + behavior memory
- *   -> weekly review -> tutor fallback -> HTTP /health + auth rejection.
+ *   -> tutor fallback -> HTTP /health + auth rejection.
  *
  * Run: node scripts/smoke-test.js   (dev-only; uses devDependency embedded-postgres)
  */
@@ -26,7 +27,10 @@ process.env.SUPABASE_SERVICE_KEY = 'your-service-role-key';
 process.env.NODE_ENV = 'development';
 // The whole point is exercising the KEYLESS path (fallbacks, never blank
 // screens) — a developer's .env with real provider keys must not leak in,
-// or "keyless -> template plan" turns into a live AI call and fails.
+// or "keyless -> template plan" tur
+// 
+// 
+// ns into a live AI call and fails.
 // Placeholders (not deletes): dotenv only fills ABSENT vars, so a deleted
 // key would be re-populated from .env; a "your-*" placeholder wins and is
 // treated as unconfigured by config/env's isPlaceholder().
@@ -297,6 +301,71 @@ async function run(epg) {
   assert.equal(localDateInZone('Not/AZone'), null, 'bad tz -> null -> server-date fallback');
   assert.equal(localDateInZone(null), null, 'no tz -> pre-004 behavior');
   step('user-local date resolution (rollover at the user\'s midnight, safe fallbacks)');
+
+  // ---- day-boundary and concurrency invariants (regressions, all four
+  //      were live bugs) ----
+  const DailyChecklist = require('../server/src/models/DailyChecklist');
+  const { todaySetCounts } = require('../server/src/models/WorkoutLog');
+
+  // (a) The user's day must never move BACKWARD. Flying Kolkata -> New York
+  // rewinds the local date; letting writes follow it lands today's meals and
+  // ticks on an already-finished day, inflating its totals and orphaning the
+  // real row. effectiveDate ratchets: it can only ever go forward.
+  const dayBefore = await DailyChecklist.effectiveDate(userId, '1999-01-01');
+  const todayRow = await getTodayEnriched(userId);
+  assert.equal(dayBefore, todayRow.userDate,
+    'a date earlier than the latest logged day is clamped forward, never applied');
+  const dayAfter = await DailyChecklist.effectiveDate(userId, '2099-01-01');
+  assert.equal(dayAfter, '2099-01-01', 'a LATER date still moves the day forward (real midnight must work)');
+
+  // (b) A set logged today rehydrates today — workout_logs carries the
+  // user's local date now, not the DB server's logged_at::date, which
+  // disagreed with it for part of every day outside UTC.
+  const setsToday = await todaySetCounts(userId, todayRow.userDate);
+  assert.ok(setsToday.some((r) => r.exercise_name === 'Squat' && r.sets >= 1),
+    'sets logged today are found under the USER\'s date');
+  const { rows: logDates } = await pool.query(
+    `SELECT date FROM workout_logs WHERE user_id = $1 AND date IS NULL`, [userId]
+  );
+  assert.equal(logDates.length, 0, 'every workout log carries an explicit date');
+
+  // (c) A typed figure is not destroyed by a later meal. Before values_source
+  // the diary overwrote it unconditionally: type 2200 kcal, log a 250 kcal
+  // snack, and the day silently became 250.
+  await setChecklistValues(userId, { calories_kcal: 2200 });
+  await addMealAndSync(userId, { name: 'Late snack', calories: 250, protein: 5, source: 'manual' });
+  const afterSnack = await getTodayEnriched(userId);
+  assert.equal(Number(afterSnack.calories_kcal), 2200,
+    'a hand-entered calorie figure survives a later meal sync');
+  assert.equal(afterSnack.values_source.calories_kcal, 'manual', 'provenance recorded');
+
+  // (d) Two stale writers must not clobber each other. The old code did
+  // read-modify-write on the custom_items array in JS, so the second write
+  // erased the first — behind a 200.
+  const beforeCount = (await getTodayEnriched(userId)).custom_items.length;
+  await Promise.all([
+    addCustomItem(userId, 'concurrent A'),
+    addCustomItem(userId, 'concurrent B'),
+  ]);
+  const afterConcurrent = await getTodayEnriched(userId);
+  assert.equal(afterConcurrent.custom_items.length, beforeCount + 2,
+    'both concurrent additions survive — neither is lost to the other');
+  step('day ratchet, user-local workout dates, manual-value provenance, concurrent item writes');
+
+  // ---- a profile edit that changes the goal reaches TODAY's mission ----
+  // Through the controller, so the propagation wiring itself is covered.
+  const { patchMyProfile } = require('../server/src/controllers/profileController');
+  await new Promise((resolve, reject) => {
+    patchMyProfile(
+      { user: { id: userId }, body: { goal: 'build_muscle' } },
+      { status: () => ({ json: resolve }), json: resolve },
+      reject
+    );
+  });
+  const afterGoalChange = await getTodayEnriched(userId);
+  assert.equal(afterGoalChange.plan_snapshot.goal, 'build_muscle',
+    'today\'s frozen snapshot follows a goal change instead of grading by the old rule until midnight');
+  step('profile goal change propagates into today\'s mission immediately');
 
   // ---- real HTTP layer ----
   const app = require('../server/src/app');

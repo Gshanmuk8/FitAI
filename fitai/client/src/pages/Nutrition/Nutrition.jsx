@@ -66,7 +66,10 @@ function loadPendingAnalysis(userId) {
 export default function Nutrition() {
   const { user } = useAuth();
   const [analysis, setAnalysisState] = useState(() => loadPendingAnalysis(user?.id)); // items pending confirmation
-  const [meals, setMeals] = useState([]);
+  // null = never loaded (or the load failed), [] = genuinely empty. The two
+  // must render differently: "nothing logged yet" over a failed load is a
+  // lie that makes people re-log meals they already have.
+  const [meals, setMeals] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true); // initial diary fetch
   const [manual, setManual] = useState(emptyManual);
@@ -124,7 +127,11 @@ export default function Nutrition() {
       const { meals: m, summary: s } = await getTodayMeals();
       setMeals(m);
       setSummary(s);
+      setError('');
     } catch (err) {
+      // Leave `meals` null on failure. Setting it to [] renders "Nothing
+      // logged yet today" over a day that may hold four meals, and people
+      // re-log food they already logged — double-counting the day.
       setError(err.message);
     } finally {
       setLoading(false);
@@ -255,7 +262,17 @@ export default function Nutrition() {
           </Button>
         </div>
         {busy === 'analyzing' && <p className="muted">Analyzing your photo…</p>}
-        {analysis?.needsManualInput && <p className="muted">{analysis.prompt} Add it manually below.</p>}
+        {/* Two different failures wear the same shape. `source: 'fallback'`
+            means the whole vision cascade was unreachable — blaming the
+            photo there sends people off to retake, crop and re-shoot a
+            perfectly good plate, burning an AI-limited request each time. */}
+        {analysis?.needsManualInput && (
+          <p className="muted">
+            {analysis.source === 'fallback'
+              ? "Your coach couldn't be reached to read this photo — nothing wrong with your picture. Add it manually below, or try again in a moment."
+              : `${analysis.prompt} Add it manually below.`}
+          </p>
+        )}
         {analysis?.foods?.length > 0 && (
           <>
             <div className="page-header" style={{ marginTop: '0.5rem' }}>
@@ -291,8 +308,16 @@ export default function Nutrition() {
       <section>
         <h3 className="section-title">Today's meals {summary?.mealCount ? `(${summary.mealCount})` : ''}</h3>
         {loading && <p className="small muted">Loading today's diary…</p>}
-        {!loading && meals.length === 0 && <p className="small muted">Nothing logged yet today — snap a photo or add a meal above.</p>}
-        {meals.map((m) => (
+        {!loading && meals === null && (
+          <div className="small muted">
+            <p style={{ marginBottom: '0.5rem' }}>
+              Couldn't load today's diary{error ? ` — ${error}` : ''}. Your logged meals are safe — don't re-add them.
+            </p>
+            <Button onClick={refreshDiary}>Try again</Button>
+          </div>
+        )}
+        {!loading && meals?.length === 0 && <p className="small muted">Nothing logged yet today — snap a photo or add a meal above.</p>}
+        {(meals || []).map((m) => (
           <div key={m.id} className="list-row">
             <span>
               {m.name} — {m.calories} kcal, {Number(m.protein)}g protein

@@ -10,9 +10,12 @@
  * step is deterministic: no AI call sits on this path.
  */
 const crypto = require('crypto');
-const { getToday, insertToday, getYesterday, updateChecklistFields, setCustomItems, setPlanSnapshot } = require('../../models/DailyChecklist');
+const {
+  getToday, insertToday, getYesterday, updateChecklistFields,
+  appendCustomItem, setCustomItemDoneById, removeCustomItemById, setPlanSnapshot,
+} = require('../../models/DailyChecklist');
 const { getProfile } = require('../../models/UserProfile');
-const { localDateInZone } = require('../../utils/userDate');
+const { resolveUserDate } = require('../../utils/userDate');
 const { todaysPlanEntry } = require('../../../../shared/calculations/schedule');
 const { buildDietTargets } = require('../../../../shared/calculations/dietTargets');
 const { adaptTodaysPlan } = require('../../../../shared/calculations/adaptivePlanner');
@@ -28,7 +31,9 @@ const atNoon = (dateStr) => new Date(`${dateStr}T12:00:00`);
 
 async function getTodayEnriched(userId) {
   const profile = await getProfile(userId);
-  const userDate = localDateInZone(profile?.timezone);
+  // Ratcheted, not just formatted: a westward timezone change would
+  // otherwise send today's writes onto an already-finished earlier day.
+  const userDate = await resolveUserDate(userId, profile);
 
   let checklist = await getToday(userId, userDate);
   if (!checklist) {
@@ -38,7 +43,12 @@ async function getTodayEnriched(userId) {
       return null;
     });
     checklist = await insertToday(userId, snapshot, userDate);
-  } else if (checklist.plan_snapshot && Number(checklist.plan_snapshot.version || 1) < SNAPSHOT_VERSION) {
+    // A snapshot build that failed above leaves plan_snapshot null. The heal
+    // condition below must therefore treat "missing" as stale too — otherwise
+    // a day frozen by one transient failure stays target-less until midnight,
+    // and valueCompletion degrades to "any positive number counts", so a 1 g
+    // protein entry marks the day complete.
+  } else if (!checklist.plan_snapshot || Number(checklist.plan_snapshot.version || 1) < SNAPSHOT_VERSION) {
     // Self-heal a day frozen under an older snapshot contract (e.g. a row
     // created before the snapshot carried `goal`): rebuild it from the live
     // plan and re-derive value completions, exactly like a plan edit does.
@@ -160,7 +170,9 @@ async function setChecklistValues(userId, values) {
   if (values.weight_kg != null) fields.weight_kg = values.weight_kg;
   if (values.notes !== undefined) fields.notes = values.notes;
 
-  const updated = await updateChecklistFields(userId, fields, current.userDate);
+  // 'manual': the user typed these. The meal diary will stop overwriting
+  // them for the rest of the day (see mealDiaryService.syncFromDiary).
+  const updated = await updateChecklistFields(userId, fields, current.userDate, 'manual');
   return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
 }
 
@@ -172,7 +184,7 @@ async function setChecklistValues(userId, values) {
 // logged (values, weigh-in, notes, custom items, workout tick) is preserved.
 async function refreshTodaySnapshot(userId) {
   const profile = await getProfile(userId);
-  const userDate = localDateInZone(profile?.timezone);
+  const userDate = await resolveUserDate(userId, profile);
   const existing = await getToday(userId, userDate);
   if (!existing) return null; // day not started — first load freezes the new plan anyway
 
@@ -196,49 +208,38 @@ async function refreshTodaySnapshot(userId) {
 // never overwrite the plan's own workout adherence signal.
 const MAX_CUSTOM_ITEMS = 12;
 
-function parseCustomItems(row) {
-  const raw = row?.custom_items;
-  const items = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  return Array.isArray(items) ? items : [];
+function notFound() {
+  const err = new Error('Checklist item not found for today.');
+  err.status = 404;
+  return err;
 }
 
+// All three mutate the array inside the UPDATE (see DailyChecklist) so two
+// tabs can't clobber each other's edits. The service's only job is turning
+// "the statement matched nothing" into the right status code.
 async function addCustomItem(userId, label) {
   const current = await getTodayEnriched(userId);
-  const items = parseCustomItems(current);
-  if (items.length >= MAX_CUSTOM_ITEMS) {
+  const item = { id: crypto.randomUUID(), label, done: false };
+  const updated = await appendCustomItem(userId, item, MAX_CUSTOM_ITEMS, current.userDate);
+  if (!updated) {
     const err = new Error(`Today's list is full (${MAX_CUSTOM_ITEMS} custom items max).`);
     err.status = 400;
     throw err;
   }
-  items.push({ id: crypto.randomUUID(), label, done: false });
-  const updated = await setCustomItems(userId, items, current.userDate);
   return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
 }
 
 async function setCustomItemDone(userId, itemId, done) {
   const current = await getTodayEnriched(userId);
-  const items = parseCustomItems(current);
-  const item = items.find((i) => i.id === itemId);
-  if (!item) {
-    const err = new Error('Checklist item not found for today.');
-    err.status = 404;
-    throw err;
-  }
-  item.done = done;
-  const updated = await setCustomItems(userId, items, current.userDate);
+  const updated = await setCustomItemDoneById(userId, itemId, done, current.userDate);
+  if (!updated) throw notFound();
   return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
 }
 
 async function removeCustomItem(userId, itemId) {
   const current = await getTodayEnriched(userId);
-  const items = parseCustomItems(current);
-  const next = items.filter((i) => i.id !== itemId);
-  if (next.length === items.length) {
-    const err = new Error('Checklist item not found for today.');
-    err.status = 404;
-    throw err;
-  }
-  const updated = await setCustomItems(userId, next, current.userDate);
+  const updated = await removeCustomItemById(userId, itemId, current.userDate);
+  if (!updated) throw notFound();
   return { ...updated, items: itemsFromSnapshot(updated.plan_snapshot), userDate: current.userDate };
 }
 

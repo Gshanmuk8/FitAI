@@ -46,6 +46,44 @@ const sslEnabled = process.env.DATABASE_SSL != null && process.env.DATABASE_SSL 
   ? process.env.DATABASE_SSL === "true"
   : NODE_ENV === "production" || !isLocalHost(CONN_STRING);
 
+// TLS is on, but by default the certificate is NOT verified — the historical
+// setting, kept as the default because tightening it blindly would break any
+// deploy whose provider serves a cert Node's bundled roots don't chain to,
+// and a database that won't connect is a worse failure than this one. It is
+// still a real weakness: an attacker who can occupy the network path can
+// present their own cert and read every query.
+//
+// To close it, set either:
+//   DATABASE_SSL_CA=<PEM contents, or a path to a .crt/.pem file>
+//   DATABASE_SSL_REJECT_UNAUTHORIZED=true   (verify against Node's own roots)
+// Verify in staging before production — a wrong CA fails closed, as it should.
+function resolveSslConfig() {
+  if (!sslEnabled) return {};
+
+  const rawCa = process.env.DATABASE_SSL_CA;
+  let ca;
+  if (rawCa) {
+    try {
+      ca = rawCa.includes("BEGIN CERTIFICATE")
+        ? rawCa
+        : require("fs").readFileSync(rawCa, "utf8");
+    } catch (err) {
+      // Fail loudly rather than silently downgrading: an operator who set a
+      // CA path expects verification, and must not get an unverified link.
+      throw new Error(`DATABASE_SSL_CA could not be read (${rawCa}): ${err.message}`);
+    }
+  }
+
+  const rejectUnauthorized = Boolean(ca) || process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "true";
+  if (!rejectUnauthorized && NODE_ENV === "production") {
+    require("../utils/logger").warn(
+      "Postgres TLS: certificate verification is OFF — set DATABASE_SSL_CA or " +
+      "DATABASE_SSL_REJECT_UNAUTHORIZED=true to verify the server certificate."
+    );
+  }
+  return { ssl: { rejectUnauthorized, ...(ca ? { ca } : {}) } };
+}
+
 // Log which host we're actually dialing (never the password). This makes
 // deploy logs say plainly whether DATABASE_URL points at the IPv4 pooler
 // (aws-0-*.pooler.supabase.com) or the IPv6-only direct host
@@ -69,7 +107,7 @@ const pool = new Pool({
   // one bad query class could starve the whole pool and 500 the site.
   statement_timeout: 15000,
   query_timeout: 20000,
-  ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
+  ...resolveSslConfig(),
 });
 
 pool.on("error", (err) => {

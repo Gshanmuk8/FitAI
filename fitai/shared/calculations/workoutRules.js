@@ -4,6 +4,12 @@
  */
 
 function nextWorkoutLoad({ lastWeightKg, lastReps, targetReps, completedAllSets }) {
+  // weight_kg is nullable, and bodyweight movements legitimately carry no
+  // load. Without this, null + 2.5 evaluates to 2.5 and the coach tells
+  // someone to add 2.5 kg to their push-ups.
+  if (lastWeightKg == null) {
+    return { weightKg: null, note: 'No load recorded last time — log the weight you use and progression starts from there.' };
+  }
   if (!completedAllSets) {
     return { weightKg: lastWeightKg, note: 'Repeat weight — sets incomplete last session.' };
   }

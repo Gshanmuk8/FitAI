@@ -32,7 +32,16 @@ function adherenceFrom(history, todayStr) {
   if (!history.length) return { last7: null, last28: null, workoutConsistency: null, nutritionConsistency: null, daysLogged: 0 };
   const byDate = new Map(history.map((r) => [ymd(r.date), r]));
   const today = new Date(`${todayStr}T12:00:00`);
-  const earliest = new Date(`${ymd(history[history.length - 1].date)}T12:00:00`);
+
+  // Span is measured from the earliest row that is not in the future
+  // relative to todayStr. A row dated after today (a clock skew, or a
+  // timezone that briefly ran ahead) would otherwise make (today - earliest)
+  // negative, collapse the span to 1, and report a diligent user's adherence
+  // as 0% — the windows below only ever look backwards from today, so a
+  // future row can't contribute anyway.
+  const past = history.map((r) => ymd(r.date)).filter((d) => d <= todayStr);
+  if (!past.length) return { last7: null, last28: null, workoutConsistency: null, nutritionConsistency: null, daysLogged: history.length };
+  const earliest = new Date(`${past[past.length - 1]}T12:00:00`);
   const historySpanDays = Math.max(1, Math.floor((today - earliest) / DAY_MS) + 1);
 
   const windowStats = (days) => {

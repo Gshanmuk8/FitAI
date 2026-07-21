@@ -30,6 +30,16 @@ app.use(helmet());
 // the API to known frontends. Optional and additive — unset keeps today's
 // behavior.
 const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+if (!corsOrigins.length && process.env.NODE_ENV === 'production') {
+  // Not a hole on its own — auth is a bearer token, never a cookie, so a
+  // hostile page can't ride along on ambient credentials the way it could
+  // with cookie auth. It does mean any origin may call the API with a token
+  // it already has, so name the frontends in production and close it.
+  require('./utils/logger').warn(
+    'CORS: no CORS_ORIGINS set — every origin may call this API. ' +
+    'Set CORS_ORIGINS=https://your-frontend[,…] in production.'
+  );
+}
 app.use(cors(corsOrigins.length ? { origin: corsOrigins } : {}));
 app.use(express.json({ limit: '2mb' }));
 app.use((req, _res, next) => {
@@ -58,7 +68,18 @@ app.use('/api', (_req, res, next) => {
 // few seconds from one IP would otherwise burn the 200/15min budget and
 // start seeing 429s — which it reads as "unhealthy" and restarts a healthy
 // instance.
-app.get('/health', async (_req, res) => {
+// The ping result is memoized for a few seconds. /health is unauthenticated
+// and sits ahead of the rate limiter, so without this anyone can make every
+// request take a client from a 10-connection pool for free — starving real
+// user queries while never tripping a limit. A platform probe every few
+// seconds still gets fresh-enough truth.
+const HEALTH_TTL_MS = 5000;
+let healthCache = { at: 0, database: null };
+
+async function pingDatabase() {
+  if (healthCache.database && Date.now() - healthCache.at < HEALTH_TTL_MS) {
+    return healthCache.database;
+  }
   let database = 'unknown';
   let timer;
   try {
@@ -72,6 +93,12 @@ app.get('/health', async (_req, res) => {
   } finally {
     clearTimeout(timer); // don't leave a dangling 3s timer once the query settles
   }
+  healthCache = { at: Date.now(), database };
+  return database;
+}
+
+app.get('/health', async (_req, res) => {
+  const database = await pingDatabase();
   res.status(database === 'ok' ? 200 : 503).json({
     status: database === 'ok' ? 'ok' : 'degraded',
     database,

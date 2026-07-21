@@ -5,6 +5,8 @@ const { getUserToday } = require('../utils/userDate');
 async function postLogSet(req, res, next) {
   try {
     const { exerciseName, weightKg, reps, setNumber, completedAllReps } = req.body;
+    // Stamped with the user's local day, not the DB server's, so the set
+    // rehydrates on the same day the user believes they trained.
     const row = await logSet({
       userId: req.user.id,
       exerciseName,
@@ -12,7 +14,7 @@ async function postLogSet(req, res, next) {
       reps,
       setNumber,
       completedAllReps,
-    });
+    }, await getUserToday(req.user.id));
     res.json(row);
   } catch (err) {
     next(err);

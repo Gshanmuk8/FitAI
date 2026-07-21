@@ -4,12 +4,11 @@ This restructures `fitai-complete.zip` (a ~30-file MVP: direct
 Express -> Gemini calls, no cache, no fallback, no memory) into the
 layered system described in the planning docs.
 
-> **Upgrade 002** (see `docs/upgrade-002.md` for full deliverables) added:
+> **Upgrade 002** (`docs/upgrade-002.md` — historical, superseded) added:
 > goal timeframes with a safety clamp, editable plans with preference
 > learning, a plan-aware daily checklist that regenerates every 24h and
-> adapts to yesterday's outcome, an intelligent progress dashboard backed
-> by daily snapshots, weekly/monthly reviews, achievements, categorized/
-> importance-ranked memory, and engineering hardening (structured logging,
+> adapts to yesterday's outcome, an intelligent progress dashboard, and
+> categorized/importance-ranked memory, plus engineering hardening (logging,
 > env validation, feature flags, graceful shutdown, prompt versioning,
 > unit tests). All AI keys — including Gemini — are now optional: the app
 > is fully functional on the rules engine and templates alone.
@@ -20,7 +19,7 @@ layered system described in the planning docs.
 - `shared/calculations` — BMI/BMR/TDEE/calorie-target/progression formulas. Pure functions, no AI.
 - `shared/schemas` — Zod schemas every AI response is validated against.
 - `shared/prompts` — centralized prompt templates.
-- `server/src/services/ai/*` — the orchestrator pipeline: cache -> provider cascade (Gemini -> OpenRouter free tier -> Groq -> Cerebras -> Cloudflare Workers AI, health-monitor reordered, each with internal retry) -> schema validation -> last-known-good cache -> rules engine -> static templates. See `aiOrchestrator.js`. All fallback providers are optional — the cascade simply skips any provider whose API key isn't set in `.env`.
+- `server/src/services/ai/*` — the orchestrator pipeline: cache -> provider cascade (Gemini -> OpenAI -> Anthropic -> OpenRouter free tier -> Groq -> Cerebras -> Cloudflare Workers AI, health-monitor reordered, each with internal retry) -> schema validation -> last-known-good cache -> rules engine -> static templates. See `aiOrchestrator.js`. All fallback providers are optional — the cascade simply skips any provider whose API key isn't set in `.env`.
 - `server/src/services/memory/*` — four-tier memory (permanent/semi-permanent/temporal/conversational), retrieval, and AI-assisted summarization with a cheap heuristic gate so trivial messages never trigger a Gemini call.
 - All routes: onboarding (incl. GET to fetch the saved plan), AI tutor, food image analysis, daily checklist, workout logging + progression, memory timeline.
 - `client/src/services`, `contexts/AuthContext`, `hooks/useChecklist`, and every page in the requested tree plus Login/Signup/Onboarding (missing from the original tree, added because the app can't function without them) — wired end-to-end to the backend above.
@@ -35,7 +34,8 @@ layered system described in the planning docs.
 
 ```
 Request -> cache lookup -> provider cascade, health-monitor ordered
-  (Gemini -> OpenRouter free models -> Groq -> Cerebras -> Cloudflare
+  (Gemini -> OpenAI -> Anthropic -> OpenRouter free models -> Groq ->
+  Cerebras -> Cloudflare
   Workers AI; each provider gets its own retry/timeout, a 429 puts it on
   a 2-minute cooldown so the next request skips straight past it)
   -> Zod validation per provider response
@@ -46,8 +46,9 @@ Request -> cache lookup -> provider cascade, health-monitor ordered
 ```
 
 The response object returned to the frontend never names a provider —
-`aiOrchestrator`'s `sanitize()` step collapses `gemini`/`openrouter`/
-`groq`/`cerebras`/`cloudflare` down to a generic `source: "ai"`, leaving
+`aiOrchestrator`'s `sanitize()` step collapses `gemini`/`openai`/
+`anthropic`/`openrouter`/`groq`/`cerebras`/`cloudflare` down to a generic
+`source: "ai"`, leaving
 only `"cache"` and `"fallback"` as the other possible values. A provider
 outage, rate limit, or malformed response is never surfaced to the
 client — it's logged server-side and the cascade just moves to the next

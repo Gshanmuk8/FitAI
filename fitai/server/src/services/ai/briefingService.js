@@ -24,7 +24,7 @@ const { getTodayEnriched } = require('../checklist/checklistService');
 const { buildContextForUser } = require('../memory/contextBuilder');
 const { buildBriefingPrompt } = require('../../../../shared/prompts/templates');
 const { generateBriefing } = require('./aiOrchestrator');
-const { localDateInZone } = require('../../utils/userDate');
+const { resolveUserDate } = require('../../utils/userDate');
 const { createExpiringMap } = require('../../utils/expiringMap');
 
 // Adherence + date math shared with the progress analysis — one definition
@@ -83,7 +83,7 @@ async function computeTodayBriefing(userId) {
   const profileRow = await getProfile(userId);
   if (!profileRow) return null;
 
-  const userDate = localDateInZone(profileRow.timezone) || ymd(new Date());
+  const userDate = (await resolveUserDate(userId, profileRow)) || ymd(new Date());
 
   const plan = profileRow.ai_plan
     ? typeof profileRow.ai_plan === 'string' ? JSON.parse(profileRow.ai_plan) : profileRow.ai_plan
@@ -111,7 +111,10 @@ async function computeTodayBriefing(userId) {
   });
 
   const timeframeWeeks = plan?.timeframe?.weeks || profileRow.timeframe_weeks || null;
-  const planStartedAt = profileRow.plan_started_at || profileRow.updated_at || null;
+  // plan_started_at only — see progressAnalysisService: updated_at moves on
+  // every profile edit, so it could re-date the plan clock. Migration 009
+  // backfilled the legacy NULL rows that fallback was there for.
+  const planStartedAt = profileRow.plan_started_at || null;
   // Deterministic: how far into the plan the user is. The AI is told
   // plainly when the timeframe has elapsed so a finished 12-week plan
   // reads as "time to set the next goal", never "behind schedule".
@@ -144,7 +147,11 @@ async function computeTodayBriefing(userId) {
   const existing = await DailyBriefing.getToday(userId, userDate);
   if (existing && existing.briefing?.inputHash === inputHash) {
     const { inputHash: _ignored, ...briefing } = existing.briefing;
-    return { ...briefing, date: existing.date, fresh: false };
+    // ymd() on every path: pg hands back a Date at server-local midnight,
+    // which res.json serializes to UTC and can shift a day — so the same
+    // endpoint would answer "2026-07-21T18:30:00Z" from cache and
+    // "2026-07-22" from the fallback. The client gets a plain YYYY-MM-DD.
+    return { ...briefing, date: ymd(existing.date), fresh: false };
   }
 
   // Provider-outage memo: don't re-run the cascade for every dashboard load
@@ -161,7 +168,7 @@ async function computeTodayBriefing(userId) {
   if (result.source !== 'fallback') {
     fallbackMemo.delete(userId);
     const stored = await DailyBriefing.upsertToday(userId, { ...result, inputHash }, userDate);
-    return { ...result, date: stored?.date || userDate, fresh: true };
+    return { ...result, date: stored?.date ? ymd(stored.date) : userDate, fresh: true };
   }
 
   // Provider outage. If today already HAS a real briefing (we're here
@@ -171,7 +178,7 @@ async function computeTodayBriefing(userId) {
   let briefing;
   if (existing?.briefing?.summary) {
     const { inputHash: _ignored, ...real } = existing.briefing;
-    briefing = { ...real, date: existing.date, fresh: false, stale: true };
+    briefing = { ...real, date: ymd(existing.date), fresh: false, stale: true };
   } else {
     briefing = { ...result, date: userDate, fresh: true };
   }

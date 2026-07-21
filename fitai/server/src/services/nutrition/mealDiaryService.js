@@ -38,20 +38,40 @@ async function syncFromDiary(userId, checklist) {
 
   try {
     // The diary total IS the day's figure — the dashboard fields fill
-    // themselves and the user never types the same number twice. One
-    // source of truth: meals (a manual entry is the fallback for days
-    // the diary isn't used).
-    const fields = {
-      protein_grams: summary.protein,
-      calories_kcal: summary.calories,
-      protein_completed: valueCompletion('protein_grams', summary.protein, snapshot.targets, snapshot.goal),
-      calories_completed: valueCompletion('calories_kcal', summary.calories, snapshot.targets, snapshot.goal),
-    };
-    const updated = await updateChecklistFields(userId, fields, checklist.userDate);
-    summary.proteinCompleted = Boolean(updated.protein_completed);
-    summary.caloriesCompleted = Boolean(updated.calories_completed);
+    // themselves and the user never types the same number twice.
+    //
+    // Unless the user typed it. Overwriting a hand-entered figure destroys
+    // data with no undo: someone who types "2200 kcal" for a restaurant day
+    // and then logs one 250 kcal snack would watch the day become 250, with
+    // the completion booleans and the AI's view of the day following it
+    // down. values_source (migration 011) records who owns each figure;
+    // once the user has typed one, the diary stops writing that column for
+    // the rest of the day and only reports its own total in the summary.
+    const owner = checklist.values_source || {};
+    const fields = {};
+    if (owner.protein_grams !== 'manual') {
+      fields.protein_grams = summary.protein;
+      fields.protein_completed = valueCompletion('protein_grams', summary.protein, snapshot.targets, snapshot.goal);
+    }
+    if (owner.calories_kcal !== 'manual') {
+      fields.calories_kcal = summary.calories;
+      fields.calories_completed = valueCompletion('calories_kcal', summary.calories, snapshot.targets, snapshot.goal);
+    }
+
+    if (Object.keys(fields).length) {
+      const updated = await updateChecklistFields(userId, fields, checklist.userDate, 'diary');
+      summary.proteinCompleted = Boolean(updated.protein_completed);
+      summary.caloriesCompleted = Boolean(updated.calories_completed);
+    }
+    // Tell the client which figures the diary is not driving, so the UI can
+    // show the diary total beside the user's own number instead of silently
+    // disagreeing with it.
+    summary.manualFields = Object.keys(owner).filter((k) => owner[k] === 'manual');
   } catch (err) {
     logger.error('meal->checklist sync failed', { error: err.message });
+    // The meal itself saved; the derived totals may lag. Say so rather than
+    // letting the two sources diverge silently behind a 200.
+    summary.syncWarning = 'Meal saved, but today’s totals may be out of date — reload to refresh.';
   }
   return summary;
 }

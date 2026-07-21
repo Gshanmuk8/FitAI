@@ -63,7 +63,10 @@ const ProfileUpdateSchema = OnboardingSchema.partial().refine(
 const MealSchema = z.object({
   name: z.string().min(1).max(120),
   grams: z.number().positive().max(2000).optional(),
-  calories: z.number().int().min(0).max(5000),
+  // Not .int(): the vision path returns fractional kcal (FoodItemSchema
+  // allows them) and the manual input has no step, so "250.5" would 400 on
+  // a number the app itself can produce. Rounded on save instead.
+  calories: z.number().min(0).max(5000),
   protein: z.number().min(0).max(300).optional().default(0),
   carbs: z.number().min(0).max(500).optional(),
   fat: z.number().min(0).max(300).optional(),

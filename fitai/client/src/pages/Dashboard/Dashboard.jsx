@@ -11,7 +11,7 @@ const STATUS_LABEL = { ahead: 'Ahead of schedule', on_track: 'On track', behind:
 
 // The AI-authored daily briefing — the coach measures the user's pace vs their
 // plan once every 24h. Enrichment only: never blocks the rest of the dashboard.
-function BriefingCard({ briefing, loading }) {
+function BriefingCard({ briefing, loading, error, onRetry }) {
   if (loading) {
     return (
       <div className="card card-accent tone-cyan" style={{ marginBottom: '1rem' }}>
@@ -22,20 +22,41 @@ function BriefingCard({ briefing, loading }) {
       </div>
     );
   }
-  if (!briefing) return null;
+  // Never render nothing. A vanished card is indistinguishable from a
+  // removed feature; an honest one-liner with a retry is actionable.
+  if (!briefing) {
+    return (
+      <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
+        <h3 style={{ marginTop: 0 }}>Coach's briefing</h3>
+        <p className="small muted" style={{ margin: '0.5rem 0' }}>
+          {error
+            ? `Couldn't reach your coach just now — ${error}`
+            : "Couldn't reach your coach just now."}
+        </p>
+        <Button onClick={onRetry}>Try again</Button>
+      </div>
+    );
+  }
   const tone = STATUS_TONE[briefing.status] || 'cyan';
+  // A stale or template briefing must not wear the live-pulse dot — the
+  // disclaimers below are easy to miss, and a green pulse reads as "fresh".
+  const degraded = Boolean(briefing.stale) || briefing.source === 'fallback';
   return (
     <div className={`card card-accent tone-${tone}`} style={{ marginBottom: '1rem' }}>
       <div className="page-header">
         <h3 style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.55rem' }}>
-          <span
-            className="pulse-live"
-            aria-hidden="true"
-            style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', display: 'inline-block', flex: 'none' }}
-          />
+          {!degraded && (
+            <span
+              className="pulse-live"
+              aria-hidden="true"
+              style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', display: 'inline-block', flex: 'none' }}
+            />
+          )}
           Coach's briefing
         </h3>
-        <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>{STATUS_LABEL[briefing.status] || ''}</span>
+        <span className={`tone-${tone}-text`} style={{ fontWeight: 700 }}>
+          {STATUS_LABEL[briefing.status] || 'Briefing ready'}
+        </span>
       </div>
       <p className="small" style={{ margin: '0.5rem 0' }}>{briefing.summary}</p>
       <div className="stat-grid">
@@ -72,33 +93,60 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [noProfile, setNoProfile] = useState(false);
   const [briefing, setBriefing] = useState(null);
+  const [briefingError, setBriefingError] = useState('');
   const [briefingLoading, setBriefingLoading] = useState(true);
+
+  // Retry the page's own loaders. A full window.location.reload() would
+  // re-download the whole SPA and throw away every other bit of page state
+  // for what is usually a one-off network blip.
+  function reload() {
+    setLoading(true);
+    setError('');
+    apiFetch('/api/onboarding')
+      .then((p) => { setProfile(p); setError(''); setNoProfile(false); })
+      .catch((err) => { setError(err.message); setNoProfile(Boolean(err.noProfile)); })
+      .finally(() => setLoading(false));
+    loadBriefing();
+  }
+
+  function loadBriefing() {
+    setBriefingLoading(true);
+    setBriefingError('');
+    // The AI briefing is enrichment — its failure must never block the
+    // dashboard, and the server caches it so this is one AI call per day.
+    // But "never block" is not "never mention": swallowing the error made
+    // the whole card disappear on a 429, which reads as the coach feature
+    // being gone rather than briefly unreachable.
+    return getDailyBriefing()
+      .then((b) => { setBriefing(b); setBriefingError(''); })
+      .catch((err) => setBriefingError(err.message))
+      .finally(() => setBriefingLoading(false));
+  }
 
   useEffect(() => {
     apiFetch('/api/onboarding')
       .then(setProfile)
-      .catch((err) => setError(err.message))
+      .catch((err) => { setError(err.message); setNoProfile(Boolean(err.noProfile)); })
       .finally(() => setLoading(false));
-    // The AI briefing is enrichment — its failure must never block the
-    // dashboard, and the server caches it so this is one AI call per day.
-    getDailyBriefing()
-      .then(setBriefing)
-      .catch(() => {})
-      .finally(() => setBriefingLoading(false));
-  }, []);
+    loadBriefing();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div className="page-loading">Loading your day…</div>;
 
   // A genuine fetch failure (network, expired session) — show it and let them
   // retry. Don't misread it as "not onboarded" and shove them into onboarding.
-  const noProfileYet = /no profile found/i.test(error);
+  // The distinction comes from the response status, not the wording: a
+  // reworded server string must never be able to push an established user
+  // back through signup, which restarts their goal clock.
+  const noProfileYet = noProfile;
   if (error && !noProfileYet) {
     return (
       <div className="dashboard-empty page-enter">
         <h2 className="page-title">Couldn't load your dashboard</h2>
         <p className="muted">{error}</p>
-        <Button onClick={() => window.location.reload()}>Try again</Button>
+        <Button onClick={reload} disabled={loading}>{loading ? 'Retrying…' : 'Try again'}</Button>
       </div>
     );
   }
@@ -144,7 +192,7 @@ export default function Dashboard() {
         </p>
       )}
 
-      <BriefingCard briefing={briefing} loading={briefingLoading} />
+      <BriefingCard briefing={briefing} loading={briefingLoading} error={briefingError} onRetry={loadBriefing} />
 
       <DailyChecklist />
 

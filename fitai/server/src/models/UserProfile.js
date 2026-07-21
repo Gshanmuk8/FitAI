@@ -72,7 +72,13 @@ const EDITABLE_COLUMNS = {
 };
 
 async function updateProfileFields(userId, fields) {
-  const entries = Object.entries(fields).filter(([key, v]) => EDITABLE_COLUMNS[key] && v !== undefined);
+  // hasOwn, not truthiness: a plain property lookup also resolves inherited
+  // keys, so a field literally named `constructor` or `toString` would pass
+  // the filter and interpolate a native function into the SET clause. Zod
+  // strips unknown keys before this today, but the column list must be safe
+  // on its own terms, not because of what happens to run upstream.
+  const entries = Object.entries(fields)
+    .filter(([key, v]) => Object.hasOwn(EDITABLE_COLUMNS, key) && v !== undefined);
   if (!entries.length) return getProfile(userId);
 
   const setClauses = entries.map(([key], i) => `${EDITABLE_COLUMNS[key]} = $${i + 2}`);

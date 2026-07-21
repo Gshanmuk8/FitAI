@@ -1,3 +1,6 @@
 # Local AI-assistant tooling — machine-specific, not app code
 .claude/
 .kilocode/
+
+# LODESTAR — local AI execution record
+.lodestar/

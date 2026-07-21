@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProgress } from '../../services/progressService';
 import Button from '../../components/ui/Button';
@@ -187,15 +187,38 @@ function AnalysisList({ title, items, tone }) {
 export default function Progress() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
+  const [refreshError, setRefreshError] = useState('');
+  const [notOnboarded, setNotOnboarded] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const inFlight = useRef(false);
+  // The focus/visibility listeners are registered once, so they hold the
+  // FIRST `load` closure forever — where `report` is still null. Reading the
+  // ref instead means a background refresh knows whether there is anything
+  // on screen worth protecting.
+  const reportRef = useRef(null);
 
   async function load() {
+    // Focus and visibilitychange both fire on a single tab switch, and this
+    // endpoint is AI-rate-limited — without a guard a couple of alt-tabs
+    // stack requests and earn a 429 for no new data.
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
-      setReport(await getProgress());
+      const next = await getProgress();
+      reportRef.current = next;
+      setReport(next);
       setError('');
+      setRefreshError('');
+      setNotOnboarded(false);
     } catch (err) {
-      setError(err.message);
+      setNotOnboarded(Boolean(err.noProfile));
+      // A background refresh that fails must not delete what's on screen.
+      // Losing a whole analysis to a transient 429 on tab-focus reads to the
+      // user as their history being gone.
+      if (reportRef.current) setRefreshError(err.message);
+      else setError(err.message);
     } finally {
+      inFlight.current = false;
       setRetrying(false);
     }
   }
@@ -223,14 +246,13 @@ export default function Progress() {
   }
 
   if (error) {
-    const notOnboarded = /no profile found/i.test(error);
     return (
       <div className="page page-mid page-enter">
         <h2 className="page-title">Progress</h2>
         <p className="muted">{notOnboarded ? 'Complete onboarding first — progress tracking starts with your plan.' : error}</p>
         {notOnboarded
           ? <Link to="/onboarding"><Button>Complete onboarding</Button></Link>
-          : <Button onClick={() => window.location.reload()}>Try again</Button>}
+          : <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Try again'}</Button>}
       </div>
     );
   }
@@ -239,6 +261,17 @@ export default function Progress() {
     // expectation so the wait reads as analysis, not a hang.
     return <div className="page-loading">Your coach is reading your whole journey…</div>;
   }
+
+  // A failed background refresh is a note above the page, never a
+  // replacement for it — everything below is still the user's real data.
+  const refreshBanner = refreshError ? (
+    <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
+      <p className="small" style={{ margin: 0 }}>
+        Couldn't refresh just now — showing your last loaded analysis. {refreshError}
+      </p>
+      <Button onClick={retry} disabled={retrying}>{retrying ? 'Retrying…' : 'Refresh'}</Button>
+    </div>
+  ) : null;
 
   const { data, analysis } = report;
   const { goal, weighIns } = data;
@@ -258,6 +291,7 @@ export default function Progress() {
           <h2 className="page-title">Progress</h2>
           <Link to="/plan">Edit plan →</Link>
         </header>
+        {refreshBanner}
         <div className="card card-accent tone-amber" style={{ marginBottom: '1rem' }}>
           <h3 style={{ marginTop: 0 }}>Your coach couldn't be reached</h3>
           <p className="small" style={{ margin: '0.5rem 0' }}>
@@ -286,6 +320,7 @@ export default function Progress() {
         <h2 className="page-title">Progress</h2>
         <Link to="/plan">Edit plan →</Link>
       </header>
+      {refreshBanner}
 
       {/* ---- Stale: a REAL past analysis served while a refresh is blocked
               by a provider outage — say so plainly and offer the retry ---- */}

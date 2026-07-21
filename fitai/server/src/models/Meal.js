@@ -8,7 +8,9 @@ async function insertMeal(userId, { name, grams, calories, protein, carbs, fat, 
   const { rows } = await queryAs(userId,
     `INSERT INTO meals (user_id, name, grams, calories, protein, carbs, fat, source, date)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::date, CURRENT_DATE)) RETURNING *`,
-    [userId, name, grams ?? null, calories, protein ?? 0, carbs ?? null, fat ?? null, source || 'manual', date]
+    // calories is an integer column; round rather than reject a fractional
+    // figure the vision analyzer legitimately produces.
+    [userId, name, grams ?? null, Math.round(calories), protein ?? 0, carbs ?? null, fat ?? null, source || 'manual', date]
   );
   return rows[0];
 }
@@ -44,17 +46,17 @@ async function deleteMeal(userId, mealId, date = null) {
 
 // Per-day diary totals for the progress analysis — what the user actually
 // logged, day by day, not just today.
-async function dailyTotalsRecent(userId, days = 14) {
+async function dailyTotalsRecent(userId, days = 14, today = null) {
   const { rows } = await queryAs(userId,
     `SELECT date,
             COALESCE(SUM(calories), 0)::int AS calories,
             COALESCE(SUM(protein), 0)::float AS protein,
             COUNT(*)::int AS meals
      FROM meals
-     WHERE user_id = $1 AND date >= CURRENT_DATE - $2::int
+     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - $2::int
      GROUP BY date
      ORDER BY date`,
-    [userId, days]
+    [userId, days, today]
   );
   return rows;
 }
