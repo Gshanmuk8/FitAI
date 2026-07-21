@@ -6,38 +6,7 @@
  * the user's own history.
  */
 const { getFullMemoryContext } = require('./memoryRetriever');
-const { buildDietTargets } = require('../../../../shared/calculations/dietTargets');
-const logger = require('../../utils/logger');
-
-// The live plan's diet layer if it has one, else recompute from the profile.
-// The plan's copy is preferred because the user may have edited their
-// targets — coaching against numbers the user can see edited is the point.
-function resolveDiet(permanent) {
-  try {
-    const plan = permanent.ai_plan
-      ? typeof permanent.ai_plan === 'string' ? JSON.parse(permanent.ai_plan) : permanent.ai_plan
-      : null;
-    // Older plans stored a diet without the maintenance/direction context;
-    // recompute in that case so the coach always has the full picture.
-    if (plan?.diet?.calorieTarget && plan.diet.calorieDirection) return plan.diet;
-  } catch { /* unparseable plan — fall through to computing */ }
-
-  try {
-    return buildDietTargets({
-      weightKg: permanent.weight_kg != null ? Number(permanent.weight_kg) : null,
-      heightCm: permanent.height_cm != null ? Number(permanent.height_cm) : null,
-      age: permanent.age,
-      sex: permanent.sex || 'other',
-      activityLevel: permanent.activity_level,
-      goal: permanent.goal,
-    });
-  } catch (err) {
-    // Incomplete legacy profile — the coach simply gets no MEASURED FACTS
-    // block rather than a wrong one.
-    logger.warn('diet context unavailable for coach prompt', { error: err.message });
-    return undefined;
-  }
-}
+const { resolveEffectiveDiet } = require('../plan/dietResolver');
 
 function formatProfileForPrompt(memory) {
   const { permanent, semiPermanent, temporal, exercisePreferences, todayBriefing } = memory;
@@ -60,7 +29,7 @@ function formatProfileForPrompt(memory) {
     goal: permanent.goal || semiPermanent?.current_phase || 'unspecified',
     // The deterministic nutrition figures, so every coaching surface argues
     // from the same numbers the dashboard shows.
-    diet: resolveDiet(permanent),
+    diet: resolveEffectiveDiet(permanent) || undefined,
     injuries: permanent.injuries ? permanent.injuries.split(',').map((s) => s.trim()) : [],
     dietaryRestrictions: permanent.dietary_restrictions || undefined,
     equipment: permanent.gym_availability,

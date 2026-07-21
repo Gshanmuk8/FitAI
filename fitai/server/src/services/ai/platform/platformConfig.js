@@ -102,9 +102,23 @@ function buildPlatformConfig() {
 
     // Budgets (estimated tokens/day; 0 = unlimited). In-memory counters —
     // per-instance guardrails, not billing; move to Redis for fleets.
+    //
+    // The PER-USER cap defaults ON, and that default matters: with it at 0
+    // there was no per-account ceiling at all, so a single heavy or abusive
+    // account could burn the shared provider quota (a free-tier key is a
+    // global resource) and every OTHER account would silently degrade to
+    // template fallbacks. One account must never be able to change another
+    // account's experience.
+    //
+    // 250k tokens/day is far above any honest use of this app — a day of
+    // briefing + progress + a long coach conversation is a few tens of
+    // thousands — so a real user will never meet it, while a runaway loop
+    // stops at its own boundary instead of everyone else's. The GLOBAL cap
+    // stays opt-in, since the right number depends on the deployment's
+    // plan; the per-user rail is what preserves isolation.
     budget: {
       dailyTokens: envInt('AI_BUDGET_DAILY_TOKENS', 0),
-      dailyTokensPerUser: envInt('AI_BUDGET_DAILY_TOKENS_PER_USER', 0),
+      dailyTokensPerUser: envInt('AI_BUDGET_DAILY_TOKENS_PER_USER', 250_000),
     },
 
     // USD per 1M tokens (prompt/completion) for cost estimates in reports.

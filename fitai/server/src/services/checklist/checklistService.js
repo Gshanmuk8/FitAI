@@ -17,12 +17,17 @@ const {
 const { getProfile } = require('../../models/UserProfile');
 const { resolveUserDate } = require('../../utils/userDate');
 const { todaysPlanEntry } = require('../../../../shared/calculations/schedule');
-const { buildDietTargets } = require('../../../../shared/calculations/dietTargets');
+const { resolveEffectiveDiet } = require('../plan/dietResolver');
 const { adaptTodaysPlan } = require('../../../../shared/calculations/adaptivePlanner');
 const { FLAGS } = require('../../config/featureFlags');
 const logger = require('../../utils/logger');
 
-const SNAPSHOT_VERSION = 2; // v2: snapshot carries the user's goal (calorie direction)
+// v3: targets now come from the single diet resolver, so every day's frozen
+// snapshot carries maintenance/delta/direction regardless of how old the
+// account's plan is. Bumping the version makes TODAY self-heal on the next
+// request instead of waiting for midnight — the whole point is that no
+// account behaves differently from another.
+const SNAPSHOT_VERSION = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Noon avoids UTC-parse/local-format boundary shifts when turning a
@@ -81,23 +86,12 @@ async function buildTodaySnapshot(userId, profile, userDate) {
     adapted = adaptTodaysPlan({ entryToday, entryYesterday, yesterday });
   }
 
-  // Prefer the live plan's diet layer (it carries the user's own edits);
-  // recompute from the profile only if the plan predates the diet layer.
-  let targets = plan?.diet || null;
-  if (!targets) {
-    try {
-      targets = buildDietTargets({
-        weightKg: Number(profile.weight_kg),
-        heightCm: Number(profile.height_cm),
-        age: profile.age,
-        sex: profile.sex || 'other',
-        activityLevel: profile.activity_level,
-        goal: profile.goal,
-      });
-    } catch {
-      targets = null;
-    }
-  }
+  // One resolver for every surface (services/plan/dietResolver): the user's
+  // own edited targets, with maintenance/direction always recomputed from
+  // the current profile. Freezing THAT into the day's snapshot is what keeps
+  // history truthful while guaranteeing every account behaves identically,
+  // whatever vintage its plan is.
+  const targets = resolveEffectiveDiet(profile, plan);
 
   return {
     version: SNAPSHOT_VERSION,
