@@ -35,12 +35,17 @@ function buildPlatformConfig() {
       'gemini', 'openai', 'anthropic', 'openrouter', 'groq', 'cerebras', 'cloudflare',
     ]),
 
-    // Vision (food-photo) cascade order — separate from text because the
-    // best text provider is not the best vision provider. Groq first:
-    // llama-4-scout is fast, generous free tier, and not subject to the
-    // Gemini quota pressure that was killing photo analysis.
+    // Vision (food-photo) cascade order — separate from text because the best
+    // text provider is not the best vision provider.
+    //
+    // Gemini leads on photo QUALITY: these estimates become the user's calorie
+    // ledger, so accuracy outranks latency. OpenRouter follows as a genuine
+    // second chance — it exists because Groq retired all its multimodal models
+    // (see groqService), which had quietly reduced this cascade to Gemini
+    // alone, so one 429 meant "we couldn't read that image". Only providers
+    // whose adapter sets supportsVision:true are ever tried here.
     providerOrderVision: envList('AI_PROVIDER_ORDER_VISION', [
-      'groq', 'gemini', 'openai', 'anthropic', 'openrouter', 'cerebras', 'cloudflare',
+      'gemini', 'openrouter', 'openai', 'anthropic', 'groq', 'cerebras', 'cloudflare',
     ]),
 
     // Per-provider hard disable (feature flag): AI_DISABLE_PROVIDERS=openai,groq
@@ -55,6 +60,11 @@ function buildPlatformConfig() {
       // :free tier died with an HTTP 404 mid-2026) — if this one 404s,
       // check /api/v1/models for a live :free slug and override via env.
       openrouter: envStr('AI_MODEL_OPENROUTER', 'nvidia/nemotron-3-super-120b-a12b:free'),
+      // Vision fallback behind Gemini. Chosen by probing every free
+      // vision-capable OpenRouter model against FoodAnalysisSchema: this was
+      // the only one returning schema-valid JSON in ~5s (gemma-4-31b was
+      // rate-limited, nemotron-nano-vl took 122s and returned empty).
+      openrouterVision: envStr('AI_MODEL_OPENROUTER_VISION', 'google/gemma-4-26b-a4b-it:free'),
       groq: envStr('AI_MODEL_GROQ', 'llama-3.3-70b-versatile'),
       // Vision fallback so food-photo analysis survives a Gemini outage —
       // llama-4-scout is Groq's multimodal model.
@@ -82,6 +92,9 @@ function buildPlatformConfig() {
       openai: envInt('AI_TIMEOUT_OPENAI_MS', 30000),
       anthropic: envInt('AI_TIMEOUT_ANTHROPIC_MS', 30000),
       openrouter: envInt('AI_TIMEOUT_OPENROUTER_MS', 20000),
+      // Vision carries an image payload and runs on a free endpoint — the 20s
+      // text budget times out on photos that would have succeeded.
+      openrouterVision: envInt('AI_TIMEOUT_OPENROUTER_VISION_MS', 45000),
       groq: envInt('AI_TIMEOUT_GROQ_MS', 15000),
       cerebras: envInt('AI_TIMEOUT_CEREBRAS_MS', 20000),
       cloudflare: envInt('AI_TIMEOUT_CLOUDFLARE_MS', 15000),
