@@ -12,11 +12,27 @@ const { z } = require('zod');
 // every request, so one oversized plan would permanently tax that account's
 // every call and the shared 10-connection pool. Sized well past any real
 // exercise name so a legitimate plan never trips them.
+// Models write set/rep targets the way coaches do — "8-12", "10", 12.0 —
+// but everything downstream (set logging, completed-all-reps, the plan
+// editor) does integer arithmetic on a single target. Normalize the
+// notation here instead of rejecting an otherwise-personalized plan over
+// it: a range collapses to its midpoint, numeric strings parse, floats
+// round. Anything else still fails validation.
+function coachingInt(v) {
+  if (typeof v === 'number') return Math.round(v);
+  if (typeof v === 'string') {
+    const range = v.trim().match(/^(\d+)\s*(?:-|–|—|to)\s*(\d+)$/i);
+    if (range) return Math.round((Number(range[1]) + Number(range[2])) / 2);
+    if (/^\d+$/.test(v.trim())) return Number(v.trim());
+  }
+  return v;
+}
+
 const ExerciseSchema = z.object({
   name: z.string().min(1).max(80),
-  sets: z.number().int().min(1).max(10),
-  reps: z.number().int().min(1).max(50),
-  restSeconds: z.number().int().min(0).max(600).optional(),
+  sets: z.preprocess(coachingInt, z.number().int().min(1).max(10)),
+  reps: z.preprocess(coachingInt, z.number().int().min(1).max(50)),
+  restSeconds: z.preprocess(coachingInt, z.number().int().min(0).max(600)).optional(),
   notes: z.string().max(300).optional(),
 });
 

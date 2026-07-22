@@ -58,14 +58,31 @@ function resolveEffectiveDiet(profileRow, plan = undefined) {
   if (!stored) return computed;
   if (!computed) return stored;
 
-  // Stored targets win on the five editable fields; the derived context is
-  // always fresh. withCalorieContext then re-derives delta/direction so an
-  // edited target can never keep a label from before the edit.
+  // Three of the five targets are DERIVED FROM THE GOAL: calorieTarget
+  // (TDEE +/- the goal's offset), proteinGrams (2.0 vs 1.8 g/kg) and
+  // stepsTarget (10k vs 8k). They must not outlive the goal that produced
+  // them. The Profile page changes the goal deliberately WITHOUT
+  // regenerating the plan, so letting the stored values win unconditionally
+  // hands a cutting user the surplus target their old bulk was built on —
+  // and the prompt then states it as ground truth and coaches to it.
+  //
+  // A plan stamped with the current goal is trusted in full (that is a real
+  // user edit). A plan stamped with a different goal, or with no stamp at
+  // all (generated before the stamp existed), yields the goal-derived three
+  // to the fresh computation. waterMl and sleepHours are goal-neutral, so a
+  // user's edits to those survive either way.
+  const goalMatches = stored.dietGoal && profileRow.goal && stored.dietGoal === profileRow.goal;
+  const trusted = goalMatches
+    ? stored
+    : { ...stored, calorieTarget: computed.calorieTarget, proteinGrams: computed.proteinGrams, stepsTarget: computed.stepsTarget };
+
   return withCalorieContext({
     ...computed,
-    ...stored,
+    ...trusted,
     bmr: computed.bmr,
     maintenanceCalories: computed.maintenanceCalories,
+    flooredForSafety: computed.flooredForSafety,
+    dietGoal: profileRow.goal || computed.dietGoal,
   });
 }
 

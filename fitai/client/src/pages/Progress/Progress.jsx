@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProgress } from '../../services/progressService';
+import { useElementWidth } from '../../hooks/useElementWidth';
 import Button from '../../components/ui/Button';
 
 // status → CSS tone is the only mapping this file owns, and it's pure
@@ -29,12 +30,37 @@ const fmtAxis = (v) =>
 // Chart type, in the label voice: mono, tracked, quiet, and — because these
 // are axis figures — tabular. An axis set in the body face at a browser
 // default size is the tell of a chart nobody drew on purpose.
+// The charts draw into a viewBox set to their REAL pixel width (see
+// useElementWidth), so every dimension below is in CSS pixels and holds its
+// on-screen size at any width — an axis label is 11px on a 360px phone and on
+// a 4K monitor alike, instead of a fixed 640-wide viewBox scaling it down to
+// ~6px on mobile. Height grows relative to width on narrow screens so a phone
+// gets a legible plot rather than a letterbox strip.
+const AXIS_FONT_PX = 11; // matches --t-label; fixed px keeps it crisp in SVG
 const AXIS_TEXT = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 'var(--t-label)',
+  fontSize: `${AXIS_FONT_PX}px`,
   fontVariantNumeric: 'tabular-nums',
   letterSpacing: '0.04em',
 };
+
+function chartMetrics(width) {
+  const W = width && width > 0 ? width : 640; // fallback for the first paint
+  const aspect = W < 480 ? 0.72 : W < 720 ? 0.48 : 0.34;
+  const H = Math.round(Math.min(320, Math.max(190, W * aspect)));
+  // Left gutter holds a 4-5 char y-label; the rest is breathing room. These
+  // are px, so they don't eat half a phone's width the way a 48-unit pad on a
+  // 640 viewBox scaled to 330px did.
+  const PAD = { top: 16, right: 16, bottom: 30, left: 46 };
+  return { W, H, PAD, plotW: W - PAD.left - PAD.right, plotH: H - PAD.top - PAD.bottom };
+}
+
+// How many x-axis labels fit without colliding, from the plot's pixel width.
+// A date-shaped label needs ~64px; the ends always show.
+function labelStep(count, plotW) {
+  const maxLabels = Math.max(2, Math.floor(plotW / 64));
+  return Math.max(1, Math.ceil(count / maxLabels));
+}
 
 /**
  * Weigh-in trend as a plain SVG — no chart dependency for one line. Used
@@ -43,11 +69,13 @@ const AXIS_TEXT = {
  * raw data. On the real page every graph is coach-authored (CoachChart).
  */
 function WeightChart({ weighIns, targetKg }) {
+  const [ref, width] = useElementWidth();
+
   if (!weighIns || weighIns.length < 2) {
     // An empty chart is not an error — it is a chart waiting for its second
     // point. Given room and a rule, the absence reads as designed.
     return (
-      <div style={{ padding: 'var(--s6) 0', borderTop: '1px solid var(--border)' }}>
+      <div ref={ref} style={{ padding: 'var(--s6) 0', borderTop: '1px solid var(--border)' }}>
         <p className="small muted" style={{ margin: 0, maxWidth: '44ch' }}>
           {weighIns?.length === 1
             ? 'One weigh-in so far — log a few more on the dashboard and the trend appears here.'
@@ -57,7 +85,7 @@ function WeightChart({ weighIns, targetKg }) {
     );
   }
 
-  const W = 640, H = 220, PAD = { top: 14, right: 14, bottom: 26, left: 44 };
+  const { W, H, PAD, plotW, plotH } = chartMetrics(width);
   const kgs = weighIns.map((p) => p.kg);
   const lo = Math.min(...kgs, targetKg ?? Infinity);
   const hi = Math.max(...kgs, targetKg ?? -Infinity);
@@ -65,41 +93,43 @@ function WeightChart({ weighIns, targetKg }) {
   const yMin = lo - span * 0.1;
   const yMax = hi + span * 0.1;
 
-  const x = (i) => PAD.left + (i / (weighIns.length - 1)) * (W - PAD.left - PAD.right);
-  const y = (kg) => PAD.top + (1 - (kg - yMin) / (yMax - yMin)) * (H - PAD.top - PAD.bottom);
+  const x = (i) => PAD.left + (i / (weighIns.length - 1)) * plotW;
+  const y = (kg) => PAD.top + (1 - (kg - yMin) / (yMax - yMin)) * plotH;
   const path = weighIns.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.kg).toFixed(1)}`).join(' ');
 
   const first = weighIns[0], last = weighIns[weighIns.length - 1];
-  const gridKgs = [yMin + (yMax - yMin) * 0.25, yMin + (yMax - yMin) * 0.5, yMin + (yMax - yMin) * 0.75];
+  const gridKgs = [0.25, 0.5, 0.75].map((t) => yMin + (yMax - yMin) * t);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Weight trend chart" style={{ width: '100%', height: 'auto' }}>
-      {gridKgs.map((kg) => (
-        <g key={kg}>
-          {/* hairlines, at the same weight as every other rule on the page */}
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(kg)} y2={y(kg)} stroke="var(--border)" />
-          <text x={PAD.left - 8} y={y(kg) + 4} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>
-            {kg.toFixed(1)}
-          </text>
-        </g>
-      ))}
-      {targetKg != null && (
-        <g>
-          {/* The target is a REFERENCE, not a warning — it gets a dashed rule
-              in ink, leaving the series as the only pigment in the frame. */}
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--border2)" strokeDasharray="4 4" />
-          <text x={W - PAD.right} y={y(targetKg) - 6} textAnchor="end" fill="var(--muted)" style={AXIS_TEXT}>
-            target {targetKg}kg
-          </text>
-        </g>
-      )}
-      <path d={path} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {weighIns.map((p, i) => (
-        <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.2" fill="var(--gold)" />
-      ))}
-      <text x={PAD.left} y={H - 6} fill="var(--faint)" style={AXIS_TEXT}>{first.date}</text>
-      <text x={W - PAD.right} y={H - 6} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>{last.date}</text>
-    </svg>
+    <div ref={ref}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Weight trend chart" style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {gridKgs.map((kg) => (
+          <g key={kg}>
+            {/* hairlines, at the same weight as every other rule on the page */}
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(kg)} y2={y(kg)} stroke="var(--border)" vectorEffect="non-scaling-stroke" />
+            <text x={PAD.left - 8} y={y(kg) + 4} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>
+              {kg.toFixed(1)}
+            </text>
+          </g>
+        ))}
+        {targetKg != null && (
+          <g>
+            {/* The target is a REFERENCE, not a warning — it gets a dashed rule
+                in ink, leaving the series as the only pigment in the frame. */}
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(targetKg)} y2={y(targetKg)} stroke="var(--border2)" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+            <text x={W - PAD.right} y={y(targetKg) - 6} textAnchor="end" fill="var(--muted)" style={AXIS_TEXT}>
+              target {targetKg}kg
+            </text>
+          </g>
+        )}
+        <path d={path} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {weighIns.map((p, i) => (
+          <circle key={p.date + i} cx={x(i)} cy={y(p.kg)} r="2.6" fill="var(--gold)" />
+        ))}
+        <text x={PAD.left} y={H - 9} fill="var(--faint)" style={AXIS_TEXT}>{first.date}</text>
+        <text x={W - PAD.right} y={H - 9} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>{last.date}</text>
+      </svg>
+    </div>
   );
 }
 
@@ -109,10 +139,11 @@ function WeightChart({ weighIns, targetKg }) {
  * and computed every value; this component is pure presentation.
  */
 function CoachChart({ chart }) {
+  const [ref, width] = useElementWidth();
   const points = Array.isArray(chart.points) ? chart.points : [];
   if (points.length < 2) return null;
 
-  const W = 640, H = 230, PAD = { top: 16, right: 14, bottom: 28, left: 48 };
+  const { W, H, PAD, plotW, plotH } = chartMetrics(width);
   const values = points.map((p) => p.value);
   const lo = Math.min(...values, chart.targetValue ?? Infinity, chart.type === 'bar' ? 0 : Infinity);
   const hi = Math.max(...values, chart.targetValue ?? -Infinity);
@@ -120,13 +151,12 @@ function CoachChart({ chart }) {
   const yMin = chart.type === 'bar' ? Math.min(lo, 0) : lo - span * 0.1;
   const yMax = hi + span * 0.1;
 
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
   const x = (i) => PAD.left + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
   const y = (v) => PAD.top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
 
-  // At most ~6 x-labels so dense series stay readable.
-  const step = Math.max(1, Math.ceil(points.length / 6));
+  // Label density follows the actual pixel width, not a fixed count — a phone
+  // shows fewer so they never overlap, a wide screen shows more.
+  const step = labelStep(points.length, plotW);
   const showLabel = (i) => i % step === 0 || i === points.length - 1;
 
   const gridVals = [0.25, 0.5, 0.75].map((t) => yMin + (yMax - yMin) * t);
@@ -138,16 +168,16 @@ function CoachChart({ chart }) {
     // A plate, not a card. Six charts in six boxes is six containers of equal
     // rank stacked down a page; the same six under hairlines read as one
     // continuous report — which is what they are.
-    <figure style={{ margin: '0 0 var(--s6)', borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)' }}>
+    <figure ref={ref} style={{ margin: '0 0 var(--s6)', borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)' }}>
       <figcaption className="page-header" style={{ marginBottom: 'var(--s3)' }}>
         <h3 style={{ margin: 0 }}>{chart.title}</h3>
         {/* a unit is metadata, not a status — it belongs in the label voice */}
         {chart.unit && <span className="eyebrow">{chart.unit}</span>}
       </figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chart.title} style={{ width: '100%', height: 'auto' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chart.title} style={{ width: '100%', height: 'auto', display: 'block' }}>
         {gridVals.map((v) => (
           <g key={v}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" />
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" vectorEffect="non-scaling-stroke" />
             <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" fill="var(--faint)" style={AXIS_TEXT}>
               {fmtAxis(v)}
             </text>
@@ -155,7 +185,7 @@ function CoachChart({ chart }) {
         ))}
         {chart.targetValue != null && (
           <g>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--border2)" strokeDasharray="4 4" />
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(chart.targetValue)} y2={y(chart.targetValue)} stroke="var(--border2)" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
             <text x={W - PAD.right} y={y(chart.targetValue) - 6} textAnchor="end" fill="var(--muted)" style={AXIS_TEXT}>
               target {fmtAxis(chart.targetValue)}{chart.unit ? ` ${chart.unit}` : ''}
             </text>

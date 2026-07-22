@@ -51,7 +51,10 @@ function buildPlatformConfig() {
       gemini: envStr('AI_MODEL_GEMINI', 'gemini-2.5-flash'),
       openai: envStr('AI_MODEL_OPENAI', 'gpt-5'),
       anthropic: envStr('AI_MODEL_ANTHROPIC', 'claude-sonnet-5'),
-      openrouter: envStr('AI_MODEL_OPENROUTER', 'meta-llama/llama-3.3-70b-instruct:free'),
+      // Free OpenRouter slugs get retired without notice (llama-3.3-70b's
+      // :free tier died with an HTTP 404 mid-2026) — if this one 404s,
+      // check /api/v1/models for a live :free slug and override via env.
+      openrouter: envStr('AI_MODEL_OPENROUTER', 'nvidia/nemotron-3-super-120b-a12b:free'),
       groq: envStr('AI_MODEL_GROQ', 'llama-3.3-70b-versatile'),
       // Vision fallback so food-photo analysis survives a Gemini outage —
       // llama-4-scout is Groq's multimodal model.

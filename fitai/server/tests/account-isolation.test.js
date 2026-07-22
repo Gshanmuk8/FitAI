@@ -14,38 +14,71 @@
  */
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { tokenFingerprint } = require('../src/middleware/rateLimiter');
+const { accountKey, IP_MAX, USER_MAX, AI_MAX } = require('../src/middleware/rateLimiter');
 const { buildPlatformConfig } = require('../src/services/ai/platform/platformConfig');
 const { resolveEffectiveDiet } = require('../src/services/plan/dietResolver');
 
 // ---- ISOLATION: rate limiting ----
+//
+// The design has to bound abuse by something UNFORGEABLE while still giving
+// each account its own budget. An earlier attempt keyed the global limiter
+// on `ip + hash(bearer token)` to get both at once; because the token is not
+// verified at that point, an attacker minting a fresh random token per
+// request minted a fresh bucket per request. These tests pin the corrected
+// split so that hole cannot reappear.
 
-const reqWith = (ip, token) => ({ ip, headers: token ? { authorization: `Bearer ${token}` } : {} });
-
-test('two accounts on the SAME ip get different rate-limit buckets', () => {
-  // A gym's wifi, a household, a carrier-grade NAT. Sharing one bucket means
-  // one member's session can 429 another's.
-  const a = tokenFingerprint(reqWith('203.0.113.7', 'token-for-alice'));
-  const b = tokenFingerprint(reqWith('203.0.113.7', 'token-for-bob'));
-  assert.notEqual(a, b);
+test('the IP floor cannot be escaped by rotating bearer tokens', () => {
+  // THE REGRESSION. Five different unverified tokens from one address must
+  // still land in ONE bucket, or the floor is decorative.
+  // The floor uses express-rate-limit's DEFAULT key (the IP). Asserted by
+  // source, because the middleware does not expose its key function and a
+  // custom keyGenerator here is exactly the mistake being guarded against.
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'middleware', 'rateLimiter.js'), 'utf8');
+  const floor = src.slice(src.indexOf('const ipLimiter'), src.indexOf('const userLimiter'));
+  assert.doesNotMatch(floor, /keyGenerator/,
+    'the IP floor must use the default IP key — any token-derived key is forgeable');
 });
 
-test('the same account keeps ONE bucket across requests', () => {
-  const a = tokenFingerprint(reqWith('203.0.113.7', 'token-for-alice'));
-  const b = tokenFingerprint(reqWith('198.51.100.2', 'token-for-alice'));
-  assert.equal(a, b, 'the fingerprint is the credential, not the network path');
+test('the IP floor is generous enough that a shared network is not throttled', () => {
+  // A household or gym behind one address must never hit this in normal use;
+  // per-account fairness is userLimiter's job, not the floor's.
+  assert.ok(IP_MAX >= 600, `floor is ${IP_MAX}, too low for a shared NAT`);
 });
 
-test('the raw bearer token never becomes the rate-limit key', () => {
-  const token = 'super-secret-jwt-value';
-  const fp = tokenFingerprint(reqWith('203.0.113.7', token));
-  assert.ok(!fp.includes(token), 'a limiter key can surface in diagnostics');
-  assert.match(fp, /^[0-9a-f]{16}$/, 'a short, opaque digest');
+test('two accounts get separate per-user buckets', () => {
+  const a = accountKey({ user: { id: 'user-alice' }, ip: '203.0.113.7' });
+  const b = accountKey({ user: { id: 'user-bob' }, ip: '203.0.113.7' });
+  assert.notEqual(a, b, 'same network, different accounts, different budgets');
+  assert.equal(a, 'user-alice', 'the key is the VERIFIED user id');
+  assert.ok(USER_MAX > 0);
 });
 
-test('unauthenticated callers collapse to one bucket so abuse stays bounded', () => {
-  assert.equal(tokenFingerprint(reqWith('203.0.113.7')), 'anon');
-  assert.equal(tokenFingerprint({ ip: '203.0.113.7', headers: { authorization: 'Basic xyz' } }), 'anon');
+test('one account keeps one bucket wherever it connects from', () => {
+  const a = accountKey({ user: { id: 'user-alice' }, ip: '203.0.113.7' });
+  const b = accountKey({ user: { id: 'user-alice' }, ip: '198.51.100.2' });
+  assert.equal(a, b, 'switching wifi must not hand out a fresh budget');
+});
+
+test('the AI limiter is also keyed on the verified account', () => {
+  assert.notEqual(
+    accountKey({ user: { id: 'user-alice' }, ip: '203.0.113.7' }),
+    accountKey({ user: { id: 'user-bob' }, ip: '203.0.113.7' }));
+  assert.ok(AI_MAX <= 30, 'the provider-spending route needs a tight cap');
+});
+
+test('the per-user limit is applied inside requireAuth, not mounted globally', () => {
+  // Mounting it globally would mean keying on an unverified identity again.
+  // This asserts the wiring, which is the part that is easy to undo later.
+  const fs = require('fs');
+  const path = require('path');
+  const auth = fs.readFileSync(path.join(__dirname, '..', 'src', 'middleware', 'auth.js'), 'utf8');
+  assert.match(auth, /userLimiter\(req, res, next\)/,
+    'requireAuth must run the per-user limiter once the token is verified');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.js'), 'utf8');
+  assert.doesNotMatch(app, /app\.use\(\s*userLimiter/,
+    'the per-user limiter must not be mounted before authentication');
 });
 
 // ---- ISOLATION: AI budget ----
@@ -96,14 +129,29 @@ test('an account with no plan at all still gets targets', () => {
   assert.equal(d.calorieDirection, 'deficit');
 });
 
-test("the user's own edited targets always win over the recomputed ones", () => {
-  const edited = { diet: { calorieTarget: 2000, proteinGrams: 999 } };
+test("the user's own edited targets win while the goal they were set under holds", () => {
+  // planEditingService stamps dietGoal on every edit, so an edit made under
+  // the current goal is unambiguously an edit rather than a leftover.
+  const edited = { diet: { calorieTarget: 2000, proteinGrams: 999, dietGoal: 'lose_fat' } };
   const d = resolveEffectiveDiet(PROFILE, edited);
   assert.equal(d.calorieTarget, 2000, 'the user\'s number is the user\'s number');
   assert.equal(d.proteinGrams, 999);
   // ...but the context around it is re-derived, so the label cannot lie.
   assert.equal(d.calorieDirection, 'deficit');
   assert.equal(d.calorieDelta, 2000 - d.maintenanceCalories);
+});
+
+test('an UNSTAMPED stored target yields to the current goal', () => {
+  // Plans written before the stamp existed are ambiguous: the number could
+  // be a deliberate edit or a leftover from an abandoned goal, and nothing
+  // distinguishes them. Serving a surplus to someone cutting is harmful
+  // health advice; overriding an edit is recoverable — they re-enter it, the
+  // new edit IS stamped, and it sticks from then on. Correctness wins, and
+  // the trade is written down here rather than being a silent surprise.
+  const legacy = { diet: { calorieTarget: 2000, proteinGrams: 999 } };
+  const d = resolveEffectiveDiet(PROFILE, legacy);
+  assert.notEqual(d.calorieTarget, 2000);
+  assert.equal(d.calorieDirection, 'deficit', 'and it agrees with the stated goal');
 });
 
 test('maintenance is recomputed from the CURRENT body, not frozen at plan time', () => {

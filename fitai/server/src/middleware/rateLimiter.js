@@ -1,43 +1,54 @@
-const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 
 /**
- * A stable, non-reversible fingerprint of the caller's bearer token.
+ * Rate limiting has to satisfy two things that pull against each other:
  *
- * apiLimiter runs BEFORE requireAuth (it has to — it also protects the
- * unauthenticated surface), so req.user does not exist yet and we cannot key
- * on a verified user id. Hashing the token gives a key that is stable per
- * session and distinct per account without verifying anything.
+ *   ABUSE must be bounded by something the caller cannot forge. The only
+ *   such thing before authentication is the IP.
+ *   ACCOUNTS must not share a budget, or one user behind a gym's wifi or a
+ *   carrier NAT can 429 a stranger.
  *
- * Never the raw token: rate-limit keys sit in memory and can surface in
- * diagnostics, and a bearer token is a credential.
+ * An earlier attempt keyed the global limiter on `ip + hash(bearer token)`
+ * to get both at once. That was a hole: the token is not verified at that
+ * point, so an attacker sending a fresh random token per request minted a
+ * fresh bucket per request and was effectively unlimited from one IP.
+ *
+ * The split below is the honest version:
+ *   - ipLimiter   — keyed on IP alone, unforgeable, generous. A floor that
+ *                   only abuse reaches, so shared-NAT users don't trip it.
+ *   - userLimiter — keyed on a VERIFIED req.user.id, applied inside
+ *                   requireAuth. Each account gets its own budget, and it
+ *                   cannot be dodged because the id came from a validated
+ *                   token.
+ *   - aiLimiter   — the tight budget on provider-spending routes.
  */
-function tokenFingerprint(req) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return 'anon';
-  return crypto.createHash('sha256').update(header.slice(7)).digest('hex').slice(0, 16);
-}
 
-/**
- * General API limiter.
- *
- * Keyed by IP **and** token fingerprint, not IP alone. IP alone means every
- * account behind one address — a gym's wifi, a household, a corporate NAT,
- * a mobile carrier's CGNAT — shares a single 200-request budget, so one
- * user's normal session can 429 a stranger's. That is one account's
- * behaviour degrading another account's, which is exactly what must never
- * happen.
- *
- * The IP stays in the key so unauthenticated traffic from a single source is
- * still bounded (an attacker sending no token collapses to one bucket per
- * IP). Authenticated users get their own bucket each.
- */
-const apiLimiter = rateLimit({
+// The key functions are exported so they can be asserted directly — the
+// middleware object does not expose its keyGenerator, and this invariant is
+// too easy to break silently to leave untested.
+const accountKey = (req) => req.user?.id || req.ip;
+
+// The unforgeable floor. High enough that a household or gym sharing one
+// address never notices, low enough to blunt a flood. Real per-account
+// fairness is enforced by userLimiter once identity is known.
+const ipLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${tokenFingerprint(req)}`,
+  message: { error: 'Too many requests from this network — please slow down.' },
+});
+
+// Per-account fairness. Applied AFTER the token is verified, so the key
+// cannot be forged by rotating tokens. This is the limit an individual user
+// actually lives within.
+const userLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — please slow down.' },
+  keyGenerator: accountKey,
 });
 
 // Tighter limiter on AI routes specifically — these are the expensive ones.
@@ -47,14 +58,15 @@ const apiLimiter = rateLimit({
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-  message: { error: 'Too many AI requests, slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
-  // req.user is guaranteed here, but fall back to the token fingerprint
-  // rather than a single shared 'unauthenticated' bucket — if this limiter
-  // is ever mounted before auth, one anonymous caller must not be able to
-  // exhaust the AI budget for every other anonymous caller.
-  keyGenerator: (req) => req.user?.id || `anon:${req.ip}:${tokenFingerprint(req)}`,
+  message: { error: 'Too many AI requests, slow down.' },
+  keyGenerator: accountKey,
 });
 
-module.exports = { apiLimiter, aiLimiter, tokenFingerprint };
+// `apiLimiter` is the name app.js has always mounted globally; it is the IP
+// floor. Kept as an alias so the mount point does not have to care.
+module.exports = {
+  apiLimiter: ipLimiter, ipLimiter, userLimiter, aiLimiter,
+  accountKey, IP_MAX: 1000, USER_MAX: 300, AI_MAX: 20,
+};

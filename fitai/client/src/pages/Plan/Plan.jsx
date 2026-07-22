@@ -43,7 +43,13 @@ export default function Plan() {
       .then(({ plan, planStartedAt, timeframeWeeks }) => {
         setDays(plan.days || []);
         setDiet(plan.diet || null);
-        setMeta({ goal: plan.goal, timeframe: plan.timeframe, planStartedAt, timeframeWeeks, customized: plan.customized });
+        setMeta({
+          goal: plan.goal, timeframe: plan.timeframe, planStartedAt, timeframeWeeks,
+          customized: plan.customized,
+          // A plan the coach never wrote must say so. generatedBy is set by
+          // the fallback engine; source is set by the orchestrator.
+          isTemplate: plan.generatedBy === 'fallback_template' || plan.source === 'fallback',
+        });
         setStatus((s) => ({ ...s, loading: false }));
       })
       .catch((err) => setStatus((s) => ({ ...s, loading: false, error: err.message })));
@@ -143,6 +149,28 @@ export default function Plan() {
         </p>
       )}
       {arrival.notice && <p className="notice">{arrival.notice}</p>}
+
+      {/* The single most important thing this page can tell you: whether a
+          human-shaped coach actually read your profile, or whether the
+          providers were unreachable and you are looking at a starter
+          template. The template ignores your training style, your injuries
+          and your history — it only knows your goal and your equipment — so
+          presenting it silently reads as "the AI ignored everything I told
+          it", which is exactly what it looks like from the outside. */}
+      {meta.isTemplate && (
+        <div className="notice tone-amber" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)' }}>
+          <strong style={{ color: 'var(--text)' }}>This is a starter template, not your coach's plan.</strong>
+          <p className="small" style={{ margin: 'var(--s2) 0 0' }}>
+            Your coach couldn't be reached when this plan was generated, so the app fell back to a
+            general plan built only from your goal and your equipment. It does not reflect your
+            training style, your injuries or your logged history. Regenerate from your profile to get
+            a plan written for you.
+          </p>
+          <p style={{ margin: 'var(--s3) 0 0' }}>
+            <Link to="/profile">Regenerate my plan →</Link>
+          </p>
+        </div>
+      )}
 
       {/* The document's colophon: what this plan is, and what editing it
           does. Set as metadata under a rule, not as body copy. */}

@@ -3,56 +3,7 @@ const { applyPlanEdit } = require('../services/workout/planEditingService');
 const { generateUserPlan, syncUserState, generationInputFromProfileRow } = require('../services/workout/planService');
 const { recordSystemMemory } = require('../services/memory/memoryWriter');
 const { propagatePlanChange } = require('../services/plan/planChangeEffects');
-const { buildDietTargets, withCalorieContext } = require('../../../shared/calculations/dietTargets');
-const logger = require('../utils/logger');
-
-/**
- * Backfill the diet CONTEXT (maintenance, delta, direction) on plans
- * generated before those fields existed.
- *
- * Without this, whether the Plan page can explain a target depends on WHEN
- * the account's plan happened to be generated: newer accounts see "3,321 — a
- * 500 kcal deficit from your 3,821 maintenance", older ones see a bare
- * number and no explanation. Same code, different accounts, which reads as a
- * bug because it is one.
- *
- * Derived on read rather than migrated: maintenance is a pure function of
- * the CURRENT profile, so recomputing it is always more truthful than a
- * value frozen into the plan row months ago. The user's own edited
- * calorieTarget is never overwritten — only the context around it.
- */
-function withDietContext(plan, profileRow) {
-  if (!plan?.diet?.calorieTarget) return plan;
-  // Already has maintenance — just re-derive delta/direction, which may be
-  // stale if the target was edited by an older build.
-  if (plan.diet.maintenanceCalories != null) {
-    return { ...plan, diet: withCalorieContext(plan.diet) };
-  }
-
-  try {
-    const fresh = buildDietTargets({
-      weightKg: profileRow.weight_kg != null ? Number(profileRow.weight_kg) : null,
-      heightCm: profileRow.height_cm != null ? Number(profileRow.height_cm) : null,
-      age: profileRow.age,
-      sex: profileRow.sex || 'other',
-      activityLevel: profileRow.activity_level,
-      goal: profileRow.goal,
-    });
-    return {
-      ...plan,
-      diet: withCalorieContext({
-        ...plan.diet,
-        bmr: fresh.bmr,
-        maintenanceCalories: fresh.maintenanceCalories,
-      }),
-    };
-  } catch (err) {
-    // Legacy profile missing sex/activity — ship the plan without the
-    // explanation rather than inventing a maintenance figure.
-    logger.warn('could not backfill diet context for plan', { error: err.message });
-    return plan;
-  }
-}
+const { resolveEffectiveDiet } = require('../services/plan/dietResolver');
 
 async function getPlan(req, res, next) {
   try {
@@ -60,7 +11,11 @@ async function getPlan(req, res, next) {
     if (!profile?.ai_plan) return res.status(404).json({ error: 'No plan found — complete onboarding first.' });
     const plan = typeof profile.ai_plan === 'string' ? JSON.parse(profile.ai_plan) : profile.ai_plan;
     res.json({
-      plan: withDietContext(plan, profile),
+      // The ONE resolver — planController used to carry its own near-copy
+      // that derived the delta against the STORED maintenance while the
+      // resolver recomputed it, so the Plan page and the coach could quote
+      // two different deficits for the same user on the same day.
+      plan: { ...plan, diet: resolveEffectiveDiet(profile, plan) },
       planStartedAt: profile.plan_started_at,
       // The plan's timeframe is the safety-clamped one — it wins over the
       // raw number the user typed at onboarding.

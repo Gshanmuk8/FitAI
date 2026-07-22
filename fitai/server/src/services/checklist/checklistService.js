@@ -183,6 +183,14 @@ async function refreshTodaySnapshot(userId) {
   if (!existing) return null; // day not started — first load freezes the new plan anyway
 
   const snapshot = await buildTodaySnapshot(userId, profile, userDate);
+  // NEVER persist a null snapshot. buildTodaySnapshot returns null when the
+  // profile is missing, and writing that over a good snapshot destroys the
+  // day's frozen targets — after which getTodayEnriched sees a null snapshot,
+  // re-heals on EVERY request for the rest of the day, and valueCompletion
+  // degrades to "any positive number counts" (1g of protein completes the
+  // day). The SNAPSHOT_VERSION bump runs this path once for every active
+  // user, so a rare null would have become a common one.
+  if (!snapshot) return null;
   await setPlanSnapshot(userId, snapshot, userDate);
 
   const completions = {};

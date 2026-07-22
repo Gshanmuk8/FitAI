@@ -222,3 +222,154 @@ test('withCalorieContext is idempotent and safe on legacy diets', () => {
   assert.deepEqual(withCalorieContext(legacy), legacy);
   assert.equal(withCalorieContext(null), null);
 });
+
+// ---- goal-derived targets must not outlive the goal ----
+//
+// The Profile page changes the goal WITHOUT regenerating the plan. Before
+// this, the stored target (built for the old goal) won unconditionally, so a
+// user who switched build_muscle -> lose_fat had a surplus target restated
+// to the model as ground truth — the original reported bug, re-entered
+// through a different door.
+
+const { resolveEffectiveDiet } = require('../src/services/plan/dietResolver');
+
+const BODY = { weight_kg: 80, height_cm: 180, age: 30, sex: 'male', activity_level: 'moderately_active' };
+const planBuiltFor = (goal) => ({
+  goal,
+  diet: buildDietTargets({ weightKg: 80, heightCm: 180, age: 30, sex: 'male', activityLevel: 'moderately_active', goal }),
+});
+
+test('switching bulk -> cut stops serving the old surplus target', () => {
+  const d = resolveEffectiveDiet({ ...BODY, goal: 'lose_fat' }, planBuiltFor('build_muscle'));
+  assert.equal(d.calorieDirection, 'deficit');
+  assert.ok(d.calorieTarget < d.maintenanceCalories);
+});
+
+test('switching cut -> bulk stops serving the old deficit target', () => {
+  const d = resolveEffectiveDiet({ ...BODY, goal: 'build_muscle' }, planBuiltFor('lose_fat'));
+  assert.equal(d.calorieDirection, 'surplus');
+});
+
+test('the other goal-derived targets follow the goal too', () => {
+  const d = resolveEffectiveDiet({ ...BODY, goal: 'lose_fat' }, planBuiltFor('build_muscle'));
+  assert.equal(d.stepsTarget, 10000, 'lose_fat walks 10k, not the bulk 8k');
+  assert.equal(d.proteinGrams, 145, '1.8 g/kg on a cut, not the bulk 2.0');
+});
+
+test('a plan still on its original goal keeps the user\'s edits', () => {
+  const plan = planBuiltFor('lose_fat');
+  plan.diet.calorieTarget = 1900;   // the user edited it down
+  plan.diet.waterMl = 4000;
+  const d = resolveEffectiveDiet({ ...BODY, goal: 'lose_fat' }, plan);
+  assert.equal(d.calorieTarget, 1900, 'same goal -> the edit is honoured');
+  assert.equal(d.waterMl, 4000);
+});
+
+test('goal-neutral edits survive even across a goal change', () => {
+  const plan = planBuiltFor('build_muscle');
+  plan.diet.waterMl = 4000;
+  plan.diet.sleepHours = 9;
+  const d = resolveEffectiveDiet({ ...BODY, goal: 'lose_fat' }, plan);
+  assert.equal(d.waterMl, 4000, 'water is not derived from the goal');
+  assert.equal(d.sleepHours, 9);
+});
+
+// ---- the safety floor must not read as permission to eat more ----
+
+const TINY = { weightKg: 40, heightCm: 150, age: 40, sex: 'female', activityLevel: 'sedentary', goal: 'lose_fat' };
+
+test('a floored target is flagged as floored', () => {
+  const d = buildDietTargets(TINY);
+  assert.equal(d.flooredForSafety, true);
+  assert.ok(d.calorieTarget >= 1200);
+});
+
+test('a floored cut is never coached as a surplus', () => {
+  const prompt = buildPlanGenerationPrompt({ ...TINY, diet: buildDietTargets(TINY), trainingDaysPerWeek: 3 });
+  assert.doesNotMatch(prompt, /in a surplus there is recovery headroom/i,
+    'telling a fat-loss user to bulk is the exact failure this guards');
+  assert.match(prompt, /safety floor/i);
+});
+
+test('an ordinary target is not flagged as floored', () => {
+  assert.equal(buildDietTargets(CUTTER).flooredForSafety, false);
+});
+
+test('editing a floored target upward clears the floor claim', () => {
+  const d = withCalorieContext({ ...buildDietTargets(TINY), calorieTarget: 1800 });
+  assert.equal(d.flooredForSafety, false, 'a chosen number is not a clamp');
+});
+
+// ---- a legacy diet with no direction must not crash prompt building ----
+
+test('a stored diet lacking calorieDirection does not throw', () => {
+  // dietResolver returns `stored` unchanged when the profile cannot produce
+  // a TDEE, and that object has a target but no direction. An unguarded
+  // .toUpperCase() on it 500s tutor, briefing AND progress.
+  const legacy = { age: 30, goal: 'lose_fat', activityLevel: 'sedentary', diet: { calorieTarget: 2200, proteinGrams: 170 } };
+  assert.doesNotThrow(() => buildPlanGenerationPrompt(legacy));
+  const prompt = buildPlanGenerationPrompt(legacy);
+  assert.doesNotMatch(prompt, /MEASURED FACTS/,
+    'a half-populated diet yields no facts block rather than a misleading one');
+});
+
+// ---- coaching notation must not cost the user their personalized plan ----
+
+// Providers write reps the way coaches do ("8-12"); the schema used to
+// reject the whole plan over it, cascading every account to the same
+// static template — the exact "AI ignores my profile" report.
+test('rep-range notation is normalized, not rejected', () => {
+  const { PlanSchema } = require('../../shared/schemas/aiSchemas');
+  const r = PlanSchema.safeParse({
+    goal: 'lose_fat',
+    days: [{ name: 'Day A', exercises: [
+      { name: 'Leg Press', sets: '3', reps: '8-12', restSeconds: '90' },
+      { name: 'RDL', sets: 3, reps: '10 to 15' },
+    ] }],
+  });
+  assert.ok(r.success, 'a rep range is notation, not junk');
+  assert.equal(r.data.days[0].exercises[0].reps, 10, 'range collapses to its midpoint');
+  assert.equal(r.data.days[0].exercises[0].sets, 3);
+  assert.equal(r.data.days[0].exercises[0].restSeconds, 90);
+  assert.equal(r.data.days[0].exercises[1].reps, 13);
+});
+
+test('non-numeric rep text still fails validation', () => {
+  const { PlanSchema } = require('../../shared/schemas/aiSchemas');
+  const r = PlanSchema.safeParse({
+    goal: 'x',
+    days: [{ name: 'D', exercises: [{ name: 'Y', sets: 3, reps: 'AMRAP' }] }],
+  });
+  assert.ok(!r.success, 'coercion is for notation, not for junk');
+});
+
+test('the plan prompt pins reps to a single integer', () => {
+  const prompt = buildPlanGenerationPrompt({ ...CUTTER, trainingDaysPerWeek: 3 });
+  assert.match(prompt, /SINGLE integer/,
+    'the contract must forbid ranges at the source, not only repair them');
+});
+
+// ---- an incomplete profile must degrade, never ship plausible nonsense ----
+
+// In JS `10 * null === 0`, so a null weight used to compute a 0kg body: a 0g
+// protein target and, with height/age also missing, a calorie DIRECTION
+// inverted to "surplus" on a cut. The callers' try/catch only degrades on a
+// THROWN error, so the guard has to throw rather than return quietly.
+test('diet targets throw (not silently zero) on a null weight', () => {
+  assert.throws(
+    () => buildDietTargets({ ...CUTTER, weightKg: null }),
+    /weight|height|age/i,
+    'a null weight must degrade to stored targets, not a 0g protein plan',
+  );
+});
+
+test('diet targets throw when height and age are also missing', () => {
+  assert.throws(() => buildDietTargets({ goal: 'lose_fat', sex: 'male', activityLevel: 'sedentary' }));
+});
+
+test('a complete profile still produces sane, positive targets', () => {
+  const d = buildDietTargets(CUTTER);
+  assert.ok(d.proteinGrams > 0, 'protein target is a real number');
+  assert.ok(d.calorieTarget >= 1200);
+  assert.equal(d.calorieDirection, 'deficit');
+});

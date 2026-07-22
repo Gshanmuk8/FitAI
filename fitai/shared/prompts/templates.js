@@ -15,7 +15,7 @@
 // training advice was generic because it had nothing specific to reason
 // over. Bumping the version invalidates every cached answer written under
 // the old, blinder prompts.
-const PROMPT_VERSION = 'v7';
+const PROMPT_VERSION = 'v8';
 
 /**
  * Anything user-typed or user-derived that gets interpolated into a prompt
@@ -78,7 +78,7 @@ function buildUserContextBlock(profile) {
     // stops it describing a surplus on a cut. The direction is stated in
     // words as well as arithmetic because "2700" alone reads as a lot of
     // food unless you can see the 3200 it was subtracted from.
-    d?.calorieTarget
+    d?.calorieTarget && d?.calorieDirection
       ? [
           '',
           'MEASURED FACTS (computed by the app from this profile — ground truth, never contradict):',
@@ -91,8 +91,13 @@ function buildUserContextBlock(profile) {
           d.proteinGrams ? `- Daily protein target: ${d.proteinGrams}g` : null,
           d.waterMl ? `- Daily water target: ${d.waterMl}ml` : null,
           d.stepsTarget ? `- Daily step target: ${d.stepsTarget}` : null,
-          `- This is a ${d.calorieDirection.toUpperCase()}. Every nutrition statement you make must be` +
-            ` consistent with that: never tell a user in a deficit to eat in a surplus, or vice versa.`,
+          d.flooredForSafety
+            ? `- This target sits at the ${d.calorieTarget} kcal SAFETY FLOOR: the arithmetic for their goal` +
+              ` produced a lower number than is safe to eat, so it was clamped. Their goal is still` +
+              ` ${profile.goal}. Do not describe this as a surplus or as permission to eat more — it is a` +
+              ` minimum, and the goal is pursued through training and activity rather than a deeper cut.`
+            : `- This is a ${d.calorieDirection.toUpperCase()}. Every nutrition statement you make must be` +
+              ` consistent with that: never tell a user in a deficit to eat in a surplus, or vice versa.`,
         ].filter(Boolean).join('\n')
       : null,
     profile.injuries?.length ? `Injuries/limitations: ${sanitizeList(profile.injuries)}` : null,
@@ -232,6 +237,7 @@ function buildPlanGenerationPrompt(profile) {
     '',
     buildUserContextBlock(profile),
     `\nRespond ONLY with JSON matching: { goal: string, days: [{ name: string, exercises: [{ name, sets, reps, restSeconds, notes }] }] }`,
+    `sets, reps and restSeconds must each be a SINGLE integer (e.g. "reps": 10) — never a range like "8-12" and never a string. If you are thinking in a range, commit to the number you would actually program for this person.`,
 
     // The day count is the single most-reported failure: the user states a
     // commitment and receives a different split. It is now also repaired
@@ -251,9 +257,11 @@ function buildPlanGenerationPrompt(profile) {
       : null,
 
     // Nutrition coherence — the fix for "it gave me a surplus on a cut".
-    d?.calorieTarget
-      ? `NUTRITION COHERENCE — this plan sits on top of a ${d.calorieDirection} of ${Math.abs(d.calorieDelta || 0)} kcal (target ${d.calorieTarget} kcal vs ${d.maintenanceCalories} maintenance). Programme accordingly: ${
-          d.calorieDirection === 'deficit'
+    d?.calorieTarget && d?.calorieDirection
+      ? `NUTRITION COHERENCE — this plan sits on top of a ${d.flooredForSafety ? `target clamped to the ${d.calorieTarget} kcal safety floor` : `${d.calorieDirection} of ${Math.abs(d.calorieDelta || 0)} kcal`} (target ${d.calorieTarget} kcal vs ${d.maintenanceCalories} maintenance). Programme accordingly: ${
+          d.flooredForSafety
+            ? 'the target is a safety minimum, not a surplus — programme for their stated goal and do not tell them to eat more than the floor implies.'
+            : d.calorieDirection === 'deficit'
             ? 'in a deficit, recovery capacity is reduced — prioritise keeping intensity (load) and cut junk volume rather than adding it, and protect protein and sleep. Do NOT describe this as a bulk, a surplus, or "eating big".'
             : d.calorieDirection === 'surplus'
               ? 'in a surplus there is recovery headroom — progressive overload can be more aggressive. Do NOT describe this as a cut or a deficit.'

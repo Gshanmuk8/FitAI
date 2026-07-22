@@ -2,7 +2,6 @@ const { updateChecklistItem, getHistory } = require('../models/DailyChecklist');
 const {
   getTodayEnriched, setChecklistValues, addCustomItem, setCustomItemDone, removeCustomItem,
 } = require('../services/checklist/checklistService');
-const { getUserToday } = require('../utils/userDate');
 const { checklistScore } = require('../../../shared/calculations/workoutRules');
 
 async function getTodayChecklist(req, res, next) {
@@ -20,8 +19,11 @@ async function patchChecklistItem(req, res, next) {
     // Ensure today's row exists first: a client left open across the user's
     // midnight would otherwise UPDATE zero rows and return an empty 200 —
     // the toggle silently lost. getTodayEnriched creates the row on demand.
-    await getTodayEnriched(req.user.id);
-    const updated = await updateChecklistItem(req.user.id, field, value, await getUserToday(req.user.id));
+    // getTodayEnriched already resolved the profile and the user's local
+    // date; re-deriving them with getUserToday cost two extra round trips on
+    // the single most frequent action in the app (ticking a box).
+    const today = await getTodayEnriched(req.user.id);
+    const updated = await updateChecklistItem(req.user.id, field, value, today.userDate);
     res.json(updated);
   } catch (err) {
     next(err);

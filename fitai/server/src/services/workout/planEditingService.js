@@ -47,8 +47,12 @@ async function applyPlanEdit(userId, edit) {
     ...(edit.notes !== undefined ? { notes: edit.notes } : {}),
     // withCalorieContext re-derives delta/direction against the unchanged
     // maintenance figure, so an edited target can never keep the old label.
+    // Stamp the goal the edit was made UNDER. Without it the resolver
+    // cannot tell a deliberate user edit from a target left over from an
+    // abandoned goal, and has to assume the unsafe case. With it, an edit
+    // made under the current goal is trusted for as long as that goal holds.
     diet: edit.diet
-      ? withCalorieContext({ ...currentPlan.diet, ...edit.diet })
+      ? withCalorieContext({ ...currentPlan.diet, ...edit.diet, dietGoal: profile.goal })
       : currentPlan.diet,
     customized: true,
     lastEditedAt: new Date().toISOString(),

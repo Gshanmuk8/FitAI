@@ -34,6 +34,12 @@ function buildDietTargets(profile) {
   // gives the AI the same two numbers, so its prose can no longer contradict
   // the arithmetic.
   const calorieDelta = calorieTarget - tdee;
+  // Did the 1200 kcal safety floor lift the target? If so the direction
+  // below describes the FLOOR, not the goal — a very small profile on a cut
+  // can end up nominally above maintenance. Downstream must be able to say
+  // "clamped for safety" instead of picking the surplus branch and telling a
+  // cutting user to bulk.
+  const flooredForSafety = calorieTarget > calorieTargetForGoal(tdee, profile.goal);
 
   const proteinPerKg = profile.goal === 'build_muscle' ? 2.0 : 1.8;
   const proteinGrams = roundTo(profile.weightKg * proteinPerKg, 5);
@@ -53,6 +59,12 @@ function buildDietTargets(profile) {
     maintenanceCalories: tdee,
     bmr,
     calorieDelta,
+    flooredForSafety,
+    // The goal these targets were DERIVED from. Targets outlive the goal
+    // that produced them — the Profile page changes the goal without
+    // regenerating the plan — so without this stamp a plan built for a bulk
+    // keeps feeding its surplus target to someone who is now cutting.
+    dietGoal: profile.goal,
     // The direction the target actually cuts, stated once here so no
     // surface has to re-derive it from the goal enum and risk disagreeing.
     calorieDirection: calorieDelta < 0 ? 'deficit' : calorieDelta > 0 ? 'surplus' : 'maintenance',
@@ -74,8 +86,12 @@ function buildDietTargets(profile) {
 function withCalorieContext(diet) {
   if (!diet || diet.calorieTarget == null || diet.maintenanceCalories == null) return diet;
   const calorieDelta = Math.round(Number(diet.calorieTarget) - Number(diet.maintenanceCalories));
+  // A user-chosen target is their choice, not a safety clamp — so an edit
+  // clears the floor flag rather than carrying a claim that no longer holds.
+  const flooredForSafety = Boolean(diet.flooredForSafety) && Number(diet.calorieTarget) <= 1200;
   return {
     ...diet,
+    flooredForSafety,
     calorieDelta,
     calorieDirection: calorieDelta < 0 ? 'deficit' : calorieDelta > 0 ? 'surplus' : 'maintenance',
   };

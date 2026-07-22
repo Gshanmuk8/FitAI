@@ -14,6 +14,13 @@ logger.info(
 
 const server = app.listen(PORT, () => {
   logger.info(`fitai server listening on port ${PORT}`);
+  // pg connects lazily, so without this the FIRST user request after a cold
+  // start pays the TCP + TLS handshake to the pooler (~200-700ms) on top of
+  // the platform's own spin-up. Warming one client here moves that cost off
+  // the critical path. Failure is ignored on purpose: an unreachable DB is
+  // already reported by /health, and it must not prevent the process from
+  // accepting connections.
+  pool.query('SELECT 1').catch(() => {});
 });
 
 // Graceful shutdown: stop accepting connections, let in-flight requests
