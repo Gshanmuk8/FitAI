@@ -52,10 +52,26 @@ function chartMetrics(width) {
   return { W, H, PAD, plotW: W - PAD.left - PAD.right, plotH: H - PAD.top - PAD.bottom };
 }
 
-// A coach chart that plots the weight series the app already draws itself.
-const isWeightChart = (chart) =>
-  /(^|\b)(weight|body ?weight|weigh-?in)/i.test(chart?.title || '') ||
-  /^kg$/i.test((chart?.unit || '').trim());
+// Graphs are built from the user's OWN logged rows, never from the coach.
+// The coach used to author them, and returned zero charts for a well-logged
+// account often enough that the same data showed graphs one day and none the
+// next. Same rows in, same graphs out — on every account.
+// A series needs 2 points to draw a line, so shorter ones are simply omitted.
+function buildCharts({ nutrition = [], training = [], goal }) {
+  const targets = goal?.dietTargets;
+  const day = (d) => String(d).slice(5); // YYYY-MM-DD -> MM-DD
+  const series = [
+    { title: 'Daily calories', unit: 'kcal', target: targets?.calorieTarget,
+      points: nutrition.filter((n) => n.calories > 0).map((n) => ({ label: day(n.date), value: n.calories })) },
+    { title: 'Daily protein', unit: 'g', target: targets?.proteinGrams,
+      points: nutrition.filter((n) => n.protein > 0).map((n) => ({ label: day(n.date), value: n.protein })) },
+    { title: 'Training volume', unit: 'kg', target: null,
+      points: training.filter((t) => t.volumeKg > 0).map((t) => ({ label: day(t.date), value: t.volumeKg })) },
+  ];
+  return series
+    .filter((s) => s.points.length >= 2)
+    .map((s) => ({ title: s.title, type: 'bar', unit: s.unit, points: s.points, targetValue: s.target ?? undefined }));
+}
 
 // Thin x-axis labels to what fits: a date needs ~64px. The ends always show.
 function labelStep(count, plotW) {
@@ -375,11 +391,7 @@ export default function Progress() {
   const { goal, weighIns } = data;
   const tone = STATUS_TONE[analysis.status] || 'cyan';
   const stats = Array.isArray(analysis.stats) ? analysis.stats : [];
-  const charts = Array.isArray(analysis.charts) ? analysis.charts : [];
-  // The app draws the weight trend itself now. Analyses stored before that
-  // change still carry the coach's own weight chart, so drop it rather than
-  // show the same series twice.
-  const supplementaryCharts = charts.filter((c) => !isWeightChart(c));
+  const charts = buildCharts(data);
 
   // Coach unreachable AND this account has never had a real analysis: show
   // ONE honest state — real logged data, no template filler dressed up as
@@ -414,6 +426,13 @@ export default function Progress() {
             Weigh in each morning on <Link to="/dashboard">Today's Mission</Link> — every entry lands in the coach's next analysis.
           </p>
         </figure>
+
+        {/* The graphs come from logged rows, not from the coach, so they are
+            the same here as on the analysed page — an outage costs the words,
+            never the data. */}
+        {buildCharts(data).map((chart, i) => (
+          <CoachChart key={`${chart.title}-${i}`} chart={chart} />
+        ))}
       </div>
     );
   }
@@ -509,10 +528,10 @@ export default function Progress() {
         <WeightChart weighIns={weighIns} targetKg={goal.targetWeightKg} />
       </figure>
 
-      {/* ---- The coach's charts — the series it chose beyond weight
-              (calories, protein, volume). Supplementary now, so an empty
-              array costs insight, never the page's only graph. ---- */}
-      {supplementaryCharts.map((chart, i) => (
+      {/* ---- Calories, protein and volume — same source, same rule: the
+              user's own rows. A series with under 2 points is left out
+              rather than padded. ---- */}
+      {charts.map((chart, i) => (
         <CoachChart key={`${chart.title}-${i}`} chart={chart} />
       ))}
 

@@ -390,18 +390,7 @@ test('the progress prompt no longer claims to be the only source of graphs', () 
     },
   });
   assert.doesNotMatch(prompt, /only graphs the page has/i,
-    'the app draws the weight trend itself — the coach is no longer the sole source');
-  assert.match(prompt, /Do NOT author a weight-over-time chart/i,
-    'asking for a weight chart again would duplicate the one the app draws');
-});
-
-test('the progress prompt still forbids invented chart points', () => {
-  const prompt = buildProgressAnalysisPrompt({
-    profile: CUTTER,
-    data: {
-      asOfDate: '2026-07-22', firstLoggedDate: '2026-07-01',
-      goal: { type: 'lose_fat' }, weighIns: [], checklist: [], training: [], nutrition: [],
-    },
-  });
-  assert.match(prompt, /never invent points/i, 'no dummy data may reach a graph');
+    'the app draws every graph itself — the coach is no longer the source');
+  assert.match(prompt, /OMIT this field entirely/i,
+    'the coach must stop authoring charts, or the same data graphs differently each day');
 });
