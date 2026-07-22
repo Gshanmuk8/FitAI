@@ -10,7 +10,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { buildDietTargets } = require('../../shared/calculations/dietTargets');
-const { buildPlanGenerationPrompt, buildProgressAnalysisPrompt } = require('../../shared/prompts/templates');
+const { buildPlanGenerationPrompt, buildProgressAnalysisPrompt, buildBriefingPrompt } = require('../../shared/prompts/templates');
 const { formatProfileForPrompt } = require('../src/services/memory/contextBuilder');
 
 // A large, very active man on a cut: TDEE lands near 3,200, so his deficit
@@ -393,4 +393,32 @@ test('the progress prompt no longer claims to be the only source of graphs', () 
     'the app draws every graph itself — the coach is no longer the source');
   assert.match(prompt, /OMIT this field entirely/i,
     'the coach must stop authoring charts, or the same data graphs differently each day');
+});
+
+// ---- the briefing must read the same way on every account ----
+
+// The plan's expected pace is arithmetic, but the prompt used to say "work it
+// out IN YOUR OWN WORDS". One account got "a gain of 0.33 kg per week,
+// targeting 90kg in 30 weeks"; another, with an equally complete plan, got
+// "You've just started your journey, stay consistent" and no figures at all.
+const briefingFor = (goal) => buildBriefingPrompt({
+  profile: CUTTER,
+  data: { goal, weighIns: [], adherence: {}, today: null },
+});
+
+test('the briefing states the plan pace as a computed fact, not an exercise', () => {
+  const prompt = briefingFor({ type: 'build_muscle', startWeightKg: 80, targetWeightKg: 90, timeframeWeeks: 30 });
+  assert.match(prompt, /0\.33 kg per week/, 'the rate is arithmetic — the app owes the model the number');
+  assert.match(prompt, /80kg to 90kg over 30 weeks/);
+  assert.doesNotMatch(prompt, /work out two things IN YOUR OWN WORDS/i);
+});
+
+test('a weight-loss plan states its pace with the same shape', () => {
+  const prompt = briefingFor({ type: 'lose_fat', startWeightKg: 100, targetWeightKg: 80, timeframeWeeks: 20 });
+  assert.match(prompt, /loss of 1 kg per week/);
+});
+
+test('an incomplete goal yields no pace claim rather than a fabricated one', () => {
+  const prompt = briefingFor({ type: 'maintain', startWeightKg: null, targetWeightKg: null, timeframeWeeks: null });
+  assert.doesNotMatch(prompt, /kg per week/, 'no target weight means no pace sentence at all');
 });

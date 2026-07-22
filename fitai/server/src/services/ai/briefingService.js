@@ -35,7 +35,7 @@ const { adherenceFrom, ymd, DAY_MS } = require('../analytics/adherence');
 // data contract grows (v2 added the live "today" block; v3 added calories)
 // so a same-day cached row written against the old shape regenerates
 // instead of being served.
-const BRIEFING_VERSION = 3;
+const BRIEFING_VERSION = 4;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: BRIEFING_VERSION, data })).digest('hex');
 }

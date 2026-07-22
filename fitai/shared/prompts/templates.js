@@ -280,6 +280,19 @@ function buildPlanGenerationPrompt(profile) {
   ].filter(Boolean).join('\n');
 }
 
+// The pace a plan expects is arithmetic, not judgement. It used to be left to
+// the model ("work it out in your own words"), which is why one account was
+// told "a gain of 0.33 kg per week, targeting 90kg in 30 weeks" and another,
+// with an equally complete plan, just got "stay consistent and patient".
+function planPaceFact(goal) {
+  const { startWeightKg: from, targetWeightKg: to, timeframeWeeks: weeks } = goal || {};
+  if (from == null || to == null || !weeks) return null;
+  if (to === from) return `The plan holds bodyweight at ${to}kg over ${weeks} weeks.`;
+  const perWeek = Math.round((Math.abs(to - from) / weeks) * 100) / 100;
+  const direction = to > from ? 'gain' : 'loss';
+  return `The plan expects a ${direction} of ${perWeek} kg per week: ${from}kg to ${to}kg over ${weeks} weeks.`;
+}
+
 function buildFoodAnalysisPrompt() {
   return `Identify each distinct food item in this image. For each, estimate name, grams, calories, protein, carbs, fat. Respond ONLY with JSON: { foods: [{ name, grams, calories, protein, carbs, fat }], confidence: number (0-1) }. Be conservative — if uncertain about quantity, say so via a lower confidence score rather than guessing a precise gram value.`;
 }
@@ -317,9 +330,14 @@ function buildBriefingPrompt({ profile, data }) {
       ? `\n--- TODAY so far (what they have actually logged vs their plan targets — live, may be partial) ---\n${JSON.stringify(data.today, null, 2)}`
       : '',
     '',
-    `From this, work out two things IN YOUR OWN WORDS:`,
-    `- currentPace: the pace the plan expects (e.g. how much weight per week to hit the goal in the timeframe).`,
+    planPaceFact(data.goal)
+      ? `--- MEASURED FACT (computed by the app — quote these figures, never recompute or omit them) ---\n${planPaceFact(data.goal)}`
+      : '',
+    '',
+    `Then:`,
+    `- currentPace: state the plan's expected pace using the exact figures above — the rate, the target weight and the timeframe. A user who is told only to "stay consistent" has been told nothing.`,
     `- actualPace: the pace they are ACTUALLY on, measured from the weigh-in history (say so plainly if there is not enough data).`,
+    `- Every account gets the same treatment: whenever a target exists for calories, protein or water, name the NUMBER rather than referring to "your targets" in the abstract.`,
     `Then set status to one of ahead | on_track | behind | no_data (use no_data when weigh-ins are too few to judge).`,
     `IMPORTANT: if the goal data says timeframeComplete is true, the plan's timeframe is OVER — never call them "behind".`,
     `Instead, acknowledge the journey (celebrate if the target was reached), and make the first focus point:`,
