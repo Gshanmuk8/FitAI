@@ -52,6 +52,11 @@ function chartMetrics(width) {
   return { W, H, PAD, plotW: W - PAD.left - PAD.right, plotH: H - PAD.top - PAD.bottom };
 }
 
+// A coach chart that plots the weight series the app already draws itself.
+const isWeightChart = (chart) =>
+  /(^|\b)(weight|body ?weight|weigh-?in)/i.test(chart?.title || '') ||
+  /^kg$/i.test((chart?.unit || '').trim());
+
 // Thin x-axis labels to what fits: a date needs ~64px. The ends always show.
 function labelStep(count, plotW) {
   return Math.max(1, Math.ceil(count / Math.max(2, Math.floor(plotW / 64))));
@@ -371,6 +376,10 @@ export default function Progress() {
   const tone = STATUS_TONE[analysis.status] || 'cyan';
   const stats = Array.isArray(analysis.stats) ? analysis.stats : [];
   const charts = Array.isArray(analysis.charts) ? analysis.charts : [];
+  // The app draws the weight trend itself now. Analyses stored before that
+  // change still carry the coach's own weight chart, so drop it rather than
+  // show the same series twice.
+  const supplementaryCharts = charts.filter((c) => !isWeightChart(c));
 
   // Coach unreachable AND this account has never had a real analysis: show
   // ONE honest state — real logged data, no template filler dressed up as
@@ -487,10 +496,23 @@ export default function Progress() {
         </div>
       )}
 
-      {/* ---- The coach's charts — the page's ONLY graphs: series it chose,
-              values it computed. The weight line (with the target rule) is
-              chart #1 by the prompt's contract. Also optional. ---- */}
-      {charts.map((chart, i) => (
+      {/* ---- Weight trend — drawn by the app from the user's own weigh-ins,
+              NOT by the coach. It used to be chart #1 of the AI's output,
+              which meant an account whose analysis fell back (or whose model
+              simply skipped it) saw no graph at all while another account saw
+              several. Every account with 2+ weigh-ins now gets this one. ---- */}
+      <figure style={{ margin: '0 0 var(--s6)', borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)' }}>
+        <figcaption className="page-header" style={{ marginBottom: 'var(--s3)' }}>
+          <h3 style={{ margin: 0 }}>Weight trend</h3>
+          {goal.targetWeightKg != null && <span className="eyebrow">target {goal.targetWeightKg}kg</span>}
+        </figcaption>
+        <WeightChart weighIns={weighIns} targetKg={goal.targetWeightKg} />
+      </figure>
+
+      {/* ---- The coach's charts — the series it chose beyond weight
+              (calories, protein, volume). Supplementary now, so an empty
+              array costs insight, never the page's only graph. ---- */}
+      {supplementaryCharts.map((chart, i) => (
         <CoachChart key={`${chart.title}-${i}`} chart={chart} />
       ))}
 

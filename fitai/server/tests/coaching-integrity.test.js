@@ -10,7 +10,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { buildDietTargets } = require('../../shared/calculations/dietTargets');
-const { buildPlanGenerationPrompt } = require('../../shared/prompts/templates');
+const { buildPlanGenerationPrompt, buildProgressAnalysisPrompt } = require('../../shared/prompts/templates');
 const { formatProfileForPrompt } = require('../src/services/memory/contextBuilder');
 
 // A large, very active man on a cut: TDEE lands near 3,200, so his deficit
@@ -372,4 +372,36 @@ test('a complete profile still produces sane, positive targets', () => {
   assert.ok(d.proteinGrams > 0, 'protein target is a real number');
   assert.ok(d.calorieTarget >= 1200);
   assert.equal(d.calorieDirection, 'deficit');
+});
+
+// ---- the Progress page must show the same graphs for every account ----
+
+// Every graph used to be AI-authored, and the prompt said so outright ("YOUR
+// charts are the only graphs the page has"). So an account whose analysis fell
+// back, or whose model just skipped charts, saw NO graph while another account
+// saw several — same code, different UI per account. The weight trend is drawn
+// by the app from the user's own weigh-ins now; the coach covers other series.
+test('the progress prompt no longer claims to be the only source of graphs', () => {
+  const prompt = buildProgressAnalysisPrompt({
+    profile: CUTTER,
+    data: {
+      asOfDate: '2026-07-22', firstLoggedDate: '2026-07-01',
+      goal: { type: 'lose_fat' }, weighIns: [], checklist: [], training: [], nutrition: [],
+    },
+  });
+  assert.doesNotMatch(prompt, /only graphs the page has/i,
+    'the app draws the weight trend itself — the coach is no longer the sole source');
+  assert.match(prompt, /Do NOT author a weight-over-time chart/i,
+    'asking for a weight chart again would duplicate the one the app draws');
+});
+
+test('the progress prompt still forbids invented chart points', () => {
+  const prompt = buildProgressAnalysisPrompt({
+    profile: CUTTER,
+    data: {
+      asOfDate: '2026-07-22', firstLoggedDate: '2026-07-01',
+      goal: { type: 'lose_fat' }, weighIns: [], checklist: [], training: [], nutrition: [],
+    },
+  });
+  assert.match(prompt, /never invent points/i, 'no dummy data may reach a graph');
 });

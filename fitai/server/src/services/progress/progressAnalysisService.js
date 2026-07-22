@@ -158,7 +158,7 @@ async function assembleData(userId, profileRow, userDate) {
 // calories; v6 replaced precomputed adherence with the raw checklist log and
 // added the AI-authored headline/statusLabel) so a same-day cached row from
 // the old shape regenerates instead of being served without the new fields.
-const ANALYSIS_VERSION = 6;
+const ANALYSIS_VERSION = 7;
 function hashData(data) {
   return crypto.createHash('sha1').update(JSON.stringify({ v: ANALYSIS_VERSION, data })).digest('hex');
 }
