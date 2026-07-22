@@ -101,11 +101,23 @@ function createGateway({
       return { data: opts.fallback(), source: 'fallback' };
     }
 
-    // 2. Fresh cache.
+    // 2. An empty prompt is a CALLER bug, not a provider outage. Without this
+    // guard every provider is tried, each 400s on missing content, and those
+    // failures count against provider health and the breakers — so one bad
+    // call degrades routing for every OTHER user while this one is told the
+    // coach is unreachable. Fail straight to the deterministic floor and make
+    // the real cause loud in the logs.
+    if (typeof opts.prompt !== 'string' || !opts.prompt.trim()) {
+      trace.event('empty_prompt', { task: opts.task });
+      trace.end('fallback');
+      return { data: opts.fallback(), source: 'fallback' };
+    }
+
+    // 3. Fresh cache.
     const cached = await tryCachePaths(opts, trace, { includeFresh: true, includeStale: false });
     if (cached) return cached;
 
-    // 3. Provider cascade — gated by the concurrency semaphore.
+    // 4. Provider cascade — gated by the concurrency semaphore.
     await aiSlots.acquire();
     try {
       for (const name of eligibleProviders({ vision: opts.mode === 'vision' })) {
@@ -179,11 +191,11 @@ function createGateway({
       aiSlots.release();
     }
 
-    // 4. Stale last-known-good beats a generic template.
+    // 5. Stale last-known-good beats a generic template.
     const stale = await tryCachePaths(opts, trace, { includeFresh: false, includeStale: true });
     if (stale) return stale;
 
-    // 5. Deterministic floor — rules engine / static templates.
+    // 6. Deterministic floor — rules engine / static templates.
     trace.event('fallback');
     trace.end('fallback');
     return { data: opts.fallback(), source: 'fallback' };

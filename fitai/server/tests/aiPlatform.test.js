@@ -338,3 +338,31 @@ test('vision order: health can demote a degraded primary but never promote past 
   const r2 = await gateway.execute(baseOpts({ mode: 'vision', imageBase64: 'x', mimeType: 'image/png', cacheKey: null }));
   assert.equal(r2.data.from, 'gemini', 'degraded primary is demoted');
 });
+
+// ---------- an empty prompt is a caller bug, not a provider outage ----------
+
+// Seen in an end-to-end run: a caller that forgot to build the prompt made
+// every provider 400 on missing content ("Input must have at least 1 token").
+// The cascade tried all of them, counted each failure against provider health
+// and the breakers, and told the user the coach was unreachable — so one bad
+// call would degrade routing for every OTHER user.
+test('an empty prompt goes straight to the floor without touching providers', async () => {
+  const a = fakeProvider('a', ok({ v: 1 }));
+  const b = fakeProvider('b', ok({ v: 2 }));
+  const { gateway } = makeGateway({ providers: [a, b] });
+
+  for (const prompt of [undefined, null, '', '   ']) {
+    const r = await gateway.execute(baseOpts({ prompt }));
+    assert.equal(r.source, 'fallback', `prompt ${JSON.stringify(prompt)} must not reach a provider`);
+  }
+  assert.equal(a.calls, 0, 'no provider call is spent on an empty prompt');
+  assert.equal(b.calls, 0);
+});
+
+test('a real prompt still reaches the provider', async () => {
+  const a = fakeProvider('a', ok({ v: 1 }));
+  const { gateway } = makeGateway({ providers: [a] });
+  const r = await gateway.execute(baseOpts({ prompt: 'a genuine prompt' }));
+  assert.equal(r.source, 'ai');
+  assert.equal(a.calls, 1);
+});
