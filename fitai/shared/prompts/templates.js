@@ -146,7 +146,21 @@ function formatActivityBlock(activity) {
     n.daysLogged
       ? `Nutrition last 7 days: logged on ${n.daysLogged} day(s), averaging ~${n.avgCalories} kcal and ~${n.avgProtein}g protein per logged day.`
       : 'No meals logged in the last 7 days.',
-  ];
+
+    // Aggregates say how MUCH they trained and ate; these say WHAT. Without
+    // them the coach can't tell a stalled lift from a progressing one, or give
+    // food advice that fits what this person actually eats.
+    activity.strength56d?.length
+      ? `What they actually lift (last 8 weeks — first -> latest, best):\n${activity.strength56d
+          .map((s) => `  ${sanitizeUserText(s.exercise, 60)}: ${s.firstKg ?? '?'}kg -> ${s.lastKg ?? '?'}kg (best ${s.bestKg ?? '?'}kg, ${s.sets} sets, last ${s.lastDate})`)
+          .join('\n')}`
+      : null,
+    activity.frequentFoods14d?.length
+      ? `What they actually eat (last 14 days, most frequent):\n${activity.frequentFoods14d
+          .map((f) => `  ${sanitizeUserText(f.name, 60)} x${f.times} (~${f.avgCalories} kcal, ${f.avgProtein}g protein)`)
+          .join('\n')}`
+      : null,
+  ].filter(Boolean);
   return `\n--- Their recent activity (measured from their logs — ground answers in this) ---\n${lines.join('\n')}${formatTodayBlock(activity.today)}`;
 }
 

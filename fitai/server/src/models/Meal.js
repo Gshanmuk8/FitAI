@@ -64,4 +64,23 @@ async function dailyTotalsRecent(userId, days = 14, today = null) {
   return rows;
 }
 
-module.exports = { insertMeal, listToday, todayTotals, deleteMeal, dailyTotalsRecent };
+// What the user actually eats, not just how many calories. Lets the coach
+// give advice grounded in their real diet ("you lean on rice most days")
+// instead of generic tips. Most-eaten foods over the window.
+async function frequentFoods(userId, days = 14, today = null) {
+  const { rows } = await queryAs(userId,
+    `SELECT name,
+            COUNT(*)::int          AS times,
+            ROUND(AVG(calories))::int AS avg_calories,
+            ROUND(AVG(protein))::int  AS avg_protein
+     FROM meals
+     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - ($2 - 1)::int
+     GROUP BY name
+     ORDER BY times DESC, avg_calories DESC
+     LIMIT 12`,
+    [userId, days, today]
+  );
+  return rows;
+}
+
+module.exports = { insertMeal, listToday, todayTotals, deleteMeal, dailyTotalsRecent, frequentFoods };

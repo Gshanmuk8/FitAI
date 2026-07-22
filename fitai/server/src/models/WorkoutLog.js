@@ -62,4 +62,27 @@ async function trainingDaySummary(userId, days = 28, today = null) {
   return rows;
 }
 
-module.exports = { logSet, getLastSessionForExercise, todaySetCounts, trainingDaySummary };
+// Per-exercise strength history, so the coach can talk about what the user
+// actually lifts ("your bench went 60 -> 70kg") instead of only how many sets
+// they did. Heaviest and most recent working weight per exercise.
+async function strengthByExercise(userId, days = 56, today = null) {
+  const { rows } = await queryAs(userId,
+    // Grouped case-insensitively: "Bench Press" and "bench press" are the same
+    // lift to the user, and splitting them hides the progression.
+    `SELECT MAX(exercise_name)                  AS exercise_name,
+            COUNT(*)::int                       AS sets,
+            MAX(weight_kg)::float               AS best_kg,
+            MAX(date)                           AS last_date,
+            (ARRAY_AGG(weight_kg ORDER BY date DESC, id DESC))[1]::float AS last_kg,
+            (ARRAY_AGG(weight_kg ORDER BY date ASC, id ASC))[1]::float   AS first_kg
+     FROM workout_logs
+     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - ($2 - 1)::int
+     GROUP BY LOWER(TRIM(exercise_name))
+     ORDER BY sets DESC
+     LIMIT 12`,
+    [userId, days, today]
+  );
+  return rows;
+}
+
+module.exports = { logSet, getLastSessionForExercise, todaySetCounts, trainingDaySummary, strengthByExercise };

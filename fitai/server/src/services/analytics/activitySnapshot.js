@@ -16,8 +16,8 @@
  * the change and cannot be served from a pre-change cache entry.
  */
 const { getHistory } = require('../../models/DailyChecklist');
-const { trainingDaySummary, todaySetCounts } = require('../../models/WorkoutLog');
-const { dailyTotalsRecent, listToday } = require('../../models/Meal');
+const { trainingDaySummary, todaySetCounts, strengthByExercise } = require('../../models/WorkoutLog');
+const { dailyTotalsRecent, listToday, frequentFoods } = require('../../models/Meal');
 const { getTodayEnriched } = require('../checklist/checklistService');
 const { adherenceFrom, ymd } = require('./adherence');
 const { getUserToday } = require('../../utils/userDate');
@@ -101,13 +101,19 @@ async function buildTodayBlock(userId) {
 
 async function buildActivitySnapshot(userId) {
   const userDate = (await getUserToday(userId)) || ymd(new Date());
-  const [history, training, nutrition, today] = await Promise.all([
+  const [history, training, nutrition, today, strength, foods] = await Promise.all([
     getHistory(userId, 28),
     trainingDaySummary(userId, 14, userDate),
     dailyTotalsRecent(userId, 7, userDate),
     // Live layer is enrichment like the rest: its failure degrades the
     // answer, never blocks the chat.
     buildTodayBlock(userId).catch(() => null),
+    // What they actually lift and actually eat. Aggregates alone ("12
+    // sessions, 2100 avg kcal") let the coach describe volume but never the
+    // user — it could not say a lift had stalled or that they eat the same
+    // three meals. Enrichment, so a failure degrades the answer, not the chat.
+    strengthByExercise(userId, 56, userDate).catch(() => []),
+    frequentFoods(userId, 14, userDate).catch(() => []),
   ]);
 
   const weighIns = history
@@ -128,6 +134,17 @@ async function buildActivitySnapshot(userId) {
     recentWeighIns: weighIns,
     training14d: { sessions: training.length, sets: totalSets, volumeKg: totalVolumeKg },
     nutrition7d: { daysLogged: nutritionDays, avgCalories: avg('calories'), avgProtein: avg('protein') },
+    strength56d: strength.map((s) => ({
+      exercise: s.exercise_name,
+      sets: s.sets,
+      bestKg: s.best_kg,
+      lastKg: s.last_kg,
+      firstKg: s.first_kg,
+      lastDate: ymd(s.last_date),
+    })),
+    frequentFoods14d: foods.map((f) => ({
+      name: f.name, times: f.times, avgCalories: f.avg_calories, avgProtein: f.avg_protein,
+    })),
     today,
   };
 }

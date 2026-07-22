@@ -10,7 +10,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { buildDietTargets } = require('../../shared/calculations/dietTargets');
-const { buildPlanGenerationPrompt, buildProgressAnalysisPrompt, buildBriefingPrompt } = require('../../shared/prompts/templates');
+const { buildPlanGenerationPrompt, buildProgressAnalysisPrompt, buildBriefingPrompt, buildTutorPrompt } = require('../../shared/prompts/templates');
 const { formatProfileForPrompt } = require('../src/services/memory/contextBuilder');
 
 // A large, very active man on a cut: TDEE lands near 3,200, so his deficit
@@ -421,4 +421,37 @@ test('a weight-loss plan states its pace with the same shape', () => {
 test('an incomplete goal yields no pace claim rather than a fabricated one', () => {
   const prompt = briefingFor({ type: 'maintain', startWeightKg: null, targetWeightKg: null, timeframeWeeks: null });
   assert.doesNotMatch(prompt, /kg per week/, 'no target weight means no pace sentence at all');
+});
+
+// ---- the coach must see what the user actually does, not just how much ----
+
+// Aggregates ("6 sessions, 2400 avg kcal") let the coach describe volume but
+// never the person: it could not tell a stalled lift from a progressing one,
+// or give food advice that fits what this user actually eats.
+test('the coach is told what the user actually lifts and eats', () => {
+  const prompt = buildTutorPrompt({
+    mode: 'gym', question: 'is my bench improving?', contextBlock: '', history: [],
+    profile: CUTTER,
+    activity: {
+      adherence: { last7: 0.5, last28: 0.4, daysLogged: 12 },
+      recentWeighIns: [], training14d: {}, nutrition7d: {},
+      strength56d: [{ exercise: 'Bench Press', sets: 24, bestKg: 72.5, lastKg: 70, firstKg: 60, lastDate: '2026-07-20' }],
+      frequentFoods14d: [{ name: 'Chicken rice', times: 9, avgCalories: 650, avgProtein: 45 }],
+      today: null,
+    },
+  });
+  assert.match(prompt, /Bench Press: 60kg -> 70kg/, 'the progression must be visible, not just the set count');
+  assert.match(prompt, /Chicken rice x9/, 'diet advice should fit what they actually eat');
+});
+
+test('an account with no logged lifts or meals gets no fabricated history', () => {
+  const prompt = buildTutorPrompt({
+    mode: 'gym', question: 'hi', contextBlock: '', history: [], profile: CUTTER,
+    activity: {
+      adherence: {}, recentWeighIns: [], training14d: {}, nutrition7d: {},
+      strength56d: [], frequentFoods14d: [], today: null,
+    },
+  });
+  assert.doesNotMatch(prompt, /What they actually lift/, 'no rows means the section is absent, not empty-but-present');
+  assert.doesNotMatch(prompt, /What they actually eat/);
 });
