@@ -44,6 +44,9 @@ async function todaySetCounts(userId, date = null) {
 // as the checklist tick that recorded it — the progress prompt asks the AI
 // to measure consistency off these calendar days, and a session filed under
 // the wrong day reads to it as training on a rest day.
+// `days` is an INCLUSIVE calendar window ending on `today`: days=28 returns
+// today plus the 27 prior days. The `-(days-1)` is deliberate — `- days`
+// would span days+1 calendar days, one wider than the caller's label.
 async function trainingDaySummary(userId, days = 28, today = null) {
   const { rows } = await queryAs(userId,
     `SELECT date,
@@ -51,7 +54,7 @@ async function trainingDaySummary(userId, days = 28, today = null) {
             COUNT(DISTINCT exercise_name)::int AS exercises,
             COALESCE(SUM(weight_kg * reps), 0)::float AS volume_kg
      FROM workout_logs
-     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - $2::int
+     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - ($2 - 1)::int
      GROUP BY date
      ORDER BY date`,
     [userId, days, today]

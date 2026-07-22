@@ -1,7 +1,7 @@
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-const { v4: uuid } = require('uuid');
+const { randomUUID } = require('crypto');
 
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -43,7 +43,7 @@ if (!corsOrigins.length && process.env.NODE_ENV === 'production') {
 app.use(cors(corsOrigins.length ? { origin: corsOrigins } : {}));
 app.use(express.json({ limit: '2mb' }));
 app.use((req, _res, next) => {
-  req.id = uuid();
+  req.id = randomUUID();
   next();
 });
 

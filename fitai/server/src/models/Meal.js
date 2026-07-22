@@ -46,6 +46,9 @@ async function deleteMeal(userId, mealId, date = null) {
 
 // Per-day diary totals for the progress analysis — what the user actually
 // logged, day by day, not just today.
+// `days` is an INCLUSIVE calendar window ending on `today`: days=14 returns
+// today plus the 13 prior days. The `-(days-1)` is deliberate — `- days`
+// would span days+1 calendar days, one wider than the caller's label.
 async function dailyTotalsRecent(userId, days = 14, today = null) {
   const { rows } = await queryAs(userId,
     `SELECT date,
@@ -53,7 +56,7 @@ async function dailyTotalsRecent(userId, days = 14, today = null) {
             COALESCE(SUM(protein), 0)::float AS protein,
             COUNT(*)::int AS meals
      FROM meals
-     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - $2::int
+     WHERE user_id = $1 AND date >= COALESCE($3::date, CURRENT_DATE) - ($2 - 1)::int
      GROUP BY date
      ORDER BY date`,
     [userId, days, today]

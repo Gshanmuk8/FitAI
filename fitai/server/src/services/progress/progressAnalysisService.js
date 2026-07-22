@@ -27,6 +27,16 @@ const { ymd, DAY_MS } = require('../analytics/adherence');
 const { resolveUserDate } = require('../../utils/userDate');
 const { createExpiringMap } = require('../../utils/expiringMap');
 
+// First calendar day (YYYY-MM-DD) of an inclusive `days`-long window ending on
+// `asOfYmd`: windowStartYmd('2026-07-22', 28) === '2026-06-25'. Noon-anchored
+// like the rest of the app so a DST boundary in the window can't shift it by a
+// day. Mirrors the SQL `date >= today - (days - 1)` used by the day summaries,
+// so the checklist window lines up with the training/nutrition ones.
+function windowStartYmd(asOfYmd, days) {
+  const anchor = new Date(`${asOfYmd}T12:00:00`).getTime();
+  return ymd(new Date(anchor - (days - 1) * DAY_MS));
+}
+
 async function assembleData(userId, profileRow, userDate) {
   const plan = profileRow.ai_plan
     ? typeof profileRow.ai_plan === 'string' ? JSON.parse(profileRow.ai_plan) : profileRow.ai_plan
@@ -52,8 +62,15 @@ async function assembleData(userId, profileRow, userDate) {
   // human coach would read off the calendar and measures adherence itself.
   // Days with no row are days the app was never opened; firstLoggedDate and
   // asOfDate let it reason over calendar days, not just logged days.
+  //
+  // Windowed by CALENDAR date, not row count: slice(0, 28) took the 28 most
+  // recent LOGGED rows, which for a sparse logger reach back far past 28
+  // calendar days — so the AI was comparing an adherence window wider than the
+  // 28-day training window beside it. Match the same inclusive calendar
+  // windows the training/nutrition summaries use so the three line up.
+  const checklistFrom = windowStartYmd(userDate, 28);
   const checklist = history
-    .slice(0, 28)
+    .filter((r) => ymd(r.date) >= checklistFrom)
     .map((r) => ({
       date: ymd(r.date),
       workout: Boolean(r.workout_completed),
@@ -67,10 +84,13 @@ async function assembleData(userId, profileRow, userDate) {
     }))
     .reverse();
 
-  const customItems = history.slice(0, 14).flatMap((r) => {
-    const items = Array.isArray(r.custom_items) ? r.custom_items : [];
-    return items.map((i) => ({ date: ymd(r.date), label: String(i.label || ''), done: Boolean(i.done) }));
-  });
+  const customFrom = windowStartYmd(userDate, 14);
+  const customItems = history
+    .filter((r) => ymd(r.date) >= customFrom)
+    .flatMap((r) => {
+      const items = Array.isArray(r.custom_items) ? r.custom_items : [];
+      return items.map((i) => ({ date: ymd(r.date), label: String(i.label || ''), done: Boolean(i.done) }));
+    });
 
   // The user's own typed daily figures (protein/water/sleep/steps), oldest
   // first — the AI compares ACTUALS against the plan targets instead of only
