@@ -1,17 +1,8 @@
 /**
- * Fallback provider #2: OpenRouter's free model tier.
- *
- * Vision IS wired here now, and deliberately so. Groq retired every
- * multimodal model it hosted, which left Gemini as the ONLY vision-capable
- * provider — so a single Gemini 429 (routine on the free quota) meant the
- * food-photo path fell straight to "we couldn't read that image". A cascade
- * of one is not a cascade. The model below was picked by probing OpenRouter's
- * free vision models against the real FoodAnalysisSchema: it was the only one
- * that returned schema-valid JSON in reasonable time (~5s), where the
- * nemotron VL took two minutes and returned nothing.
- *
- * It is the FALLBACK, not the primary — Gemini stays first for photo quality,
- * because these numbers become the user's calorie ledger.
+ * Fallback provider #2: OpenRouter's free model tier, text and vision.
+ * Vision exists here because Groq retired its multimodal models, which left
+ * Gemini as the only vision provider — one 429 and the food photo failed.
+ * Gemini stays primary for accuracy; this is the second chance.
  */
 const { OPENROUTER_API_KEY } = require("../../config/env");
 const { callOpenAiCompatibleChat, ProviderError } = require("./providerUtils");
@@ -44,9 +35,7 @@ async function callVision(prompt, imageBase64, mimeType) {
     apiKey: OPENROUTER_API_KEY,
     model: cfg.models.openrouterVision,
     prompt,
-    // Vision needs a longer budget than text: the image upload plus a larger
-    // prompt routinely outruns the 20s text timeout on a free endpoint, and a
-    // timeout here costs the user their photo.
+    // Longer budget than text — an image payload outruns the 20s text timeout.
     timeoutMs: cfg.timeoutsMs.openrouterVision,
     jsonMode: true,
     imageBase64,

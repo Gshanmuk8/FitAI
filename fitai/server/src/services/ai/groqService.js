@@ -41,11 +41,7 @@ async function callVision(prompt, imageBase64, mimeType) {
   });
 }
 
-// supportsVision is FALSE as of 2026-07: Groq retired every multimodal model
-// it hosted (llama-4-scout/maverick are all gone from /v1/models), so the
-// configured groqVision slug 404s on every call. Leaving the flag true meant
-// Groq sat FIRST in the vision cascade and failed every single food photo
-// before Gemini even got a turn — burning seconds and tripping its breaker.
-// callVision is kept intact: if Groq ships a vision model again, set
-// AI_MODEL_GROQ_VISION and flip this back to true.
+// supportsVision false as of 2026-07: Groq retired every multimodal model, so
+// the configured slug 404s on every photo. callVision is kept — if Groq ships
+// one again, set AI_MODEL_GROQ_VISION and flip this back to true.
 module.exports = { name: NAME, supportsVision: false, isConfigured, callText, callVision };

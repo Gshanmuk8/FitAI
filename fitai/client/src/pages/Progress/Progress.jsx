@@ -30,22 +30,12 @@ const fmtAxis = (v) =>
 // Chart type, in the label voice: mono, tracked, quiet, and — because these
 // are axis figures — tabular. An axis set in the body face at a browser
 // default size is the tell of a chart nobody drew on purpose.
-// The charts draw into a viewBox set to their REAL pixel width (see
-// useElementWidth), so every dimension below is in CSS pixels and holds its
-// on-screen size at any width — an axis label is 11px on a 360px phone and on
-// a 4K monitor alike, instead of a fixed 640-wide viewBox scaling it down to
-// ~6px on mobile. Height grows relative to width on narrow screens so a phone
-// gets a legible plot rather than a letterbox strip.
-//
-// Because H is a real pixel number, both charts set width="100%" height={H}
-// EXPLICITLY rather than the usual `height: auto`. That is not a style
-// preference: with `height: auto` the browser has to derive the height from the
-// viewBox's intrinsic aspect ratio, and iOS Safari / several Android WebViews
-// don't do that reliably for inline SVG — they collapse it to zero height, so
-// the chart is in the DOM but invisible. Desktop Chrome computes it fine, which
-// is exactly why "charts work on desktop, missing on mobile" looked like a
-// layout bug. An explicit height removes the guesswork on every engine.
-const AXIS_FONT_PX = 11; // matches --t-label; fixed px keeps it crisp in SVG
+// Charts use a viewBox set to their real pixel width, so 1 SVG unit = 1 CSS
+// pixel and an 11px axis label stays 11px on a phone (a fixed 640 viewBox
+// scaled it down to ~6px). Both charts also set an explicit height rather than
+// `height: auto`: iOS Safari and some Android WebViews don't derive height from
+// the viewBox and collapse the SVG to zero — the "charts missing on mobile" bug.
+const AXIS_FONT_PX = 11; // matches --t-label
 const AXIS_TEXT = {
   fontFamily: 'var(--font-mono)',
   fontSize: `${AXIS_FONT_PX}px`,
@@ -53,22 +43,18 @@ const AXIS_TEXT = {
   letterSpacing: '0.04em',
 };
 
+// Narrow screens get a taller plot so it stays readable instead of a strip.
 function chartMetrics(width) {
-  const W = width && width > 0 ? width : 640; // fallback for the first paint
+  const W = width > 0 ? width : 640; // 640 covers the first paint, pre-measure
   const aspect = W < 480 ? 0.72 : W < 720 ? 0.48 : 0.34;
   const H = Math.round(Math.min(320, Math.max(190, W * aspect)));
-  // Left gutter holds a 4-5 char y-label; the rest is breathing room. These
-  // are px, so they don't eat half a phone's width the way a 48-unit pad on a
-  // 640 viewBox scaled to 330px did.
   const PAD = { top: 16, right: 16, bottom: 30, left: 46 };
   return { W, H, PAD, plotW: W - PAD.left - PAD.right, plotH: H - PAD.top - PAD.bottom };
 }
 
-// How many x-axis labels fit without colliding, from the plot's pixel width.
-// A date-shaped label needs ~64px; the ends always show.
+// Thin x-axis labels to what fits: a date needs ~64px. The ends always show.
 function labelStep(count, plotW) {
-  const maxLabels = Math.max(2, Math.floor(plotW / 64));
-  return Math.max(1, Math.ceil(count / maxLabels));
+  return Math.max(1, Math.ceil(count / Math.max(2, Math.floor(plotW / 64))));
 }
 
 /**

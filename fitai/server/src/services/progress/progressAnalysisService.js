@@ -27,11 +27,8 @@ const { ymd, DAY_MS } = require('../analytics/adherence');
 const { resolveUserDate } = require('../../utils/userDate');
 const { createExpiringMap } = require('../../utils/expiringMap');
 
-// First calendar day (YYYY-MM-DD) of an inclusive `days`-long window ending on
-// `asOfYmd`: windowStartYmd('2026-07-22', 28) === '2026-06-25'. Noon-anchored
-// like the rest of the app so a DST boundary in the window can't shift it by a
-// day. Mirrors the SQL `date >= today - (days - 1)` used by the day summaries,
-// so the checklist window lines up with the training/nutrition ones.
+// First day of an inclusive `days`-long window ending on asOfYmd, matching the
+// SQL windows. Noon-anchored so a DST boundary can't shift it a day.
 function windowStartYmd(asOfYmd, days) {
   const anchor = new Date(`${asOfYmd}T12:00:00`).getTime();
   return ymd(new Date(anchor - (days - 1) * DAY_MS));
@@ -63,11 +60,9 @@ async function assembleData(userId, profileRow, userDate) {
   // Days with no row are days the app was never opened; firstLoggedDate and
   // asOfDate let it reason over calendar days, not just logged days.
   //
-  // Windowed by CALENDAR date, not row count: slice(0, 28) took the 28 most
-  // recent LOGGED rows, which for a sparse logger reach back far past 28
-  // calendar days — so the AI was comparing an adherence window wider than the
-  // 28-day training window beside it. Match the same inclusive calendar
-  // windows the training/nutrition summaries use so the three line up.
+  // Windowed by calendar date, not row count: slice(0, 28) took the 28 most
+  // recent LOGGED rows, which for a sparse logger reach back well past 28
+  // calendar days and no longer line up with the training window beside it.
   const checklistFrom = windowStartYmd(userDate, 28);
   const checklist = history
     .filter((r) => ymd(r.date) >= checklistFrom)

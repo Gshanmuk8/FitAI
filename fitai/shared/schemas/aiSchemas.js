@@ -12,12 +12,9 @@ const { z } = require('zod');
 // every request, so one oversized plan would permanently tax that account's
 // every call and the shared 10-connection pool. Sized well past any real
 // exercise name so a legitimate plan never trips them.
-// Models write set/rep targets the way coaches do — "8-12", "10", 12.0 —
-// but everything downstream (set logging, completed-all-reps, the plan
-// editor) does integer arithmetic on a single target. Normalize the
-// notation here instead of rejecting an otherwise-personalized plan over
-// it: a range collapses to its midpoint, numeric strings parse, floats
-// round. Anything else still fails validation.
+// Models write reps the way coaches do ("8-12"), but everything downstream
+// needs one integer. Normalize the notation rather than reject the whole plan
+// over it: a range takes its midpoint. Anything else still fails validation.
 function coachingInt(v) {
   if (typeof v === 'number') return Math.round(v);
   if (typeof v === 'string') {

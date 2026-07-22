@@ -25,31 +25,23 @@ function withTimeout(promise, ms) {
 }
 
 /**
- * Pull the text out of a Gemini result, or throw an error that says what
- * actually went wrong.
- *
- * `response.text()` assumes there IS a content part. When Gemini blocks a
- * prompt, trips a safety filter, or returns an empty candidate, there isn't
- * one — and the SDK dies inside its own accessor with
- * "Cannot use 'in' operator to search for 'functionResponse' in undefined".
- * That message tells the operator nothing, and because it looks like a
- * generic TypeError the gateway grades it TRANSIENT and burns a retry on a
- * request that can never succeed. Inspect the response first so a block is
- * reported as a block.
+ * Text out of a Gemini result, or an error naming the real cause. response
+ * .text() assumes a content part exists; on a safety block or empty candidate
+ * the SDK instead throws "Cannot use 'in' operator ... in undefined", which
+ * the gateway then grades transient and retries pointlessly.
  */
 function extractText(result) {
   const response = result?.response;
-  const blockReason = response?.promptFeedback?.blockReason;
-  if (blockReason) {
-    throw new Error(`Gemini blocked the request (${blockReason})`);
-  }
+  const { blockReason } = response?.promptFeedback || {};
+  if (blockReason) throw new Error(`Gemini blocked the request (${blockReason})`);
+
   const candidate = response?.candidates?.[0];
   const finish = candidate?.finishReason;
-  if (finish && !['STOP', 'MAX_TOKENS'].includes(finish)) {
+  if (finish && finish !== 'STOP' && finish !== 'MAX_TOKENS') {
     throw new Error(`Gemini returned no usable content (finishReason: ${finish})`);
   }
   if (!candidate?.content?.parts?.length) {
-    throw new Error('Gemini returned an empty response (no content parts)');
+    throw new Error('Gemini returned an empty response');
   }
   return stripMarkdownFence(response.text().trim());
 }

@@ -5,14 +5,9 @@
  */
 
 function calculateBMR({ weightKg, heightCm, age, sex }) {
-  // Guard the numerics explicitly: in JS `10 * null === 0`, so a null or
-  // undefined weight/height/age does NOT throw — it silently computes as a
-  // 0kg / 0cm / 0-year body, yielding a garbage BMR (and, via buildDietTargets,
-  // a 0g protein target and an inverted calorie direction). The callers wrap
-  // this in try/catch to degrade to stored targets, but only a THROWN error
-  // trips that path. Reject bad input here so an incomplete profile degrades
-  // instead of shipping plausible-looking nonsense. Matches how calculateTDEE
-  // and calorieTargetForGoal already throw on unknown enums.
+  // `10 * null === 0`, so a missing weight computes a 0kg body instead of
+  // throwing — shipping a 0g protein target and an inverted calorie direction.
+  // Callers only degrade to stored targets on a thrown error, so throw.
   if (![weightKg, heightCm, age].every((n) => Number.isFinite(n) && n > 0)) {
     throw new Error('BMR requires positive numeric weight, height, and age');
   }
