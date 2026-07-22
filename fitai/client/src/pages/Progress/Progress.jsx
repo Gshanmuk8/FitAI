@@ -36,6 +36,15 @@ const fmtAxis = (v) =>
 // a 4K monitor alike, instead of a fixed 640-wide viewBox scaling it down to
 // ~6px on mobile. Height grows relative to width on narrow screens so a phone
 // gets a legible plot rather than a letterbox strip.
+//
+// Because H is a real pixel number, both charts set width="100%" height={H}
+// EXPLICITLY rather than the usual `height: auto`. That is not a style
+// preference: with `height: auto` the browser has to derive the height from the
+// viewBox's intrinsic aspect ratio, and iOS Safari / several Android WebViews
+// don't do that reliably for inline SVG — they collapse it to zero height, so
+// the chart is in the DOM but invisible. Desktop Chrome computes it fine, which
+// is exactly why "charts work on desktop, missing on mobile" looked like a
+// layout bug. An explicit height removes the guesswork on every engine.
 const AXIS_FONT_PX = 11; // matches --t-label; fixed px keeps it crisp in SVG
 const AXIS_TEXT = {
   fontFamily: 'var(--font-mono)',
@@ -102,7 +111,14 @@ function WeightChart({ weighIns, targetKg }) {
 
   return (
     <div ref={ref}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Weight trend chart" style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        role="img"
+        aria-label="Weight trend chart"
+        style={{ display: 'block', maxWidth: '100%' }}
+      >
         {gridKgs.map((kg) => (
           <g key={kg}>
             {/* hairlines, at the same weight as every other rule on the page */}
@@ -174,7 +190,14 @@ function CoachChart({ chart }) {
         {/* a unit is metadata, not a status — it belongs in the label voice */}
         {chart.unit && <span className="eyebrow">{chart.unit}</span>}
       </figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chart.title} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        role="img"
+        aria-label={chart.title}
+        style={{ display: 'block', maxWidth: '100%' }}
+      >
         {gridVals.map((v) => (
           <g key={v}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" vectorEffect="non-scaling-stroke" />
