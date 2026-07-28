@@ -1118,37 +1118,44 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
    as unfinished: the whitespace has nothing to be generous *around*. Two
    columns fix it, and the right-hand specimen does real work — it answers
    "what do I actually get" in the same glance as the claim. */
+/* Two rows, not one centred column. The masthead spans the full width across
+   the top; the lede and the specimen share the row beneath it, so the layout
+   reads across a baseline rather than straight down the middle. */
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: var(--s8);
-  align-items: center;
+  grid-template-areas:
+    'masthead masthead'
+    'lede     specimen';
+  column-gap: var(--s8);
+  row-gap: var(--s7);
+  align-items: end;
   padding: 12vh 0 10vh;
   position: relative;
 }
-.hero-copy { min-width: 0; }
+.hero-masthead { grid-area: masthead; min-width: 0; }
+.hero-lede { grid-area: lede; min-width: 0; align-self: start; }
+.hero-copy { min-width: 0; } /* legacy alias, kept for any other consumer */
 
 .hero-title {
   font-size: var(--t-hero);
   font-weight: 620;
   letter-spacing: -0.035em;
   line-height: 1.04;
-  max-width: 15ch;
-  /* The headline now follows the eyebrow, which follows the lead-in — so it
-     no longer opens the column and takes a tighter top gap. */
-  margin: var(--s2) 0 0;
+  /* No longer clamped to 15ch — as a full-width masthead it runs wider before
+     wrapping, so the break is the layout's, not an arbitrary column's. */
+  max-width: 24ch;
+  margin: var(--s3) 0 0;
 }
 .hero-title em { font-style: italic; font-weight: 500; }
 
-/* The standfirst now LEADS the column instead of sitting demoted under the
-   title. It opens the block (no top margin) and reads a step larger so it
-   carries as the lead-in rather than a caption. Same colour tier, same
-   max-width — placement and scale only. */
+/* Opens the lede column beneath the masthead — no top margin, and it reads a
+   step up from body so it leads its column rather than captioning it. */
 .hero-standfirst {
-  max-width: 44ch;
+  max-width: 40ch;
   font-size: 1.1875rem;
   line-height: 1.55;
-  margin: 0 0 var(--s4);
+  margin: 0 0 var(--s5);
 }
 .hero-actions { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
 
@@ -1157,7 +1164,9 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
   flex-wrap: wrap;
   gap: var(--s2) var(--s5);
   align-items: center;
-  margin: var(--s7) 0 0;
+  /* Tighter than before: it now closes a compact lede column, not a tall
+     single stack, so it sits just under the buttons rather than a screen down. */
+  margin: var(--s5) 0 0;
   padding-top: var(--s4);
   border-top: 1px solid var(--border);
 }
@@ -1213,9 +1222,16 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
 .specimen-metric { color: var(--text); font-weight: 500; }
 
 @media (max-width: 900px) {
-  /* The specimen drops below the argument rather than shrinking into
+  /* One column on phones: the three areas stack masthead -> lede -> specimen,
+     so the specimen drops below the argument rather than shrinking into
      illegibility beside it. */
-  .hero { grid-template-columns: 1fr; gap: var(--s6); padding: 8vh 0 6vh; }
+  .hero {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'masthead' 'lede' 'specimen';
+    gap: var(--s6);
+    padding: 8vh 0 6vh;
+    align-items: stretch;
+  }
   .hero-title { max-width: 18ch; }
   .hero-manifesto { margin-top: var(--s5); }
 }

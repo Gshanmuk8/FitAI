@@ -39,36 +39,36 @@ export default function Home() {
            rather than generous, because nothing anchored the other half.
            The specimen answers "what do I actually get?" in the same
            breath as the claim, which no amount of copy does as fast. */}
+      {/* ---- Editorial masthead, not a centred stack ----
+           The old hero put everything in one left column marching straight
+           down the middle: eyebrow, headline, description, buttons, manifesto,
+           all on the same left edge — the generic shape. Here the headline is
+           a MASTHEAD spanning the full width across the top; everything else
+           reads ACROSS a baseline row beneath it — supporting copy and actions
+           on the left, the live specimen on the right — so the eye travels
+           horizontally, not down a single column. */}
       <section className="hero">
-        <div className="hero-copy">
-          {/* Placement change only — same sentences, reordered hierarchy.
-              The template order is eyebrow -> headline -> small grey
-              standfirst -> buttons, with the description demoted beneath the
-              title. Here the description LEADS: it sits above the headline as
-              the plain-spoken claim, and the headline lands under it as the
-              line you remember. The eyebrow moves down to caption the
-              headline instead of floating alone at the very top. */}
-          <p className="hero-standfirst reveal muted" style={{ animationDelay: '60ms' }}>
+        <header className="hero-masthead">
+          <p className="eyebrow reveal">Your goal · measured daily</p>
+          {/* No gradient across the headline, no tinted word. The emphasis is
+              italic — a gradient headline is the most reliable tell of a
+              template. */}
+          <h1 className="hero-title reveal" style={{ animationDelay: '80ms' }}>
+            Train like the <em>hero</em> of your own story.
+          </h1>
+        </header>
+
+        <div className="hero-lede reveal" style={{ animationDelay: '160ms' }}>
+          <p className="hero-standfirst muted">
             An AI coach that builds the plan, keeps the score, and rewrites tomorrow
             based on how today actually went.
           </p>
-
-          <p className="eyebrow reveal" style={{ animationDelay: '120ms' }}>Your goal · measured daily</p>
-
-          {/* No gradient across the headline, no tinted word. The emphasis
-              is italic — a gradient headline is the most reliable tell of
-              a template. */}
-          <h1 className="hero-title reveal" style={{ animationDelay: '160ms' }}>
-            Train like the <em>hero</em> of your own story.
-          </h1>
-
-          <div className="hero-actions reveal" style={{ animationDelay: '220ms' }}>
+          <div className="hero-actions">
             <ButtonLink to="/signup">Create your plan</ButtonLink>
             <ButtonLink to="/learn" variant="ghost">How it works</ButtonLink>
           </div>
-
           {/* ---- The manifesto, as a quiet caption under a rule ---- */}
-          <p className="hero-manifesto eyebrow reveal" style={{ animationDelay: '300ms' }}>
+          <p className="hero-manifesto eyebrow">
             {MANIFESTO.map((line) => (
               <span key={line}>{line}</span>
             ))}
@@ -78,7 +78,7 @@ export default function Home() {
         {/* The specimen: the app's own vocabulary, at rest. Decorative and
             inert — it is a picture of the product, so it is hidden from
             assistive tech rather than read out as if it were live data. */}
-        <aside className="hero-specimen reveal" aria-hidden="true" style={{ animationDelay: '260ms' }}>
+        <aside className="hero-specimen reveal" aria-hidden="true" style={{ animationDelay: '240ms' }}>
           <div className="specimen-head">
             <span className="eyebrow">Today</span>
             <span className="chip tone-emerald">On pace</span>
