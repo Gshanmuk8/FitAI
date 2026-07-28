@@ -23,6 +23,18 @@ const CLAIMS = [
 
 const MANIFESTO = ['no generic plans', 'no forgotten injuries', 'no lying dashboards'];
 
+// The standfirst was one comma-run — "builds the plan, keeps the score, and
+// rewrites tomorrow based on how today actually went" — which reads as a
+// generic three-verb tagline. It is really the coach's loop: three verbs,
+// each acting on one thing. Set as an enumerated loop, the same words become
+// a description of how the product actually works instead of a slogan. Same
+// copy, same tokens; only the structure changes.
+const LOOP = [
+  { verb: 'Builds', object: 'the plan' },
+  { verb: 'Keeps', object: 'the score' },
+  { verb: 'Rewrites', object: 'tomorrow — from how today actually went' },
+];
+
 export default function Home() {
   // Already signed in (e.g. arriving from the email confirmation link)?
   // The marketing page isn't for you — go to the app. Dashboard sends
@@ -50,10 +62,24 @@ export default function Home() {
             Train like the <em>hero</em> of your own story.
           </h1>
 
+          {/* The lead-in stays prose; the three verbs it used to bury in a
+              comma-run are lifted out into an enumerated loop below it, so the
+              eye reads the coach's mechanism line by line rather than skimming
+              a slogan. */}
           <p className="hero-standfirst reveal muted" style={{ animationDelay: '140ms' }}>
-            An AI coach that builds the plan, keeps the score, and rewrites tomorrow
-            based on how today actually went.
+            One AI coach, running your training on a loop.
           </p>
+
+          <ol className="hero-loop reveal" style={{ animationDelay: '180ms' }}>
+            {LOOP.map((step, i) => (
+              <li key={step.verb} className="hero-loop-step">
+                <span className="hero-loop-index mono" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                <span className="hero-loop-text">
+                  <em>{step.verb}</em> {step.object}
+                </span>
+              </li>
+            ))}
+          </ol>
 
           <div className="hero-actions reveal" style={{ animationDelay: '220ms' }}>
             <ButtonLink to="/signup">Create your plan</ButtonLink>
