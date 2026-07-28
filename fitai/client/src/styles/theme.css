@@ -1134,45 +1134,22 @@ input[type='file'] { min-height: 0; padding: var(--s2); background: transparent;
   letter-spacing: -0.035em;
   line-height: 1.04;
   max-width: 15ch;
-  margin: var(--s4) 0 0;
+  /* The headline now follows the eyebrow, which follows the lead-in — so it
+     no longer opens the column and takes a tighter top gap. */
+  margin: var(--s2) 0 0;
 }
 .hero-title em { font-style: italic; font-weight: 500; }
 
+/* The standfirst now LEADS the column instead of sitting demoted under the
+   title. It opens the block (no top margin) and reads a step larger so it
+   carries as the lead-in rather than a caption. Same colour tier, same
+   max-width — placement and scale only. */
 .hero-standfirst {
   max-width: 44ch;
-  font-size: 1.0625rem;
-  line-height: 1.6;
-  margin: var(--s4) 0 var(--s5);
+  font-size: 1.1875rem;
+  line-height: 1.55;
+  margin: 0 0 var(--s4);
 }
-/* ---- the coach's loop ----
-   The three verbs that used to sit in the standfirst's comma-run, lifted into
-   an enumerated list. Each step is a hairline-led row so the loop reads as a
-   sequence rather than a sentence. Uses only existing tokens — no new colour,
-   no new component; the numerals borrow the same mono/faint treatment as the
-   claims index below, so the page reads as one system. */
-.hero-loop {
-  list-style: none;
-  margin: var(--s5) 0;
-  padding: 0;
-  max-width: 44ch;
-}
-.hero-loop-step {
-  display: grid;
-  grid-template-columns: 2.25rem minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--s3);
-  padding: var(--s3) 0;
-  border-top: 1px solid var(--border);
-}
-.hero-loop-step:last-child { border-bottom: 1px solid var(--border); }
-.hero-loop-index {
-  font-size: var(--t-label);
-  letter-spacing: 0.14em;
-  color: var(--faint);
-}
-.hero-loop-text { font-size: 1.0625rem; line-height: 1.5; color: var(--muted); }
-.hero-loop-text em { font-style: normal; font-weight: 600; color: var(--text); }
-
 .hero-actions { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
 
 .hero-manifesto {
