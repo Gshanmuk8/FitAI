@@ -81,6 +81,7 @@ export default function App() {
           <Route path="/memory" element={<ProtectedRoute><Memory /></ProtectedRoute>} />
           {/* Settings folded into Profile — keep old bookmarks working. */}
           <Route path="/settings" element={<Navigate to="/profile" replace />} />
+          <Route path="*" element={<PublicShell><div className="page page-narrow"><h1 className="page-title">Page not found</h1><p>This link is no longer available.</p><a href="/dashboard">Go to your dashboard</a></div></PublicShell>} />
         </Routes>
         </ErrorBoundary>
       </BrowserRouter>

@@ -10,7 +10,7 @@ export async function isOnboarded() {
     const data = await apiFetch('/api/onboarding');
     return Boolean(data?.plan);
   } catch (err) {
-    if (/no profile found/i.test(err.message)) return false;
+    if (err.noProfile) return false;
     throw err;
   }
 }

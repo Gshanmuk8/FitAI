@@ -25,4 +25,4 @@ ENV NODE_ENV=production
 EXPOSE 4000
 
 WORKDIR /app/server
-CMD ["node", "server.js"]
+CMD ["npm", "run", "start:migrate"]

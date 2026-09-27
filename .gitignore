@@ -4,3 +4,6 @@
 
 # LODESTAR — local AI execution record
 .lodestar/
+
+.vercel
+.env*

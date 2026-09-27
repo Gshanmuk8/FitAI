@@ -21,7 +21,7 @@ export default function AuthCallback() {
     const raw =
       query.get('error_description') || hash.get('error_description') ||
       query.get('error') || hash.get('error');
-    return raw ? decodeURIComponent(raw.replace(/\+/g, ' ')) : null;
+    return raw || null;
   });
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function AuthCallback() {
     if (!user) {
       navigate('/login', {
         replace: true,
-        state: { notice: urlError || 'Your email is confirmed. Please log in to continue.' },
+        state: { notice: urlError || 'Please sign in to continue. If your email link has expired, request a new confirmation link after signing in.' },
       });
       return;
     }

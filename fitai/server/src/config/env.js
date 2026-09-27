@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: require('path').join(__dirname, '../../.env') });
 
 // A value copied straight from .env's placeholders ("your-gemini-api-key",
 // "https://your-project.supabase.co") is not configuration — treat it the

@@ -1,6 +1,25 @@
--- FitAI: all migrations combined (000-011 except 010), in order. Idempotent —
--- safe to run more than once. On hosted Supabase the auth-schema shim
--- is guarded by an existence check, so it executes nothing there.
+-- FitAI: complete setup for a NEW, DEDICATED Supabase project.
+-- Run this entire file in Supabase SQL Editor as postgres.
+-- Generated from all SQL files currently in server/migrations (000-009, 011-012).
+-- There is no migration 010 in this checkout.
+--
+-- Includes RLS, REST-role grant revocation and the migration ledger.
+-- The Express backend owns data access; browser keys are for Supabase Auth.
+-- Do not add public/anon access policies to make the app work.
+-- Migration 012 revokes REST access across public: do NOT run in a project
+-- shared with another app that depends on public-schema REST access.
+-- Supabase manages auth.users; this does not copy or create real accounts.
+-- No API keys or passwords belong in this SQL.
+--
+-- Re-running this file is supported for this schema. One transaction prevents
+-- a partial setup; an error rolls back the whole transaction.
+begin;
+set local search_path = public, extensions;
+
+create table if not exists public.schema_migrations (
+  name text primary key,
+  applied_at timestamptz default now()
+);
 
 -- ============================================================
 -- 000_base_schema.sql
@@ -48,6 +67,9 @@ create table if not exists public.users_profile (
   created_at            timestamptz default now(),
   updated_at            timestamptz default now()
 );
+
+insert into public.schema_migrations (name) values ('000_base_schema.sql')
+on conflict (name) do nothing;
 
 -- ============================================================
 -- 001_memory_and_tracking_layer.sql
@@ -108,6 +130,9 @@ create table if not exists public.workout_logs (
 
 create index if not exists idx_workout_logs_user_exercise on public.workout_logs(user_id, exercise_name, logged_at desc);
 create index if not exists idx_memory_summaries_user on public.memory_summaries(user_id, created_at desc);
+
+insert into public.schema_migrations (name) values ('001_memory_and_tracking_layer.sql')
+on conflict (name) do nothing;
 
 -- ============================================================
 -- 002_plans_pace_and_memory_depth.sql
@@ -202,6 +227,9 @@ create index if not exists idx_body_weight_logs_user on public.body_weight_logs(
 create index if not exists idx_progress_snapshots_user on public.progress_snapshots(user_id, date desc);
 create index if not exists idx_daily_checklists_user_date on public.daily_checklists(user_id, date desc);
 
+insert into public.schema_migrations (name) values ('002_plans_pace_and_memory_depth.sql')
+on conflict (name) do nothing;
+
 -- ============================================================
 -- 003_meal_diary.sql
 -- ============================================================
@@ -226,6 +254,9 @@ create table if not exists public.meals (
 
 create index if not exists idx_meals_user_date on public.meals(user_id, date desc);
 
+insert into public.schema_migrations (name) values ('003_meal_diary.sql')
+on conflict (name) do nothing;
+
 -- ============================================================
 -- 004_user_timezone.sql
 -- ============================================================
@@ -238,6 +269,9 @@ create index if not exists idx_meals_user_date on public.meals(user_id, date des
 
 alter table public.users_profile
   add column if not exists timezone text;
+
+insert into public.schema_migrations (name) values ('004_user_timezone.sql')
+on conflict (name) do nothing;
 
 -- ============================================================
 -- 005_row_level_security.sql
@@ -262,12 +296,19 @@ alter table public.reviews                    enable row level security;
 alter table public.user_exercise_preferences  enable row level security;
 alter table public.meals                      enable row level security;
 
+insert into public.schema_migrations (name) values ('005_row_level_security.sql')
+on conflict (name) do nothing;
+
 -- ============================================================
 -- 006_daily_values_and_briefing.sql
 -- ============================================================
+-- Migration 006: manual daily values + the AI daily briefing.
+--
 -- (1) "Today's Mission" stops being tick-only: the user types actual numbers
 --     (protein, water, sleep, steps), a daily weigh-in, and a free-text note.
---     Entering a value auto-completes the matching boolean item server-side.
+--     Entering a value auto-completes the matching boolean item server-side,
+--     so the existing five *_completed columns stay the source of truth for
+--     adherence while these columns carry the real figures the AI reads.
 alter table public.daily_checklists
   add column if not exists protein_grams numeric(6,1),
   add column if not exists water_ml       integer,
@@ -276,7 +317,10 @@ alter table public.daily_checklists
   add column if not exists weight_kg      numeric(5,1),
   add column if not exists notes          text;
 
--- (2) The AI-authored progress briefing, at most once per user per local day.
+-- (2) The AI-authored progress briefing. The coach reads the user's plan and
+--     their logged history and writes it at most once per user per local day
+--     (computed lazily on the first dashboard load, reused for 24h). One row
+--     per user per day; a re-run the same day overwrites in place.
 create table if not exists public.daily_briefings (
   user_id    uuid not null references auth.users(id) on delete cascade,
   date       date not null default current_date,
@@ -285,23 +329,39 @@ create table if not exists public.daily_briefings (
   primary key (user_id, date)
 );
 
+-- Same posture as every other user-owned table (migration 005): RLS on, no
+-- policies = deny-all for the anon/authenticated REST surface. The Express
+-- server connects as owner and is unaffected.
 alter table public.daily_briefings enable row level security;
+
+insert into public.schema_migrations (name) values ('006_daily_values_and_briefing.sql')
+on conflict (name) do nothing;
 
 -- ============================================================
 -- 007_training_prefs_custom_items_progress.sql
 -- ============================================================
--- (1) Onboarding: the user states how many days they can train and describes
---     their training style in free text; both drive AI plan generation.
+-- Migration 007: training preferences, custom checklist items, AI progress analyses.
+--
+-- (1) Onboarding stops forcing training frequency through the activity-level
+--     heuristic: the user states how many days they can train and describes
+--     their own training style in free text ("yoga + powerlifting", "calisthenics
+--     and cardio"). Both flow verbatim (sanitized) into plan generation — the AI
+--     designs the split around them instead of a hardcoded activity->days table.
 alter table public.users_profile
   add column if not exists training_days_per_week integer,
   add column if not exists training_style text;
 
--- (2) User-authored "Today's Mission" items: jsonb array of {id, label, done}.
+-- (2) "Today's Mission" accepts user-authored items alongside the plan-derived
+--     five. Stored as a jsonb array of { id, label, done } on the day's row so
+--     they roll over daily like everything else and stay immutable history.
 alter table public.daily_checklists
   add column if not exists custom_items jsonb not null default '[]'::jsonb;
 
--- (3) The AI-authored progress analysis (Progress page), one row per user per
---     local day; input_hash triggers a recompute when new data lands.
+-- (3) The AI-authored progress analysis (Progress page). Computed lazily on
+--     first view, one row per user per local day. input_hash fingerprints the
+--     data the analysis was computed from (weigh-ins, adherence, workouts) so
+--     new data the same day triggers a recompute instead of serving a stale
+--     read of the user's journey.
 create table if not exists public.progress_analyses (
   user_id    uuid not null references auth.users(id) on delete cascade,
   date       date not null default current_date,
@@ -311,32 +371,53 @@ create table if not exists public.progress_analyses (
   primary key (user_id, date)
 );
 
+-- Same posture as migration 005: RLS on, no policies = deny-all for the
+-- anon/authenticated REST surface; the Express server connects as owner.
 alter table public.progress_analyses enable row level security;
 
 -- (4) The progress analysis summarizes workout_logs by day for one user.
+--     The existing (user_id, exercise_name, logged_at) index serves the
+--     progression lookups; this one serves the time-window scan.
 create index if not exists idx_workout_logs_user_logged_at
   on public.workout_logs(user_id, logged_at desc);
+
+insert into public.schema_migrations (name) values ('007_training_prefs_custom_items_progress.sql')
+on conflict (name) do nothing;
 
 -- ============================================================
 -- 008_calories_tracking.sql
 -- ============================================================
--- Calories join the daily mission as a first-class tracked value, same
--- shape as protein (006): the user types (or the meal diary syncs) the
--- day's actual kcal, and a boolean completion is derived from the plan's
--- calorie target — directionally per goal (lose_fat: stay at or under;
--- build_muscle: reach it; otherwise: within ±10%).
+-- Migration 008: calories join the daily mission as a first-class tracked
+-- value, same shape as protein (006): the user types (or the meal diary
+-- syncs) the day's actual kcal, and a boolean completion is derived from
+-- the plan's calorie target — directionally per goal (lose_fat: stay at or
+-- under; build_muscle: reach it; otherwise: within ±10%).
 alter table public.daily_checklists
   add column if not exists calories_kcal      integer,
   add column if not exists calories_completed boolean not null default false;
 
+insert into public.schema_migrations (name) values ('008_calories_tracking.sql')
+on conflict (name) do nothing;
+
 -- ============================================================
 -- 009_backfill_plan_started_at.sql
 -- ============================================================
--- Profiles onboarded before 002 kept plan_started_at NULL, and the services
--- fell back to users_profile.updated_at to answer "which week is this?" —
--- so a profile edit reset "week 6 of 16" to week 0. Give those rows a real
--- start (earliest logged day, else account creation) so the clock can't be
--- edited. Only NULL rows are touched; never-onboarded profiles stay NULL.
+-- Migration 009: give every onboarded profile a real plan_started_at.
+--
+-- plan_started_at arrived in 002. Profiles onboarded before that ran kept it
+-- NULL, and the services fell back to users_profile.updated_at to answer
+-- "which week of the plan is this?". updated_at moves on every profile edit
+-- (PATCH /api/profile), so for those legacy rows changing your height reset
+-- "week 6 of 16" back to week 0. The clock must not be editable.
+--
+-- Backfill order, most truthful first:
+--   1. the user's earliest logged day  — when they actually started working
+--   2. the profile row's created_at    — when the account was set up
+--   3. now()                           — last resort, so the column is never
+--                                        NULL for someone who has a plan
+-- Only NULL rows are touched; a profile that already has a start keeps it.
+-- Profiles that never completed onboarding stay NULL on purpose: they have no
+-- plan, so they have no clock, and the services already render that as "—".
 update public.users_profile p
 set plan_started_at = coalesce(
       (select min(c.date)::timestamptz from public.daily_checklists c where c.user_id = p.user_id),
@@ -346,12 +427,8 @@ set plan_started_at = coalesce(
 where p.plan_started_at is null
   and p.onboarding_completed = true;
 
--- NOTE: migration 010 (dropping the four unused tables from 002 —
--- body_weight_logs, progress_snapshots, achievements, reviews) is
--- deliberately NOT bundled here. It is destructive and ships on its own
--- branch so it can be applied after a backup. Nothing in the app reads or
--- writes those tables, so a database provisioned from this file simply
--- carries four empty tables until 010 is applied.
+insert into public.schema_migrations (name) values ('009_backfill_plan_started_at.sql')
+on conflict (name) do nothing;
 
 -- ============================================================
 -- 011_user_local_dates_and_value_provenance.sql
@@ -393,3 +470,56 @@ create index if not exists idx_workout_logs_user_date
 --     "protein_grams": "diary" }. Absent key = never explicitly written.
 alter table public.daily_checklists
   add column if not exists values_source jsonb not null default '{}'::jsonb;
+
+insert into public.schema_migrations (name) values ('011_user_local_dates_and_value_provenance.sql')
+on conflict (name) do nothing;
+
+-- ============================================================
+-- 012_secure_schema_migrations_and_revoke_rest_grants.sql
+-- ============================================================
+-- Migration 012: close the one gap the Supabase RLS linter flagged, and
+-- harden the REST surface with defence-in-depth grant revocation.
+--
+-- Context: migration 005 already enabled RLS (deny-all, zero policies) on
+-- every APPLICATION table, and all data access goes through the Express API
+-- as the table owner (which bypasses RLS). The client's anon key is used
+-- ONLY for Supabase Auth — it never calls PostgREST (.from/.rpc/.storage).
+--
+-- Two things were still open:
+--   1. `schema_migrations` is created at runtime by scripts/migrate.js, so it
+--      was never in 005's list — it is the sole `rls_disabled_in_public`
+--      table the linter reports. Enable + force RLS with no policy: deny-all.
+--   2. migration 005 neutered anon/authenticated via RLS but left their broad
+--      table GRANTs in place. RLS already blocks them, but revoking the grants
+--      means a future policy mistake cannot silently re-expose a table. The
+--      server is the owner and is unaffected.
+-- Idempotent; harmless on plain Postgres (owner connections bypass RLS).
+
+alter table public.schema_migrations enable row level security;
+alter table public.schema_migrations force row level security;
+
+-- Defence in depth: the REST roles have no legitimate use here.
+do $$
+declare t record;
+begin
+  for t in
+    select tablename from pg_tables where schemaname = 'public'
+  loop
+    execute format('revoke all on public.%I from anon, authenticated', t.tablename);
+  end loop;
+end $$;
+
+-- Also revoke the schema-usage + default privileges so newly created tables
+-- do not silently re-grant to the REST roles on the next migration.
+revoke all on schema public from anon, authenticated;
+alter default privileges in schema public revoke all on tables from anon, authenticated;
+alter default privileges in schema public revoke all on sequences from anon, authenticated;
+alter default privileges in schema public revoke all on functions from anon, authenticated;
+
+insert into public.schema_migrations (name) values ('012_secure_schema_migrations_and_revoke_rest_grants.sql')
+on conflict (name) do nothing;
+
+commit;
+
+-- Expected for this version: 12 migrations applied.
+select count(*) as migrations_applied from public.schema_migrations;

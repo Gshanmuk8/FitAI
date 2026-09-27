@@ -1,44 +1,45 @@
 import { supabase } from '../utils/supabaseClient';
+import { authResult } from '../utils/authErrors';
 
 export async function signUp(email, password) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
+  return authResult(() => supabase.auth.signUp({
+    email: email.trim(),
     password,
     // Where the confirmation email's link lands. /auth/callback waits for the
     // session to be established, then forwards the user into the app. Must be
     // in the Redirect URLs allow-list in Supabase Auth settings.
     options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-  });
-  if (error) throw error;
-  return data;
+  }));
 }
 
 export async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
+  return authResult(() => supabase.auth.signInWithPassword({ email: email.trim(), password }));
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  return authResult(() => supabase.auth.signOut({ scope: 'local' }));
 }
 
 export async function getSession() {
-  const { data } = await supabase.auth.getSession();
+  const data = await authResult(() => supabase.auth.getSession());
   return data.session;
 }
 
 // Sends Supabase's password-recovery email; the link lands the user on
 // /reset-password with a recovery session already established.
 export async function requestPasswordReset(email) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  return authResult(() => supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: `${window.location.origin}/reset-password`,
-  });
-  if (error) throw error;
+  }));
 }
 
 export async function updatePassword(newPassword) {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) throw error;
+  return authResult(() => supabase.auth.updateUser({ password: newPassword }));
+}
+
+export async function resendConfirmation(email) {
+  return authResult(() => supabase.auth.resend({
+    type: 'signup', email: email.trim(),
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+  }));
 }

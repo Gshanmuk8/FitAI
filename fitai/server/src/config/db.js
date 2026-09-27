@@ -17,23 +17,17 @@ function isLocalHost(connString) {
   }
 }
 
-// Supabase's direct-connection host (db.<ref>.supabase.co) is now IPv6-only.
-// IPv4-only networks (Render, many CI runners) can't route to it, so every
-// connection dies with `connect ENETUNREACH …:5432` before TLS even starts.
-// If we're handed a direct URL, transparently rewrite it to the Session
-// pooler (aws-0-<region>.pooler.supabase.com) — IPv4-reachable and the
-// Supabase-recommended endpoint for such networks. Setting DATABASE_URL to a
-// pooler URL directly is still preferred; this is a safety net so a stale
-// direct URL doesn't take prod down. Region defaults to this project's
-// (ap-northeast-1); override with SUPABASE_POOLER_REGION for other projects.
+// Use the exact connection string from the project's Connect dialog.
+// Pooler hosts vary by project, region and cluster; guessing the old project's
+// region silently breaks a newly configured project. Legacy direct URLs may
+// opt into a rewrite only with the actual session-pooler hostname supplied.
 function toReachableConnString(url) {
   try {
     const u = new URL(url);
     const m = u.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
-    if (!m) return { url, rewritten: false };
+    if (!m || !process.env.SUPABASE_POOLER_HOST) return { url, rewritten: false };
     const ref = m[1];
-    const region = process.env.SUPABASE_POOLER_REGION || "ap-northeast-1";
-    u.hostname = `aws-0-${region}.pooler.supabase.com`;
+    u.hostname = process.env.SUPABASE_POOLER_HOST;
     if (u.username === "postgres") u.username = `postgres.${ref}`; // pooler tenant form
     return { url: u.toString(), rewritten: true };
   } catch {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { updatePassword } from '../../services/authService';
 import Button from '../../components/ui/Button';
@@ -38,6 +38,7 @@ export default function ResetPassword() {
           <p className="muted" style={{ margin: 0 }}>
             This reset link is invalid or has expired. Request a new one from the sign-in page.
           </p>
+          <Link to="/forgot-password">Request a new reset link</Link>
         </div>
       </div>
     );

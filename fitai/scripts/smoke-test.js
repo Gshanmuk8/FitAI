@@ -11,6 +11,7 @@
  *   -> tutor fallback -> HTTP /health + auth rejection.
  *
  * Run: node scripts/smoke-test.js   (dev-only; uses devDependency embedded-postgres)
+ * Add --setup-sql to verify the Supabase SQL Editor bundle instead of the runner.
  */
 const fs = require('fs');
 const path = require('path');
@@ -25,6 +26,7 @@ process.env.DATABASE_URL = `postgresql://postgres:password@localhost:${PORT}/${D
 process.env.SUPABASE_URL = 'https://your-project.supabase.co';
 process.env.SUPABASE_SERVICE_KEY = 'your-service-role-key';
 process.env.NODE_ENV = 'development';
+process.env.REDIS_URL = '';
 // The whole point is exercising the KEYLESS path (fallbacks, never blank
 // screens) — a developer's .env with real provider keys must not leak in,
 // or "keyless -> template plan" tur
@@ -56,6 +58,7 @@ async function main() {
     password: 'password',
     port: PORT,
     persistent: false,
+    initdbFlags: ['--encoding=UTF8'],
   });
 
   console.log('Starting embedded Postgres…');
@@ -79,10 +82,37 @@ async function run(epg) {
 
   // ---- migrations from scratch ----
   const migrationsDir = path.join(__dirname, '..', 'server', 'migrations');
-  for (const file of fs.readdirSync(migrationsDir).sort()) {
-    await pool.query(fs.readFileSync(path.join(migrationsDir, file), 'utf8'));
+  // Supabase supplies these roles; a plain local PostgreSQL cluster does not.
+  await pool.query('CREATE ROLE anon; CREATE ROLE authenticated');
+  const migrationFiles = fs.readdirSync(migrationsDir).filter((file) => file.endsWith('.sql')).sort();
+  if (process.argv.includes('--setup-sql')) {
+    const setupSql = fs.readFileSync(path.join(__dirname, 'supabase-setup.sql'), 'utf8');
+    for (const file of migrationFiles) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      assert.ok(setupSql.replace(/\r\n/g, '\n').includes(sql.replace(/\r\n/g, '\n').trim()), `${file} is fully included in the SQL Editor bundle`);
+    }
+    await pool.query(setupSql);
+    await pool.query(setupSql); // SQL Editor retries must not duplicate or fail.
+    const { rows } = await pool.query('select name from public.schema_migrations order by name');
+    assert.deepEqual(rows.map((row) => row.name), migrationFiles, 'ledger matches the deploy migration runner');
+    const { rows: tables } = await pool.query("select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'");
+    assert.equal(tables.length, 14, 'all 13 app tables plus the migration ledger exist');
+    for (const table of tables) {
+      assert.equal(table.relrowsecurity, true, `${table.relname} has RLS enabled`);
+      for (const role of ['anon', 'authenticated']) {
+        const { rows: [grants] } = await pool.query('select has_table_privilege($1, $2, \'SELECT\') as allowed', [role, `public.${table.relname}`]);
+        assert.equal(grants.allowed, false, `${role} has no direct SELECT grant on ${table.relname}`);
+      }
+    }
+    step(`SQL Editor bundle applies twice, records ${migrationFiles.length} migrations, and protects all ${tables.length} public tables`);
+  } else {
+    // Match the migration runner, which creates its ledger before migration 012.
+    await pool.query('CREATE TABLE IF NOT EXISTS schema_migrations (name text primary key, applied_at timestamptz default now())');
+    for (const file of migrationFiles) {
+      await pool.query(fs.readFileSync(path.join(migrationsDir, file), 'utf8'));
+    }
+    step(`all ${migrationFiles.length} migrations apply cleanly on an empty database`);
   }
-  step(`all ${fs.readdirSync(migrationsDir).length} migrations apply cleanly on an empty database`);
 
   // ---- a user signs up (auth shim stands in for Supabase auth) ----
   const { rows: [user] } = await pool.query(
@@ -121,6 +151,37 @@ async function run(epg) {
   assert.ok(saved.plan_started_at, 'goal clock started');
   assert.ok(saved.ai_plan.days, 'plan persisted as jsonb');
   step('plan persisted, goal clock running');
+
+  // Returning to onboarding or retrying a completed submit cannot erase a plan.
+  const { completeOnboarding } = require('../server/src/controllers/onboardingController');
+  const repeated = await new Promise((resolve, reject) => completeOnboarding(
+    { user: { id: userId }, body: { age: 99, goal: 'maintain' } },
+    { json: resolve }, reject,
+  ));
+  assert.deepEqual(repeated.plan, saved.ai_plan);
+  assert.equal(repeated.profile.age, saved.age);
+  assert.equal(repeated.profile.plan_started_at.getTime(), saved.plan_started_at.getTime());
+  assert.equal(await upsertProfile(userId, { age: 99 }, { onlyWithoutPlan: true }), undefined);
+  assert.equal(await savePlan(userId, { days: [] }, { onlyIfMissing: true }), undefined);
+  assert.deepEqual((await getProfile(userId)).ai_plan, saved.ai_plan);
+  step('repeat onboarding preserves the saved profile, plan and goal clock');
+
+  const { rows: [newUser] } = await pool.query(
+    "INSERT INTO auth.users (email) VALUES ('second-smoke@test.local') RETURNING id"
+  );
+  assert.equal(await getProfile(newUser.id), null);
+  const fresh = await new Promise((resolve, reject) => completeOnboarding(
+    { user: { id: newUser.id }, body: {
+      age: 25, heightCm: 170, weightKg: 70, goal: 'maintain',
+      activityLevel: 'lightly_active', equipment: 'home', sex: 'female',
+      timeframeWeeks: 12, trainingDaysPerWeek: 3,
+    } }, { json: resolve }, reject,
+  ));
+  assert.equal(fresh.profile.user_id, newUser.id);
+  assert.equal(fresh.profile.gym_availability, 'home');
+  assert.equal(fresh.plan.days.length, 3);
+  assert.deepEqual((await getProfile(userId)).ai_plan, saved.ai_plan);
+  step('new-account onboarding generates and saves its own plan without changing another account');
 
   // ---- today's mission, generated from the plan ----
   const { getTodayEnriched } = require('../server/src/services/checklist/checklistService');

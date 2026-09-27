@@ -36,6 +36,8 @@ export default function Onboarding() {
   const [error, setError] = useState('');
   // null = still checking, false = fresh account, true = plan exists.
   const [alreadyOnboarded, setAlreadyOnboarded] = useState(null);
+  const [checkError, setCheckError] = useState('');
+  const [checkAttempt, setCheckAttempt] = useState(0);
   const navigate = useNavigate();
 
   // Guard against the refresh trap: a user who refreshes mid-submit (or
@@ -43,10 +45,31 @@ export default function Onboarding() {
   // generate a SECOND plan and restart their goal clock. If a plan already
   // exists, say so instead of showing the form.
   useEffect(() => {
+    let active = true;
+    setCheckError('');
     apiFetch('/api/onboarding')
-      .then((res) => setAlreadyOnboarded(Boolean(res?.plan)))
-      .catch(() => setAlreadyOnboarded(false)); // 404 = not onboarded; show the form
-  }, []);
+      .then((res) => {
+        if (!active) return;
+        setAlreadyOnboarded(Boolean(res?.plan));
+        if (res?.profile && !res.plan) {
+          const p = res.profile;
+          setForm((f) => ({ ...f,
+            age: p.age ?? '', heightCm: p.height_cm ?? '', weightKg: p.weight_kg ?? '',
+            targetWeightKg: p.target_weight_kg ?? '', sex: p.sex || f.sex,
+            goal: p.goal || f.goal, activityLevel: p.activity_level || f.activityLevel,
+            equipment: p.gym_availability || f.equipment, timeframeWeeks: p.timeframe_weeks ?? '12',
+            injuries: p.injuries || '', dietaryRestrictions: p.dietary_restrictions || '',
+            trainingDaysPerWeek: p.training_days_per_week ?? '', trainingStyle: p.training_style || '',
+          }));
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        if (err.noProfile) setAlreadyOnboarded(false);
+        else setCheckError(err.message);
+      });
+    return () => { active = false; };
+  }, [checkAttempt]);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -90,6 +113,14 @@ export default function Onboarding() {
     }
   }
 
+  if (checkError) return (
+    <div className="page page-narrow">
+      <h1 className="page-title">Could not load your account</h1>
+      <p role="alert">{checkError}</p>
+      <Button onClick={() => setCheckAttempt((n) => n + 1)}>Try again</Button>
+      <ButtonLink to="/dashboard" variant="ghost">Back to Today</ButtonLink>
+    </div>
+  );
   if (alreadyOnboarded === null) return <div className="page-loading">Loading…</div>;
 
   if (alreadyOnboarded) {

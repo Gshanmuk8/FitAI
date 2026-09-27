@@ -24,6 +24,9 @@ business math used by both sides).
 
 ## Setup
 
+For the planned fresh Supabase project and the current Vercel/Render deployment,
+follow [new Supabase setup](docs/new-supabase-setup.md).
+
 **1. Install dependencies**
 
 ```bash
@@ -111,7 +114,7 @@ Sanity check: http://localhost:4000/health should return
 | Symptom | Cause / fix |
 |---|---|
 | `ERR_CONNECTION_REFUSED` on :5173 | dev servers not running — start both commands above |
-| "Failed to fetch" on signup/login | `client/.env` still has placeholder Supabase values, or you edited env files without restarting the dev servers (env is read at startup) |
+| "Failed to fetch" on signup/login | Check that the Supabase project is active/reachable and the URL/key match. Restart local dev or rebuild Vercel after changing frontend variables. |
 | `/health` says `"database":"unreachable"` | wrong `DATABASE_URL` (check password and that you copied the URI form) |
 | Server exits at boot: "Missing required env var" | `server/.env` missing — copy from `.env.example` |
 | Confirmation email lands on a dead page | set Supabase Site URL to `http://localhost:5173` |

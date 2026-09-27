@@ -5,15 +5,25 @@ const { propagatePlanChange } = require('../services/plan/planChangeEffects');
 async function completeOnboarding(req, res, next) {
   try {
     const userId = req.user.id;
+    const existing = await getProfile(userId);
+    if (existing?.ai_plan) return res.json({ profile: existing, plan: existing.ai_plan });
     // equipment is the plan-relevant fact; persist it as gym_availability
     // so regeneration months later still knows what the user trains with.
     const profile = await upsertProfile(userId, {
       ...req.body,
       gymAvailability: req.body.gymAvailability || req.body.equipment,
-    });
+    }, { onlyWithoutPlan: true });
+    if (!profile) {
+      const current = await getProfile(userId);
+      return res.json({ profile: current, plan: current.ai_plan });
+    }
     const plan = await generateUserPlan(generationInputFromProfileRow(userId, profile));
     // A fresh onboarding starts the goal clock (restartClock: true).
-    const updated = await savePlan(userId, plan, { restartClock: true });
+    const updated = await savePlan(userId, plan, { restartClock: true, onlyIfMissing: true });
+    if (!updated) {
+      const current = await getProfile(userId);
+      return res.json({ profile: current, plan: current.ai_plan });
+    }
     await syncUserState(userId, plan, profile.goal);
     // Covers the edge where a plan-less account already opened the dashboard
     // today and froze a bare checklist row — it picks up the new plan now.

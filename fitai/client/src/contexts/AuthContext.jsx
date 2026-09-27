@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
+import { signOut as signOutAccount } from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -26,14 +27,21 @@ export function AuthProvider({ children }) {
   const lastUserId = useRef(null);
 
   useEffect(() => {
+    let active = true;
+    let receivedEvent = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active || receivedEvent) return;
       lastUserId.current = session?.user?.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+    }).catch(() => {
+      if (active) setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      receivedEvent = true;
       // Fires for expiry and cross-tab auth changes too, not just our button —
       // so this is the one reliable place to purge the old account's cache.
       // Purge on sign-out AND on the identity flipping straight from one
@@ -46,14 +54,15 @@ export function AuthProvider({ children }) {
       lastUserId.current = nextUserId;
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   async function signOut() {
+    await signOutAccount();
     clearUserStorage();
-    await supabase.auth.signOut();
   }
 
   return (

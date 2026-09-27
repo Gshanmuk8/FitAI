@@ -29,6 +29,11 @@ const TOKEN_TTL_MS = 60 * 1000;
 const verifiedTokens = createExpiringMap({ ttlMs: TOKEN_TTL_MS, maxEntries: 10_000 });
 const tokenKey = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
+function isAuthServiceUnavailable(error) {
+  return Boolean(error && (error.name === 'AuthRetryableFetchError' ||
+    error.status === 0 || error.status === 429 || error.status >= 500));
+}
+
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -44,6 +49,9 @@ async function requireAuth(req, res, next) {
     }
 
     const { data, error } = await supabase.auth.getUser(token);
+    if (isAuthServiceUnavailable(error)) {
+      return res.status(503).json({ error: 'Authentication service unavailable — try again shortly.' });
+    }
     if (error || !data?.user) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
@@ -64,4 +72,4 @@ async function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth };
+module.exports = { requireAuth, isAuthServiceUnavailable };

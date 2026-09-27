@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
-import { signIn } from '../../services/authService';
+import { signIn, resendConfirmation } from '../../services/authService';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 
@@ -10,6 +10,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [confirmationNotice, setConfirmationNotice] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   // Where to return after login: the protected page they were bounced from
@@ -27,13 +29,28 @@ export default function Login() {
     if (busy) return;
     setBusy(true);
     setError('');
+    setUnconfirmed(false);
+    setConfirmationNotice('');
     try {
       await signIn(email, password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message);
+      setUnconfirmed(err.code === 'email_not_confirmed');
       setBusy(false);
     }
+  }
+
+  async function handleResend() {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await resendConfirmation(email);
+      setConfirmationNotice('If this address needs confirmation, a new link is on its way. Check your inbox and spam folder.');
+      setUnconfirmed(false);
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
   }
 
   // The form is the DIRECT child of .page-form — that is what puts it on a
@@ -52,7 +69,9 @@ export default function Login() {
         <label className="label" htmlFor="login-password">Password</label>
         <input className="field" id="login-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" type="password" autoComplete="current-password" required />
 
-        {error && <p className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+        {error && <p role="alert" className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+        {confirmationNotice && <p role="status" className="notice">{confirmationNotice}</p>}
+        {unconfirmed && <Button type="button" variant="ghost" onClick={handleResend} disabled={busy}>Resend confirmation email</Button>}
 
         {/* The one pigment moment on the screen, full width so there is no
             question about what to do next. */}

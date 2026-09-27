@@ -1,7 +1,7 @@
 // Thin data-access layer over the users_profile table (permanent memory tier).
 const { queryAs } = require('../db/userAccess');
 
-async function upsertProfile(userId, profile) {
+async function upsertProfile(userId, profile, { onlyWithoutPlan = false } = {}) {
   const {
     age, heightCm, weightKg, targetWeightKg, goal, activityLevel,
     injuries, dietaryRestrictions, gymAvailability, sex, timeframeWeeks, timezone,
@@ -22,10 +22,11 @@ async function upsertProfile(userId, profile) {
        training_days_per_week = EXCLUDED.training_days_per_week,
        training_style = EXCLUDED.training_style,
        updated_at = NOW()
+     WHERE NOT $16::boolean OR users_profile.ai_plan IS NULL
      RETURNING *`,
     [userId, age, heightCm, weightKg, targetWeightKg, goal, activityLevel,
      injuries, dietaryRestrictions, gymAvailability, sex ?? null, timeframeWeeks ?? null, timezone ?? null,
-     trainingDaysPerWeek ?? null, trainingStyle ?? null]
+     trainingDaysPerWeek ?? null, trainingStyle ?? null, onlyWithoutPlan]
   );
   return rows[0];
 }
@@ -33,15 +34,15 @@ async function upsertProfile(userId, profile) {
 // restartClock: true for onboarding/regeneration (a NEW plan starts the
 // goal timeline now); false for user edits (tweaking exercises must not
 // reset "week 6 of 16" back to week 1).
-async function savePlan(userId, plan, { restartClock = true } = {}) {
+async function savePlan(userId, plan, { restartClock = true, onlyIfMissing = false } = {}) {
   const { rows } = await queryAs(userId,
     `UPDATE users_profile SET
        ai_plan = $1,
        onboarding_completed = true,
        plan_started_at = CASE WHEN $3 THEN NOW() ELSE COALESCE(plan_started_at, NOW()) END,
        updated_at = NOW()
-     WHERE user_id = $2 RETURNING *`,
-    [JSON.stringify(plan), userId, restartClock]
+     WHERE user_id = $2 AND (NOT $4::boolean OR ai_plan IS NULL) RETURNING *`,
+    [JSON.stringify(plan), userId, restartClock, onlyIfMissing]
   );
   return rows[0];
 }
