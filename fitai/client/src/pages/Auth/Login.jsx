@@ -1,24 +1,27 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
-import { signIn, resendConfirmation } from '../../services/authService';
-import { useAuth } from '../../contexts/AuthContext';
-import Button from '../../components/ui/Button';
+import React, { useState } from "react";
+import { useNavigate, useLocation, Link, Navigate } from "react-router-dom";
+import { signIn, resendConfirmation } from "../../services/authService";
+import { useAuth } from "../../contexts/AuthContext";
+import Button from "../../components/ui/Button";
+import PasswordField from "../../components/ui/PasswordField";
 
 export default function Login() {
   const { user, loading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
-  const [confirmationNotice, setConfirmationNotice] = useState('');
+  const [confirmationNotice, setConfirmationNotice] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   // Where to return after login: the protected page they were bounced from
   // (keeping its query/hash), else the dashboard. `notice` is set by
   // /auth/callback after email confirm.
   const fromLoc = location.state?.from;
-  const from = fromLoc ? `${fromLoc.pathname}${fromLoc.search || ''}${fromLoc.hash || ''}` : '/dashboard';
+  const from = fromLoc
+    ? `${fromLoc.pathname}${fromLoc.search || ""}${fromLoc.hash || ""}`
+    : "/dashboard";
   const notice = location.state?.notice;
 
   // Already signed in (e.g. re-visiting /login) — don't show the form.
@@ -28,15 +31,15 @@ export default function Login() {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    setError('');
+    setError("");
     setUnconfirmed(false);
-    setConfirmationNotice('');
+    setConfirmationNotice("");
     try {
       await signIn(email, password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message);
-      setUnconfirmed(err.code === 'email_not_confirmed');
+      setUnconfirmed(err.code === "email_not_confirmed");
       setBusy(false);
     }
   }
@@ -44,13 +47,18 @@ export default function Login() {
   async function handleResend() {
     if (busy) return;
     setBusy(true);
-    setError('');
+    setError("");
     try {
       await resendConfirmation(email);
-      setConfirmationNotice('If this address needs confirmation, a new link is on its way. Check your inbox and spam folder.');
+      setConfirmationNotice(
+        "If this address needs confirmation, a new link is on its way. Check your inbox and spam folder.",
+      );
       setUnconfirmed(false);
-    } catch (err) { setError(err.message); }
-    finally { setBusy(false); }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   // The form is the DIRECT child of .page-form — that is what puts it on a
@@ -60,31 +68,83 @@ export default function Login() {
   return (
     <div className="page page-form page-enter">
       <form onSubmit={handleSubmit}>
-        <h1 className="page-title">Sign in</h1>
+        <p className="eyebrow">YOUR RHYTHM, CONTINUED</p>
+        <h1 className="page-title">Welcome back.</h1>
+        <p className="auth-subtitle">
+          Your plan and progress are right where you left them.
+        </p>
         {notice && <p className="notice">{notice}</p>}
 
-        <label className="label" htmlFor="login-email">Email</label>
-        <input className="field" id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required />
+        <label className="label" htmlFor="login-email">
+          Email
+        </label>
+        <input
+          className="field"
+          id="login-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          type="email"
+          autoComplete="email"
+          required
+        />
 
-        <label className="label" htmlFor="login-password">Password</label>
-        <input className="field" id="login-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" type="password" autoComplete="current-password" required />
+        <label className="label" htmlFor="login-password">
+          Password
+        </label>
+        <PasswordField
+          id="login-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Your password"
+          autoComplete="current-password"
+          required
+        />
 
-        {error && <p role="alert" className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
-        {confirmationNotice && <p role="status" className="notice">{confirmationNotice}</p>}
-        {unconfirmed && <Button type="button" variant="ghost" onClick={handleResend} disabled={busy}>Resend confirmation email</Button>}
+        {error && (
+          <p
+            role="alert"
+            className="error-text"
+            style={{ margin: "var(--s3) 0 0" }}
+          >
+            {error}
+          </p>
+        )}
+        {confirmationNotice && (
+          <p role="status" className="notice">
+            {confirmationNotice}
+          </p>
+        )}
+        {unconfirmed && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleResend}
+            disabled={busy}
+          >
+            Resend confirmation email
+          </Button>
+        )}
 
         {/* The one pigment moment on the screen, full width so there is no
             question about what to do next. */}
-        <Button type="submit" disabled={busy} style={{ width: '100%', marginTop: 'var(--s5)' }}>
-          {busy ? 'Signing in…' : 'Sign in'}
+        <Button
+          type="submit"
+          disabled={busy}
+          style={{ width: "100%", marginTop: "var(--s5)" }}
+        >
+          {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>
 
       <p
         className="small"
         style={{
-          display: 'flex', justifyContent: 'space-between', gap: 'var(--s3)',
-          flexWrap: 'wrap', margin: 'var(--s4) 0 0',
+          display: "flex",
+          justifyContent: "space-between",
+          gap: "var(--s3)",
+          flexWrap: "wrap",
+          margin: "var(--s4) 0 0",
         }}
       >
         <Link to="/signup">Need an account?</Link>

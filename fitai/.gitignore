@@ -13,6 +13,9 @@ build/
 # test / tooling artifacts
 .pgdata-smoke/
 coverage/
+test-results/
+playwright-report/
+artifacts/
 *.log
 logs/
 

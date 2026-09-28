@@ -1,23 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fbfbfd" />
+    <meta name="theme-color" content="#f4f5f1" />
+    <meta
+      name="description"
+      content="Your training, food, daily habits, and AI fitness coach in one calm space. Build a rhythm that fits your life."
+    />
     <title>FitAI — Your AI Fitness Coach</title>
     <script>
       // Apply the saved (or OS-preferred) theme BEFORE first paint — a
       // dark-mode user must never see a white flash.
       (function () {
         try {
-          var t = localStorage.getItem('fitai.theme');
-          if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          var t = localStorage.getItem("fitai.theme");
+          if (!t)
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
           document.documentElement.dataset.theme = t;
-          if (t === 'dark') {
+          if (t === "dark") {
             var m = document.querySelector('meta[name="theme-color"]');
-            if (m) m.setAttribute('content', '#0a0b0d');
+            if (m) m.setAttribute("content", "#121914");
           }
-        } catch (e) { /* default light */ }
+        } catch (e) {
+          /* default light */
+        }
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

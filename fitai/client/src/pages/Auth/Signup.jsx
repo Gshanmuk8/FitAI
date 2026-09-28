@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
-import { signUp, resendConfirmation } from '../../services/authService';
-import { useAuth } from '../../contexts/AuthContext';
-import Button from '../../components/ui/Button';
+import React, { useState } from "react";
+import { useNavigate, Link, Navigate } from "react-router-dom";
+import { signUp, resendConfirmation } from "../../services/authService";
+import { useAuth } from "../../contexts/AuthContext";
+import Button from "../../components/ui/Button";
+import PasswordField from "../../components/ui/PasswordField";
 
 export default function Signup() {
   const { user, loading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
@@ -24,14 +25,14 @@ export default function Signup() {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    setError('');
+    setError("");
     try {
       const data = await signUp(email, password);
       // With email confirmation enabled (Supabase default) there is no
       // session yet — sending the user to a protected route would just
       // bounce them. Tell them what to do instead.
       if (data.session) {
-        navigate('/onboarding', { replace: true });
+        navigate("/onboarding", { replace: true });
       } else {
         setNeedsConfirmation(true);
         setBusy(false);
@@ -45,10 +46,15 @@ export default function Signup() {
   async function handleResend() {
     if (busy) return;
     setBusy(true);
-    setError('');
-    try { await resendConfirmation(email); setResent(true); }
-    catch (err) { setError(err.message); }
-    finally { setBusy(false); }
+    setError("");
+    try {
+      await resendConfirmation(email);
+      setResent(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   // .auth-card is the non-form sibling of the form treatment: same surface,
@@ -60,13 +66,29 @@ export default function Signup() {
         <div className="auth-card">
           <h1 className="page-title">Confirm your email</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Check the inbox and spam folder for <strong style={{ color: 'var(--text)' }}>{email.trim()}</strong> for a confirmation link.
-            If you already signed up, <Link to="/login">sign in to your existing account</Link> or <Link to="/forgot-password">reset your password</Link>.
+            Check the inbox and spam folder for{" "}
+            <strong style={{ color: "var(--text)" }}>{email.trim()}</strong> for
+            a confirmation link. If you already signed up,{" "}
+            <Link to="/login">sign in to your existing account</Link> or{" "}
+            <Link to="/forgot-password">reset your password</Link>.
           </p>
-          {error && <p role="alert" className="error-text">{error}</p>}
-          {resent && <p role="status" className="notice">If this address needs confirmation, a new link is on its way.</p>}
-          <Button type="button" onClick={handleResend} disabled={busy || resent} style={{ marginTop: 'var(--s4)' }}>
-            {busy ? 'Sending…' : 'Resend confirmation email'}
+          {error && (
+            <p role="alert" className="error-text">
+              {error}
+            </p>
+          )}
+          {resent && (
+            <p role="status" className="notice">
+              If this address needs confirmation, a new link is on its way.
+            </p>
+          )}
+          <Button
+            type="button"
+            onClick={handleResend}
+            disabled={busy || resent}
+            style={{ marginTop: "var(--s4)" }}
+          >
+            {busy ? "Sending…" : "Resend confirmation email"}
           </Button>
         </div>
       </div>
@@ -76,22 +98,67 @@ export default function Signup() {
   return (
     <div className="page page-form page-enter">
       <form onSubmit={handleSubmit}>
-        <h1 className="page-title">Sign up</h1>
+        <p className="eyebrow">A LITTLE BETTER STARTS HERE</p>
+        <h1 className="page-title">Make it your own.</h1>
+        <p className="auth-subtitle">
+          Create your account. Then we’ll build a plan around your real life.
+        </p>
 
-        <label className="label" htmlFor="signup-email">Email</label>
-        <input className="field" id="signup-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required />
+        <label className="label" htmlFor="signup-email">
+          Email
+        </label>
+        <input
+          className="field"
+          id="signup-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          type="email"
+          autoComplete="email"
+          required
+        />
 
-        <label className="label" htmlFor="signup-password">Password</label>
-        <input className="field" id="signup-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" type="password" autoComplete="new-password" minLength={8} required />
+        <label className="label" htmlFor="signup-password">
+          Password
+        </label>
+        <PasswordField
+          id="signup-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 8 characters"
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
 
-        {error && <p role="alert" className="error-text" style={{ margin: 'var(--s3) 0 0' }}>{error}</p>}
+        {error && (
+          <p
+            role="alert"
+            className="error-text"
+            style={{ margin: "var(--s3) 0 0" }}
+          >
+            {error}
+          </p>
+        )}
 
-        <Button type="submit" disabled={busy} style={{ width: '100%', marginTop: 'var(--s5)' }}>
-          {busy ? 'Creating account…' : 'Sign up'}
+        <Button
+          type="submit"
+          disabled={busy}
+          style={{ width: "100%", marginTop: "var(--s5)" }}
+        >
+          {busy ? "Creating account…" : "Create my account"}
         </Button>
       </form>
 
-      <p className="small" style={{ margin: 'var(--s4) 0 0', textAlign: 'center' }}>
+      <p className="tiny muted" style={{ marginTop: 16 }}>
+        By creating an account, you agree to our <Link to="/terms">Terms</Link>{" "}
+        and <Link to="/privacy">Privacy Policy</Link>.
+      </p>
+
+      <p
+        className="small"
+        style={{ margin: "var(--s4) 0 0", textAlign: "center" }}
+      >
         <Link to="/login">Already have an account?</Link>
       </p>
     </div>

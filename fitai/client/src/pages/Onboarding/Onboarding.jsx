@@ -1,247 +1,500 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { submitOnboarding } from '../../services/aiService';
-import { apiFetch } from '../../utils/apiClient';
-import Button from '../../components/ui/Button';
-import ButtonLink from '../../components/ui/ButtonLink';
-
-const GOALS = ['lose_fat', 'build_muscle', 'maintain', 'improve_endurance'];
-const ACTIVITY_LEVELS = ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'athlete'];
-const EQUIPMENT = ['gym', 'home', 'minimal'];
-const SEXES = ['male', 'female', 'other'];
-
-const isWeightGoal = (goal) => goal === 'lose_fat' || goal === 'build_muscle';
-
-// Short fields pair up on a line so the form is four readable groups rather
-// than a fourteen-item vertical crawl. auto-fit collapses to one column on a
-// phone without a second breakpoint.
-const PAIR = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-  gap: '0 var(--s4)',
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { submitOnboarding } from "../../services/aiService";
+import { apiFetch } from "../../utils/apiClient";
+import { useAuth } from "../../contexts/AuthContext";
+import { readSessionDraft, saveSessionDraft } from "../../utils/productState";
+import Button from "../../components/ui/Button";
+import ButtonLink from "../../components/ui/ButtonLink";
+import Icon, { Brand } from "../../components/ui/Icon";
+import {
+  PageHeader,
+  LoadingState,
+  EmptyState,
+} from "../../components/ui/PageKit";
+const GOALS = [
+  ["build_muscle", "Build strength", "Get stronger and build muscle.", "train"],
+  [
+    "lose_fat",
+    "Lose body fat",
+    "Work toward a sustainable change.",
+    "progress",
+  ],
+  ["maintain", "Feel my best", "Build a routine that lasts.", "today"],
+  [
+    "improve_endurance",
+    "Go the distance",
+    "Build stamina, at your own pace.",
+    "steps",
+  ],
+];
+const ACTIVITY = [
+  ["sedentary", "Mostly sitting"],
+  ["lightly_active", "Some walking, light activity"],
+  ["moderately_active", "Active most days"],
+  ["very_active", "Very active work or training"],
+  ["athlete", "Intensive athletic training"],
+];
+const initial = {
+  age: "",
+  heightCm: "",
+  weightKg: "",
+  targetWeightKg: "",
+  sex: "other",
+  goal: "",
+  activityLevel: "lightly_active",
+  equipment: "minimal",
+  timeframeWeeks: "12",
+  trainingDaysPerWeek: "3",
+  trainingStyle: "",
+  injuries: "",
+  dietaryRestrictions: "",
 };
-
-// .section-title carries its own bottom margin sized for prose; the first
-// .label under it adds another, so the pair is pulled back to one step.
-const SECTION = { marginBottom: 'var(--s1)' };
-
+const weighted = (goal) => ["lose_fat", "build_muscle"].includes(goal);
 export default function Onboarding() {
-  const [form, setForm] = useState({
-    age: '', heightCm: '', weightKg: '', targetWeightKg: '',
-    sex: SEXES[0], goal: GOALS[0], activityLevel: ACTIVITY_LEVELS[0],
-    equipment: EQUIPMENT[0], timeframeWeeks: '12', injuries: '', dietaryRestrictions: '',
-    trainingDaysPerWeek: '', trainingStyle: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  // null = still checking, false = fresh account, true = plan exists.
-  const [alreadyOnboarded, setAlreadyOnboarded] = useState(null);
-  const [checkError, setCheckError] = useState('');
-  const [checkAttempt, setCheckAttempt] = useState(0);
+  const { user } = useAuth();
+  const key = `fitai.onboarding.${user.id}`;
+  const [form, setForm] = useState(() => ({
+    ...initial,
+    ...readSessionDraft(key, {}).form,
+  }));
+  const [step, setStep] = useState(() =>
+    Math.max(0, Math.min(2, readSessionDraft(key, {}).step || 0)),
+  );
+  const [checking, setChecking] = useState(true);
+  const [existing, setExisting] = useState(false);
+  const [checkError, setCheckError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
-
-  // Guard against the refresh trap: a user who refreshes mid-submit (or
-  // wanders back here) gets a blank form whose resubmission would silently
-  // generate a SECOND plan and restart their goal clock. If a plan already
-  // exists, say so instead of showing the form.
   useEffect(() => {
-    let active = true;
-    setCheckError('');
-    apiFetch('/api/onboarding')
-      .then((res) => {
-        if (!active) return;
-        setAlreadyOnboarded(Boolean(res?.plan));
-        if (res?.profile && !res.plan) {
-          const p = res.profile;
-          setForm((f) => ({ ...f,
-            age: p.age ?? '', heightCm: p.height_cm ?? '', weightKg: p.weight_kg ?? '',
-            targetWeightKg: p.target_weight_kg ?? '', sex: p.sex || f.sex,
-            goal: p.goal || f.goal, activityLevel: p.activity_level || f.activityLevel,
-            equipment: p.gym_availability || f.equipment, timeframeWeeks: p.timeframe_weeks ?? '12',
-            injuries: p.injuries || '', dietaryRestrictions: p.dietary_restrictions || '',
-            trainingDaysPerWeek: p.training_days_per_week ?? '', trainingStyle: p.training_style || '',
-          }));
-        }
-      })
-      .catch((err) => {
-        if (!active) return;
-        if (err.noProfile) setAlreadyOnboarded(false);
-        else setCheckError(err.message);
-      });
-    return () => { active = false; };
-  }, [checkAttempt]);
-
+    saveSessionDraft(key, { form, step });
+  }, [key, form, step]);
+  async function check() {
+    setCheckError("");
+    setChecking(true);
+    try {
+      const data = await apiFetch("/api/onboarding");
+      setExisting(Boolean(data.plan));
+    } catch (e) {
+      if (!e.noProfile) setCheckError(e.message);
+    } finally {
+      setChecking(false);
+    }
+  }
+  useEffect(() => {
+    check();
+  }, []);
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
+    setError("");
   }
-
-  async function handleSubmit(e) {
+  async function submit(e) {
     e.preventDefault();
-    if (loading) return;
-    setLoading(true);
-    setError('');
+    if (busy) return;
+    if (!form.goal) {
+      setError("Choose the goal that feels right for you.");
+      return;
+    }
+    if (step === 1 && form.targetWeightKg && weighted(form.goal)) {
+      if (
+        form.goal === "lose_fat" &&
+        Number(form.targetWeightKg) >= Number(form.weightKg)
+      ) {
+        setError(
+          "For a fat-loss goal, choose a target below your current weight—or change your goal.",
+        );
+        return;
+      }
+      if (
+        form.goal === "build_muscle" &&
+        Number(form.targetWeightKg) < Number(form.weightKg)
+      ) {
+        setError(
+          "For this muscle-building weight goal, choose a target at or above your current weight, or leave it blank.",
+        );
+        return;
+      }
+    }
+    if (step < 2) {
+      setStep(step + 1);
+      window.scrollTo({ top: 0, behavior: "instant" });
+      return;
+    }
+    setBusy(true);
+    setError("");
     try {
-      const payload = {
+      const result = await submitOnboarding({
         ...form,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         age: Number(form.age),
         heightCm: Number(form.heightCm),
         weightKg: Number(form.weightKg),
-        timeframeWeeks: Number(form.timeframeWeeks) || undefined,
-        trainingDaysPerWeek: Number(form.trainingDaysPerWeek) || undefined,
-        // Only weight goals carry a target: the field is hidden for
-        // maintain/endurance, but its state survives a goal switch — don't
-        // let a stale value leak into the plan generator.
-        targetWeightKg: isWeightGoal(form.goal) && form.targetWeightKg ? Number(form.targetWeightKg) : undefined,
-      };
-      const result = await submitOnboarding(payload);
-      // Land on the plan itself so the user can review and change it right
-      // away. replace: Back must not return to a blank onboarding form.
-      // The timeframe-adjustment explanation rides along as an in-system
-      // notice instead of a dismissible native alert.
-      const tf = result?.plan?.timeframe;
-      navigate('/plan', {
+        timeframeWeeks: Number(form.timeframeWeeks),
+        trainingDaysPerWeek: Number(form.trainingDaysPerWeek),
+        targetWeightKg:
+          weighted(form.goal) && form.targetWeightKg
+            ? Number(form.targetWeightKg)
+            : undefined,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      saveSessionDraft(key, null);
+      navigate("/plan", {
         replace: true,
         state: {
           justGenerated: true,
-          notice: tf?.adjusted && tf.adjustedReason ? `Your timeframe was adjusted to ${tf.weeks} weeks. ${tf.adjustedReason}` : null,
+          notice: result.plan?.timeframe?.adjusted
+            ? result.plan.timeframe.adjustedReason
+            : null,
         },
       });
     } catch (err) {
       setError(err.message);
-      setLoading(false);
+      setBusy(false);
     }
   }
-
-  if (checkError) return (
-    <div className="page page-narrow">
-      <h1 className="page-title">Could not load your account</h1>
-      <p role="alert">{checkError}</p>
-      <Button onClick={() => setCheckAttempt((n) => n + 1)}>Try again</Button>
-      <ButtonLink to="/dashboard" variant="ghost">Back to Today</ButtonLink>
-    </div>
-  );
-  if (alreadyOnboarded === null) return <div className="page-loading">Loading…</div>;
-
-  if (alreadyOnboarded) {
+  if (checking)
     return (
-      <div className="page page-form page-enter">
-        <div className="auth-card">
-          <h1 className="page-title">You already have a plan</h1>
-          <p className="muted" style={{ margin: '0 0 var(--s5)' }}>
-            Re-running onboarding would generate a new plan and restart your goal timeline.
-            If life changed, update your profile and regenerate from there.
-          </p>
-          {/* One primary, one alternative — the primary carries the screen's
-              only pigment. */}
-          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
-            <ButtonLink to="/dashboard">Go to Today</ButtonLink>
-            <ButtonLink to="/profile" variant="ghost">Update profile</ButtonLink>
-          </div>
-        </div>
+      <LoadingState
+        title="Making room for your plan"
+        detail="Checking your account so we never replace an existing plan by mistake."
+      />
+    );
+  if (checkError)
+    return (
+      <div className="page">
+        <EmptyState
+          title="Let’s reconnect your account."
+          description={checkError}
+        >
+          <Button onClick={check}>Try again</Button>
+          <ButtonLink to="/dashboard" variant="ghost">
+            Back to Today
+          </ButtonLink>
+        </EmptyState>
       </div>
     );
-  }
-
-  // Four numbered groups on a ruled column. The numbering is the sense of
-  // progress: you can see how much form is left without a fake progress bar,
-  // and each rule gives the eye a place to rest. Nothing here is a step in a
-  // wizard — it is one submit, as it always was.
+  if (existing)
+    return (
+      <div className="page">
+        <EmptyState
+          icon="check"
+          title="Your plan is already here."
+          description="Keep your progress going. If your goals or schedule changed, update your profile to create a new plan."
+        >
+          <ButtonLink to="/plan">View my plan</ButtonLink>
+          <ButtonLink to="/profile" variant="ghost">
+            Update profile
+          </ButtonLink>
+        </EmptyState>
+      </div>
+    );
+  const titles = [
+    "What moves you?",
+    "A little about you.",
+    "Make it fit your life.",
+  ];
+  const descriptions = [
+    "One direction to start. You can change it as you grow.",
+    "These details help estimate your daily targets. They’re a starting point, not a diagnosis.",
+    "A realistic plan is one you can keep showing up for.",
+  ];
   return (
-    <form onSubmit={handleSubmit} className="page page-narrow page-enter">
-      <h1 className="page-title">Tell us about you</h1>
-
-      <h2 className="section-title" style={SECTION}>01 · You</h2>
-      <div style={PAIR}>
-        <div>
-          <label className="label" htmlFor="ob-age">Age</label>
-          <input className="field" id="ob-age" type="number" min="13" max="100" value={form.age} onChange={(e) => update('age', e.target.value)} required />
-        </div>
-        <div>
-          <label className="label" htmlFor="ob-sex">Sex</label>
-          <select className="field" id="ob-sex" value={form.sex} onChange={(e) => update('sex', e.target.value)}>
-            {SEXES.map((s) => <option key={s} value={s}>{s === 'other' ? 'prefer not to say' : s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="ob-height">Height (cm)</label>
-          <input className="field" id="ob-height" type="number" min="100" max="250" value={form.heightCm} onChange={(e) => update('heightCm', e.target.value)} required />
-        </div>
-        <div>
-          <label className="label" htmlFor="ob-weight">Weight (kg)</label>
-          <input className="field" id="ob-weight" type="number" step="0.1" min="30" max="300" value={form.weightKg} onChange={(e) => update('weightKg', e.target.value)} required />
-        </div>
+    <div className="onboarding page-enter">
+      <div className="onboarding-top">
+        <Link to="/" className="brand-link" aria-label="FitAI home">
+          <Brand />
+        </Link>
+        <Link className="small muted" to="/dashboard">
+          Finish later
+        </Link>
       </div>
-
-      <h2 className="section-title" style={SECTION}>02 · Goal</h2>
-      <div style={PAIR}>
-        <div>
-          <label className="label" htmlFor="ob-goal">Goal</label>
-          <select className="field" id="ob-goal" value={form.goal} onChange={(e) => update('goal', e.target.value)}>
-            {GOALS.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}
-          </select>
+      <div className="onboarding-card">
+        <div className="step-count">
+          YOUR STARTING POINT · STEP {step + 1} OF 3
         </div>
-        {isWeightGoal(form.goal) && (
-          <div>
-            <label className="label" htmlFor="ob-target">Target weight (kg)</label>
-            <input className="field" id="ob-target" type="number" step="0.1" min="30" max="300" value={form.targetWeightKg} onChange={(e) => update('targetWeightKg', e.target.value)} />
-          </div>
-        )}
-      </div>
-      <label className="label" htmlFor="ob-timeframe">In how many weeks do you want to reach this goal?</label>
-      <input className="field" id="ob-timeframe" type="number" min="1" max="200" value={form.timeframeWeeks} onChange={(e) => update('timeframeWeeks', e.target.value)} required />
-      <p className="tiny muted" style={{ margin: 'var(--s1) 0 0' }}>
-        We'll extend this automatically if it would require an unsafe pace.
-      </p>
-
-      <h2 className="section-title" style={SECTION}>03 · Training</h2>
-      <div style={PAIR}>
-        <div>
-          <label className="label" htmlFor="ob-activity">Activity level</label>
-          <select className="field" id="ob-activity" value={form.activityLevel} onChange={(e) => update('activityLevel', e.target.value)}>
-            {ACTIVITY_LEVELS.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
-          </select>
+        <div
+          className="onboarding-progress"
+          aria-label={`Step ${step + 1} of 3`}
+        >
+          {[0, 1, 2].map((s) => (
+            <span key={s} className={s <= step ? "active" : ""} />
+          ))}
         </div>
-        <div>
-          <label className="label" htmlFor="ob-equipment">Equipment</label>
-          <select className="field" id="ob-equipment" value={form.equipment} onChange={(e) => update('equipment', e.target.value)}>
-            {EQUIPMENT.map((eq) => <option key={eq} value={eq}>{eq === 'gym' ? 'full gym access' : eq === 'home' ? 'home equipment' : 'minimal / bodyweight'}</option>)}
-          </select>
-        </div>
+        <PageHeader title={titles[step]} description={descriptions[step]} />
+        <form onSubmit={submit} className="card">
+          <fieldset disabled={busy}>
+            {step === 0 && (
+              <>
+                <div
+                  className="goal-options"
+                  role="group"
+                  aria-label="Choose your goal"
+                >
+                  {GOALS.map(([value, label, hint, icon]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className="goal-option"
+                      aria-pressed={form.goal === value}
+                      onClick={() => update("goal", value)}
+                    >
+                      <Icon name={icon} />
+                      <strong>{label}</strong>
+                      <span>{hint}</span>
+                    </button>
+                  ))}
+                </div>
+                <label className="label" htmlFor="ob-timeframe">
+                  Your planning horizon · weeks
+                </label>
+                <input
+                  id="ob-timeframe"
+                  className="field"
+                  type="number"
+                  min="1"
+                  max="200"
+                  step="1"
+                  required
+                  value={form.timeframeWeeks}
+                  onChange={(e) => update("timeframeWeeks", e.target.value)}
+                />
+                <p className="field-hint">
+                  12 weeks is a starting point. An overly aggressive
+                  weight-change timeline will be extended automatically.
+                </p>
+              </>
+            )}
+            {step === 1 && (
+              <div className="form-grid">
+                <div>
+                  <label className="label" htmlFor="ob-age">
+                    Age
+                  </label>
+                  <input
+                    className="field"
+                    id="ob-age"
+                    type="number"
+                    min="13"
+                    max="100"
+                    step="1"
+                    required
+                    value={form.age}
+                    onChange={(e) => update("age", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="ob-sex">
+                    Sex for calorie estimate
+                  </label>
+                  <select
+                    className="field"
+                    id="ob-sex"
+                    value={form.sex}
+                    onChange={(e) => update("sex", e.target.value)}
+                  >
+                    <option value="other">Prefer not to say</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label" htmlFor="ob-height">
+                    Height · cm
+                  </label>
+                  <input
+                    className="field"
+                    id="ob-height"
+                    type="number"
+                    min="100"
+                    max="250"
+                    step="0.1"
+                    required
+                    value={form.heightCm}
+                    onChange={(e) => update("heightCm", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="ob-weight">
+                    Current weight · kg
+                  </label>
+                  <input
+                    className="field"
+                    id="ob-weight"
+                    type="number"
+                    min="30"
+                    max="300"
+                    step="0.1"
+                    required
+                    value={form.weightKg}
+                    onChange={(e) => update("weightKg", e.target.value)}
+                  />
+                </div>
+                {weighted(form.goal) && (
+                  <div className="form-wide">
+                    <label className="label" htmlFor="ob-target">
+                      Target weight · kg{" "}
+                      <span className="muted">(optional)</span>
+                    </label>
+                    <input
+                      className="field"
+                      id="ob-target"
+                      type="number"
+                      min="30"
+                      max="300"
+                      step="0.1"
+                      value={form.targetWeightKg}
+                      onChange={(e) => update("targetWeightKg", e.target.value)}
+                    />
+                    <p className="field-hint">
+                      You don’t need a weight target to build a consistent
+                      routine.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            {step === 2 && (
+              <>
+                <div className="form-grid">
+                  <div>
+                    <label className="label" htmlFor="ob-days">
+                      Training days each week
+                    </label>
+                    <select
+                      className="field"
+                      id="ob-days"
+                      value={form.trainingDaysPerWeek}
+                      onChange={(e) =>
+                        update("trainingDaysPerWeek", e.target.value)
+                      }
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                        <option value={n} key={n}>
+                          {n} {n === 1 ? "day" : "days"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="ob-equipment">
+                      Where you train
+                    </label>
+                    <select
+                      className="field"
+                      id="ob-equipment"
+                      value={form.equipment}
+                      onChange={(e) => update("equipment", e.target.value)}
+                    >
+                      <option value="minimal">Bodyweight / minimal</option>
+                      <option value="home">Home equipment</option>
+                      <option value="gym">Full gym</option>
+                    </select>
+                  </div>
+                </div>
+                <label className="label" htmlFor="ob-activity">
+                  Activity outside your workouts
+                </label>
+                <select
+                  className="field"
+                  id="ob-activity"
+                  value={form.activityLevel}
+                  onChange={(e) => update("activityLevel", e.target.value)}
+                >
+                  {ACTIVITY.map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+                <label className="label" htmlFor="ob-style">
+                  What do you enjoy? <span className="muted">(optional)</span>
+                </label>
+                <textarea
+                  className="field"
+                  id="ob-style"
+                  maxLength={500}
+                  rows={2}
+                  placeholder="e.g. Strength training and weekend runs"
+                  value={form.trainingStyle}
+                  onChange={(e) => update("trainingStyle", e.target.value)}
+                />
+                <label className="label" htmlFor="ob-injuries">
+                  Injuries or movement limitations{" "}
+                  <span className="muted">(optional)</span>
+                </label>
+                <input
+                  className="field"
+                  id="ob-injuries"
+                  maxLength={500}
+                  placeholder="Anything your coach should consider"
+                  value={form.injuries}
+                  onChange={(e) => update("injuries", e.target.value)}
+                />
+                <label className="label" htmlFor="ob-diet">
+                  Food preferences or restrictions{" "}
+                  <span className="muted">(optional)</span>
+                </label>
+                <input
+                  className="field"
+                  id="ob-diet"
+                  maxLength={500}
+                  placeholder="e.g. Vegetarian, nut allergy"
+                  value={form.dietaryRestrictions}
+                  onChange={(e) =>
+                    update("dietaryRestrictions", e.target.value)
+                  }
+                />
+                <p className="field-hint">
+                  FitAI provides general fitness guidance. Medical conditions
+                  and injuries need a qualified professional’s advice.
+                </p>
+              </>
+            )}
+            {error && (
+              <p className="notice tone-red" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="step-actions">
+              {step > 0 ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStep(step - 1);
+                    setError("");
+                  }}
+                >
+                  <Icon name="back" size={16} />
+                  Back
+                </Button>
+              ) : (
+                <span className="step-count">
+                  Your draft saves in this tab.
+                </span>
+              )}
+              <Button type="submit">
+                {busy
+                  ? "Building your plan…"
+                  : step === 2
+                    ? "Build my plan"
+                    : "Continue"}
+                {!busy && <Icon name="arrow" size={17} />}
+              </Button>
+            </div>
+          </fieldset>
+          {busy && (
+            <div className="thinking" role="status">
+              <i />
+              <i />
+              <i />
+              <span>
+                Your coach is considering your schedule, goals, and preferences.
+                This can take a moment.
+              </span>
+            </div>
+          )}
+        </form>
       </div>
-      <label className="label" htmlFor="ob-days">How many days a week can you train?</label>
-      <input className="field" id="ob-days" type="number" min="1" max="7" value={form.trainingDaysPerWeek} onChange={(e) => update('trainingDaysPerWeek', e.target.value)} placeholder="e.g. 4" />
-      <label className="label" htmlFor="ob-style">Your training, in your own words (optional)</label>
-      <textarea
-        className="field"
-        id="ob-style"
-        maxLength={500}
-        rows={3}
-        value={form.trainingStyle}
-        onChange={(e) => update('trainingStyle', e.target.value)}
-        placeholder="e.g. powerlifting 3 days, yoga on rest days · calisthenics and running · anything you want your plan built around"
-        style={{ resize: 'vertical' }}
-      />
-
-      <h2 className="section-title" style={SECTION}>04 · Constraints</h2>
-      <label className="label" htmlFor="ob-injuries">Injuries (comma separated, optional)</label>
-      <input className="field" id="ob-injuries" maxLength={500} value={form.injuries} onChange={(e) => update('injuries', e.target.value)} />
-      <label className="label" htmlFor="ob-diet">Dietary restrictions (optional)</label>
-      <input className="field" id="ob-diet" maxLength={500} value={form.dietaryRestrictions} onChange={(e) => update('dietaryRestrictions', e.target.value)} />
-
-      {/* The close: a rule, then one action across the full measure. There is
-          nothing else to press on this screen and the layout says so. */}
-      <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--s7)', paddingTop: 'var(--s5)' }}>
-        {error && <p className="error-text" style={{ margin: '0 0 var(--s3)' }}>{error}</p>}
-        <Button type="submit" disabled={loading} style={{ width: '100%' }}>
-          {loading ? 'Generating your plan…' : 'Generate my plan'}
-        </Button>
-        {loading && (
-          <p className="tiny muted" style={{ margin: 'var(--s2) 0 0', textAlign: 'center' }}>
-            Your coach is building your program — this usually takes under a minute.
-          </p>
-        )}
-      </div>
-    </form>
+    </div>
   );
 }

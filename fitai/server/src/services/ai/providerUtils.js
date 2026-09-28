@@ -6,6 +6,18 @@
  * endpoint, so the request/response shape only needs writing once).
  */
 
+const { AsyncLocalStorage } = require("node:async_hooks");
+const deadlines = new AsyncLocalStorage();
+function remainingTimeout(timeoutMs) {
+  return Math.max(
+    1,
+    Math.min(timeoutMs, (deadlines.getStore() ?? Infinity) - Date.now()),
+  );
+}
+function withinDeadline(deadline, work) {
+  return deadlines.run(deadline, work);
+}
+
 function stripMarkdownFence(text) {
   return text
     .replace(/^```json\s*/i, "")
@@ -33,9 +45,20 @@ function parseJsonResponse(text) {
 
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(
+    () => controller.abort(),
+    remainingTimeout(timeoutMs),
+  );
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    // Headers arriving does not mean a completion arrived. Keep the abort
+    // timer active until the entire body is read, including stalled streams.
+    const body = await res.arrayBuffer();
+    return new Response([204, 205, 304].includes(res.status) ? null : body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    });
   } finally {
     clearTimeout(timer);
   }
@@ -52,13 +75,28 @@ class ProviderError extends Error {
   }
 }
 
-async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs, extraHeaders = {}, jsonMode = false, imageBase64 = null, imageMimeType = null }) {
+async function callOpenAiCompatibleChat({
+  url,
+  apiKey,
+  model,
+  prompt,
+  timeoutMs,
+  extraHeaders = {},
+  jsonMode = false,
+  imageBase64 = null,
+  imageMimeType = null,
+}) {
   // Multimodal messages use the OpenAI content-array form with the image
   // inlined as a data URL; plain text keeps the simple string form.
   const content = imageBase64
     ? [
         { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: `data:${imageMimeType || "image/jpeg"};base64,${imageBase64}` } },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${imageMimeType || "image/jpeg"};base64,${imageBase64}`,
+          },
+        },
       ]
     : prompt;
   let res;
@@ -84,10 +122,13 @@ async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs,
           ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
         }),
       },
-      timeoutMs
+      timeoutMs,
     );
   } catch (err) {
-    throw new ProviderError(`Network/timeout error: ${err.message}`);
+    throw Object.assign(
+      new ProviderError(`Network/timeout error: ${err.message}`),
+      { timedOut: err.name === "AbortError" },
+    );
   }
 
   if (res.status === 429) {
@@ -105,6 +146,8 @@ async function callOpenAiCompatibleChat({ url, apiKey, model, prompt, timeoutMs,
 }
 
 module.exports = {
+  remainingTimeout,
+  withinDeadline,
   stripMarkdownFence,
   parseJsonResponse,
   fetchWithTimeout,

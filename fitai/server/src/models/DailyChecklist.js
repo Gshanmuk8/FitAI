@@ -72,15 +72,29 @@ async function updateChecklistFields(userId, fields, date = null, source = null)
   const keys = Object.keys(fields).filter((k) => WRITABLE_FIELDS.has(k));
   if (!keys.length) return getToday(userId, date);
 
-  const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+  // Check ownership at UPDATE time, not only in the service's earlier read.
+  // A manual entry in another tab may commit while a diary sync is waiting.
+  const diaryOwners = {
+    protein_grams: 'protein_grams', protein_completed: 'protein_grams',
+    calories_kcal: 'calories_kcal', calories_completed: 'calories_kcal',
+  };
+  const setClause = keys.map((k, i) => {
+    const owner = source === 'diary' && diaryOwners[k];
+    return owner
+      ? `${k} = CASE WHEN values_source->>'${owner}' = 'manual' THEN ${k} ELSE $${i + 1} END`
+      : `${k} = $${i + 1}`;
+  }).join(', ');
   const params = keys.map((k) => fields[k]);
 
   const touched = source ? keys.filter((k) => SOURCED_FIELDS.includes(k)) : [];
   const sourcePatch = Object.fromEntries(touched.map((k) => [k, source]));
   // `||` on jsonb merges right-biased, so this updates only the keys in the
   // patch and leaves any other provenance in place.
+  const patch = source === 'diary'
+    ? `($${keys.length + 3}::jsonb - ARRAY(SELECT key FROM jsonb_each_text(COALESCE(values_source, '{}'::jsonb)) WHERE value = 'manual'))`
+    : `$${keys.length + 3}::jsonb`;
   const sourceClause = touched.length
-    ? `, values_source = COALESCE(values_source, '{}'::jsonb) || $${keys.length + 3}::jsonb`
+    ? `, values_source = COALESCE(values_source, '{}'::jsonb) || ${patch}`
     : '';
 
   const { rows } = await queryAs(userId,

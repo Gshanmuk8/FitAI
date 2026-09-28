@@ -1,6 +1,9 @@
 {
   "name": "fitai",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "client",
     "server",
@@ -11,9 +14,14 @@
     "dev:server": "npm run dev --workspace=server",
     "build:client": "npm run build --workspace=client",
     "test": "node --test \"shared/calculations/__tests__/*.test.js\" \"server/tests/*.test.js\" \"client/tests/*.test.js\"",
-    "smoke": "node scripts/smoke-test.js"
+    "smoke": "node scripts/smoke-test.js",
+    "test:e2e": "playwright test",
+    "test:ai:live": "node scripts/check-ai-flows.cjs"
   },
   "devDependencies": {
-    "embedded-postgres": "^18.4.0-beta.17"
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "prettier": "^3.6.2"
   }
 }

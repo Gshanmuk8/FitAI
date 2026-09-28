@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 /**
  * The theme switch — the swap itself is choreographed, not flipped:
@@ -9,62 +9,103 @@ import React, { useEffect, useState } from 'react';
  * The chosen theme persists in localStorage and is applied before first
  * paint by the inline script in index.html — no flash of the wrong theme.
  */
-const STORAGE_KEY = 'fitai.theme';
+const STORAGE_KEY = "fitai.theme";
 
 function currentTheme() {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* private mode */ }
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    /* private mode */
+  }
   // Browser chrome (mobile address bar) follows the surface. These two are
   // the only literals that must track --bg0 by hand: <meta> can't read a
   // CSS variable, so they are read off the computed root instead of being
   // copied — a hardcoded pair here silently rots on every reskin.
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg0').trim();
-    if (bg) meta.setAttribute('content', bg);
+    const bg = getComputedStyle(document.documentElement)
+      .getPropertyValue("--bg0")
+      .trim();
+    if (bg) meta.setAttribute("content", bg);
   }
 }
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState(currentTheme);
 
-  useEffect(() => { setTheme(currentTheme()); }, []);
+  useEffect(() => {
+    setTheme(currentTheme());
+  }, []);
 
   function toggle() {
-    const next = theme === 'dark' ? 'light' : 'dark';
+    const next = theme === "dark" ? "light" : "dark";
     const root = document.documentElement;
-    root.classList.add('theme-morph');
-    const swap = () => { applyTheme(next); setTheme(next); };
-    if (document.startViewTransition) {
+    root.classList.add("theme-morph");
+    const swap = () => {
+      applyTheme(next);
+      setTheme(next);
+    };
+    if (
+      document.startViewTransition &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       document.startViewTransition(swap);
     } else {
       swap();
     }
-    window.setTimeout(() => root.classList.remove('theme-morph'), 650);
+    window.setTimeout(() => root.classList.remove("theme-morph"), 650);
   }
 
-  const dark = theme === 'dark';
+  const dark = theme === "dark";
   return (
     <button
       type="button"
       className="theme-toggle"
       onClick={toggle}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Light mode' : 'Dark mode'}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Light mode" : "Dark mode"}
     >
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
         <mask id="moon-bite">
           <rect x="0" y="0" width="24" height="24" fill="#fff" />
           {/* slides in to bite the sun into a crescent */}
-          <circle cx={dark ? 10 : 26} cy={dark ? 7 : 2} r="8" fill="#000" style={{ transition: 'cx 500ms cubic-bezier(0.25, 0.8, 0.3, 1), cy 500ms cubic-bezier(0.25, 0.8, 0.3, 1)' }} />
+          <circle
+            cx={dark ? 10 : 26}
+            cy={dark ? 7 : 2}
+            r="8"
+            fill="#000"
+            style={{
+              transition:
+                "cx 500ms cubic-bezier(0.25, 0.8, 0.3, 1), cy 500ms cubic-bezier(0.25, 0.8, 0.3, 1)",
+            }}
+          />
         </mask>
-        <circle cx="12" cy="12" r={dark ? 8 : 5} mask="url(#moon-bite)" fill="currentColor"
-          style={{ transition: 'r 500ms cubic-bezier(0.25, 0.8, 0.3, 1)' }} />
-        <g className="sun-rays" style={{ opacity: dark ? 0 : 1, transformOrigin: 'center', transform: dark ? 'rotate(45deg) scale(0.6)' : 'none', transition: 'opacity 400ms ease, transform 500ms cubic-bezier(0.25, 0.8, 0.3, 1)' }} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <circle
+          cx="12"
+          cy="12"
+          r={dark ? 8 : 5}
+          mask="url(#moon-bite)"
+          fill="currentColor"
+          style={{ transition: "r 500ms cubic-bezier(0.25, 0.8, 0.3, 1)" }}
+        />
+        <g
+          className="sun-rays"
+          style={{
+            opacity: dark ? 0 : 1,
+            transformOrigin: "center",
+            transform: dark ? "rotate(45deg) scale(0.6)" : "none",
+            transition:
+              "opacity 400ms ease, transform 500ms cubic-bezier(0.25, 0.8, 0.3, 1)",
+          }}
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        >
           <line x1="12" y1="1.5" x2="12" y2="3.8" />
           <line x1="12" y1="20.2" x2="12" y2="22.5" />
           <line x1="1.5" y1="12" x2="3.8" y2="12" />

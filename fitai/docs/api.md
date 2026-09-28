@@ -42,6 +42,7 @@ before the controller runs; the schema named in the table is the one applied
 | GET | /api/workout/history/:exercise | yes | no | — | the last logged session for that exercise |
 | GET | /api/workout/today-sets | yes | no | — | `{ [exerciseName]: setCount }` for today, so the UI can resume mid-session |
 | GET | /api/memory/summaries?limit=50 | yes | no | — | memory timeline with `category` + `importance`; `limit` defaults to 50, clamped 1–200 |
+| DELETE | /api/memory/summaries/:id | yes | no | — | permanently removes the authenticated user's saved note; invalid UUID → 400, unknown or other-user note → 404; profile and activity are unchanged |
 | GET | /api/plan | yes | no | — | current plan + `planStartedAt` + `timeframeWeeks` |
 | PUT | /api/plan | yes | no | `PlanUpdateSchema` | edit workout days and/or diet targets (bounded by `DIET_EDIT_BOUNDS`); learns exercise preferences from the diff; **never** resets the goal clock |
 | POST | /api/plan/regenerate | yes | yes | — | explicit "life changed": new plan from the current profile, keeps learned preferences, **restarts** the goal clock |

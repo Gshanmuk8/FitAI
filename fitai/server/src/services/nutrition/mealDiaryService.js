@@ -10,10 +10,13 @@
  * the synced state (the old fire-and-forget raced the next read) — but a
  * sync failure only logs; it must never fail the meal save itself.
  */
-const Meal = require('../../models/Meal');
-const { updateChecklistFields } = require('../../models/DailyChecklist');
-const { getTodayEnriched, valueCompletion } = require('../checklist/checklistService');
-const logger = require('../../utils/logger');
+const Meal = require("../../models/Meal");
+const { updateChecklistFields } = require("../../models/DailyChecklist");
+const {
+  getTodayEnriched,
+  valueCompletion,
+} = require("../checklist/checklistService");
+const logger = require("../../utils/logger");
 
 async function addMealAndSync(userId, meal) {
   const checklist = await getTodayEnriched(userId); // creates today's row (and targets) if absent
@@ -32,11 +35,13 @@ async function removeMealAndSync(userId, mealId) {
 // Recompute today's diary totals, write them into the checklist row, and
 // re-derive both completions with the same rule every other write path uses.
 async function syncFromDiary(userId, checklist) {
-  const totals = await Meal.todayTotals(userId, checklist.userDate);
-  const snapshot = checklist?.plan_snapshot || {};
-  const summary = summarize(checklist, totals);
-
+  let summary = { userDate: checklist.userDate };
   try {
+    // Even the totals read can fail after INSERT/DELETE has committed.
+    // Never report that acknowledged change as a failed meal operation.
+    const totals = await Meal.todayTotals(userId, checklist.userDate);
+    const snapshot = checklist?.plan_snapshot || {};
+    summary = summarize(checklist, totals);
     // The diary total IS the day's figure — the dashboard fields fill
     // themselves and the user never types the same number twice.
     //
@@ -47,31 +52,50 @@ async function syncFromDiary(userId, checklist) {
     // down. values_source (migration 011) records who owns each figure;
     // once the user has typed one, the diary stops writing that column for
     // the rest of the day and only reports its own total in the summary.
-    const owner = checklist.values_source || {};
+    let owner = checklist.values_source || {};
     const fields = {};
-    if (owner.protein_grams !== 'manual') {
+    if (owner.protein_grams !== "manual") {
       fields.protein_grams = summary.protein;
-      fields.protein_completed = valueCompletion('protein_grams', summary.protein, snapshot.targets, snapshot.goal);
+      fields.protein_completed = valueCompletion(
+        "protein_grams",
+        summary.protein,
+        snapshot.targets,
+        snapshot.goal,
+      );
     }
-    if (owner.calories_kcal !== 'manual') {
+    if (owner.calories_kcal !== "manual") {
       fields.calories_kcal = summary.calories;
-      fields.calories_completed = valueCompletion('calories_kcal', summary.calories, snapshot.targets, snapshot.goal);
+      fields.calories_completed = valueCompletion(
+        "calories_kcal",
+        summary.calories,
+        snapshot.targets,
+        snapshot.goal,
+      );
     }
 
     if (Object.keys(fields).length) {
-      const updated = await updateChecklistFields(userId, fields, checklist.userDate, 'diary');
+      const updated = await updateChecklistFields(
+        userId,
+        fields,
+        checklist.userDate,
+        "diary",
+      );
       summary.proteinCompleted = Boolean(updated.protein_completed);
       summary.caloriesCompleted = Boolean(updated.calories_completed);
+      owner = updated.values_source || owner;
     }
     // Tell the client which figures the diary is not driving, so the UI can
     // show the diary total beside the user's own number instead of silently
     // disagreeing with it.
-    summary.manualFields = Object.keys(owner).filter((k) => owner[k] === 'manual');
+    summary.manualFields = Object.keys(owner).filter(
+      (k) => owner[k] === "manual",
+    );
   } catch (err) {
-    logger.error('meal->checklist sync failed', { error: err.message });
+    logger.error("meal->checklist sync failed", { error: err.message });
     // The meal itself saved; the derived totals may lag. Say so rather than
     // letting the two sources diverge silently behind a 200.
-    summary.syncWarning = 'Meal saved, but today’s totals may be out of date — reload to refresh.';
+    summary.syncWarning =
+      "Meal change saved, but today’s totals could not be refreshed. Refresh the diary to try again; do not add the same meal twice.";
   }
   return summary;
 }
@@ -80,8 +104,15 @@ async function getTodaySummary(userId) {
   // getTodayEnriched resolves the user's local date itself and returns it,
   // so the meal totals are keyed to the same day the checklist lives on.
   const checklist = await getTodayEnriched(userId);
-  const totals = await Meal.todayTotals(userId, checklist.userDate);
-  return summarize(checklist, totals);
+  // Retrying a diary read also repairs a previous derived-total failure.
+  // Manual daily totals remain protected by syncFromDiary's ownership rules.
+  const summary = await syncFromDiary(userId, checklist);
+  if (summary.calories == null) {
+    throw new Error(
+      "Meal totals are temporarily unavailable. Your saved meals have not been changed.",
+    );
+  }
+  return summary;
 }
 
 function summarize(checklist, totals) {
@@ -94,12 +125,20 @@ function summarize(checklist, totals) {
     // on a cut vs fuel reached on a bulk) — the client colors by this.
     goal: checklist?.plan_snapshot?.goal ?? null,
     targets: targets
-      ? { calorieTarget: targets.calorieTarget ?? null, proteinGrams: targets.proteinGrams ?? null }
+      ? {
+          calorieTarget: targets.calorieTarget ?? null,
+          proteinGrams: targets.proteinGrams ?? null,
+        }
       : null,
-    proteinTargetHit: Boolean(targets?.proteinGrams && totals.protein >= targets.proteinGrams),
+    proteinTargetHit: Boolean(
+      targets?.proteinGrams && totals.protein >= targets.proteinGrams,
+    ),
     proteinCompleted: Boolean(checklist?.protein_completed),
     caloriesCompleted: Boolean(checklist?.calories_completed),
     userDate: checklist.userDate ?? null,
+    manualFields: Object.keys(checklist.values_source || {}).filter(
+      (key) => checklist.values_source[key] === "manual",
+    ),
   };
 }
 

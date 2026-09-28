@@ -12,7 +12,7 @@
 
 function envStr(name, fallback) {
   const v = process.env[name];
-  return v == null || v === '' ? fallback : v;
+  return v == null || v === "" ? fallback : v;
 }
 function envInt(name, fallback) {
   const v = parseInt(process.env[name], 10);
@@ -24,15 +24,26 @@ function envFloat(name, fallback) {
 }
 function envList(name, fallback) {
   const v = process.env[name];
-  return v ? v.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : fallback;
+  return v
+    ? v
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+    : fallback;
 }
 
 function buildPlatformConfig() {
   return {
     // Cascade order. Providers not installed/configured are skipped at
     // runtime; listing here is priority, not a requirement.
-    providerOrder: envList('AI_PROVIDER_ORDER', [
-      'gemini', 'openai', 'anthropic', 'openrouter', 'groq', 'cerebras', 'cloudflare',
+    providerOrder: envList("AI_PROVIDER_ORDER", [
+      "gemini",
+      "openai",
+      "anthropic",
+      "groq",
+      "openrouter",
+      "cerebras",
+      "cloudflare",
     ]),
 
     // Vision (food-photo) cascade order — separate from text because the best
@@ -44,76 +55,101 @@ function buildPlatformConfig() {
     // (see groqService), which had quietly reduced this cascade to Gemini
     // alone, so one 429 meant "we couldn't read that image". Only providers
     // whose adapter sets supportsVision:true are ever tried here.
-    providerOrderVision: envList('AI_PROVIDER_ORDER_VISION', [
-      'gemini', 'openrouter', 'openai', 'anthropic', 'groq', 'cerebras', 'cloudflare',
+    providerOrderVision: envList("AI_PROVIDER_ORDER_VISION", [
+      "gemini",
+      "openrouter",
+      "openai",
+      "anthropic",
+      "groq",
+      "cerebras",
+      "cloudflare",
     ]),
 
     // Per-provider hard disable (feature flag): AI_DISABLE_PROVIDERS=openai,groq
-    disabledProviders: new Set(envList('AI_DISABLE_PROVIDERS', [])),
+    disabledProviders: new Set(envList("AI_DISABLE_PROVIDERS", [])),
 
     // Models — swappable without touching adapter code.
     models: {
-      gemini: envStr('AI_MODEL_GEMINI', 'gemini-2.5-flash'),
-      openai: envStr('AI_MODEL_OPENAI', 'gpt-5'),
-      anthropic: envStr('AI_MODEL_ANTHROPIC', 'claude-sonnet-5'),
+      gemini: envStr("AI_MODEL_GEMINI", "gemini-2.5-flash"),
+      openai: envStr("AI_MODEL_OPENAI", "gpt-5"),
+      anthropic: envStr("AI_MODEL_ANTHROPIC", "claude-sonnet-5"),
       // Free OpenRouter slugs get retired without notice (llama-3.3-70b's
       // :free tier died with an HTTP 404 mid-2026) — if this one 404s,
       // check /api/v1/models for a live :free slug and override via env.
-      openrouter: envStr('AI_MODEL_OPENROUTER', 'nvidia/nemotron-3-super-120b-a12b:free'),
+      openrouter: envStr(
+        "AI_MODEL_OPENROUTER",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+      ),
       // Vision fallback behind Gemini. Chosen by probing every free
       // vision-capable OpenRouter model against FoodAnalysisSchema: this was
       // the only one returning schema-valid JSON in ~5s (gemma-4-31b was
       // rate-limited, nemotron-nano-vl took 122s and returned empty).
-      openrouterVision: envStr('AI_MODEL_OPENROUTER_VISION', 'google/gemma-4-26b-a4b-it:free'),
-      groq: envStr('AI_MODEL_GROQ', 'llama-3.3-70b-versatile'),
+      openrouterVision: envStr(
+        "AI_MODEL_OPENROUTER_VISION",
+        "google/gemma-4-26b-a4b-it:free",
+      ),
+      // Groq's free/developer Llama 3.3 endpoint retired on 2026-08-16.
+      // https://console.groq.com/docs/deprecations
+      groq: envStr("AI_MODEL_GROQ", "openai/gpt-oss-120b"),
       // Vision fallback so food-photo analysis survives a Gemini outage —
       // llama-4-scout is Groq's multimodal model.
-      groqVision: envStr('AI_MODEL_GROQ_VISION', 'meta-llama/llama-4-scout-17b-16e-instruct'),
-      cerebras: envStr('AI_MODEL_CEREBRAS', 'gpt-oss-120b'),
-      cloudflare: envStr('AI_MODEL_CLOUDFLARE', '@cf/meta/llama-3.1-8b-instruct'),
+      groqVision: envStr(
+        "AI_MODEL_GROQ_VISION",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+      ),
+      cerebras: envStr("AI_MODEL_CEREBRAS", "gpt-oss-120b"),
+      cloudflare: envStr(
+        "AI_MODEL_CLOUDFLARE",
+        "@cf/meta/llama-3.1-8b-instruct",
+      ),
     },
 
     // Generation defaults.
-    temperature: envFloat('AI_TEMPERATURE', 0.4),
-    maxTokens: envInt('AI_MAX_TOKENS', 2048),
+    temperature: envFloat("AI_TEMPERATURE", 0.4),
+    maxTokens: envInt("AI_MAX_TOKENS", 2048),
 
     // Ceiling on simultaneous outbound provider calls per instance. Excess
     // requests queue (briefly) instead of opening unbounded connections and
     // holding N vision payloads in memory during a spike.
-    maxConcurrentCalls: envInt('AI_MAX_CONCURRENT_CALLS', 8),
+    maxConcurrentCalls: envInt("AI_MAX_CONCURRENT_CALLS", 8),
+    // Entire queue + provider cascade stays below the client's 120s limit.
+    requestTimeoutMs: Math.max(
+      1000,
+      Math.min(100000, envInt("AI_REQUEST_TIMEOUT_MS", 90000)),
+    ),
 
     // Per-provider timeout (ms); default applies when not listed.
     // gemini-2.5-flash is a thinking model: plan-sized outputs routinely
     // take 15-25s, so its budget must be well past that or every plan
     // generation dies at the timeout and cascades to fallback.
     timeoutsMs: {
-      default: envInt('AI_TIMEOUT_MS', 20000),
-      gemini: envInt('AI_TIMEOUT_GEMINI_MS', 45000),
-      openai: envInt('AI_TIMEOUT_OPENAI_MS', 30000),
-      anthropic: envInt('AI_TIMEOUT_ANTHROPIC_MS', 30000),
-      openrouter: envInt('AI_TIMEOUT_OPENROUTER_MS', 20000),
+      default: envInt("AI_TIMEOUT_MS", 20000),
+      gemini: envInt("AI_TIMEOUT_GEMINI_MS", 45000),
+      openai: envInt("AI_TIMEOUT_OPENAI_MS", 30000),
+      anthropic: envInt("AI_TIMEOUT_ANTHROPIC_MS", 30000),
+      openrouter: envInt("AI_TIMEOUT_OPENROUTER_MS", 20000),
       // Vision carries an image payload and runs on a free endpoint — the 20s
       // text budget times out on photos that would have succeeded.
-      openrouterVision: envInt('AI_TIMEOUT_OPENROUTER_VISION_MS', 45000),
-      groq: envInt('AI_TIMEOUT_GROQ_MS', 15000),
-      cerebras: envInt('AI_TIMEOUT_CEREBRAS_MS', 20000),
-      cloudflare: envInt('AI_TIMEOUT_CLOUDFLARE_MS', 15000),
+      openrouterVision: envInt("AI_TIMEOUT_OPENROUTER_VISION_MS", 45000),
+      groq: envInt("AI_TIMEOUT_GROQ_MS", 15000),
+      cerebras: envInt("AI_TIMEOUT_CEREBRAS_MS", 20000),
+      cloudflare: envInt("AI_TIMEOUT_CLOUDFLARE_MS", 15000),
     },
 
     // Retries live in the GATEWAY only (adapters make exactly one attempt).
     // Full-jitter exponential backoff; retries apply per provider before
     // falling to the next one, and only for transient error classes.
     retry: {
-      attempts: envInt('AI_RETRY_ATTEMPTS', 2), // total tries per provider
-      baseDelayMs: envInt('AI_RETRY_BASE_MS', 300),
-      maxDelayMs: envInt('AI_RETRY_MAX_MS', 2000),
+      attempts: envInt("AI_RETRY_ATTEMPTS", 2), // total tries per provider
+      baseDelayMs: envInt("AI_RETRY_BASE_MS", 300),
+      maxDelayMs: envInt("AI_RETRY_MAX_MS", 2000),
     },
 
     // Circuit breaker: N consecutive hard failures opens the circuit for
     // openMs; then one half-open probe decides recovery.
     breaker: {
-      failureThreshold: envInt('AI_BREAKER_FAILURES', 4),
-      openMs: envInt('AI_BREAKER_OPEN_MS', 60_000),
+      failureThreshold: envInt("AI_BREAKER_FAILURES", 4),
+      openMs: envInt("AI_BREAKER_OPEN_MS", 60_000),
     },
 
     // Budgets (estimated tokens/day; 0 = unlimited). In-memory counters —
@@ -133,16 +169,25 @@ function buildPlatformConfig() {
     // stays opt-in, since the right number depends on the deployment's
     // plan; the per-user rail is what preserves isolation.
     budget: {
-      dailyTokens: envInt('AI_BUDGET_DAILY_TOKENS', 0),
-      dailyTokensPerUser: envInt('AI_BUDGET_DAILY_TOKENS_PER_USER', 250_000),
+      dailyTokens: envInt("AI_BUDGET_DAILY_TOKENS", 0),
+      dailyTokensPerUser: envInt("AI_BUDGET_DAILY_TOKENS_PER_USER", 250_000),
     },
 
     // USD per 1M tokens (prompt/completion) for cost estimates in reports.
     // Rough public prices; override as they change. Unlisted = free tier.
     pricing: {
-      gemini: { prompt: envFloat('AI_PRICE_GEMINI_PROMPT', 0.3), completion: envFloat('AI_PRICE_GEMINI_COMPLETION', 2.5) },
-      openai: { prompt: envFloat('AI_PRICE_OPENAI_PROMPT', 1.25), completion: envFloat('AI_PRICE_OPENAI_COMPLETION', 10) },
-      anthropic: { prompt: envFloat('AI_PRICE_ANTHROPIC_PROMPT', 3), completion: envFloat('AI_PRICE_ANTHROPIC_COMPLETION', 15) },
+      gemini: {
+        prompt: envFloat("AI_PRICE_GEMINI_PROMPT", 0.3),
+        completion: envFloat("AI_PRICE_GEMINI_COMPLETION", 2.5),
+      },
+      openai: {
+        prompt: envFloat("AI_PRICE_OPENAI_PROMPT", 1.25),
+        completion: envFloat("AI_PRICE_OPENAI_COMPLETION", 10),
+      },
+      anthropic: {
+        prompt: envFloat("AI_PRICE_ANTHROPIC_PROMPT", 3),
+        completion: envFloat("AI_PRICE_ANTHROPIC_COMPLETION", 15),
+      },
     },
   };
 }

@@ -43,12 +43,20 @@ http://localhost:5173/auth/callback
 http://localhost:5173/reset-password
 ```
 
-With email confirmation enabled, signup shows a confirmation screen and the
-email link completes sign-in. Configure custom SMTP for public signup and
-password-reset delivery, then test an address outside your Supabase organization.
-The default Supabase email service only sends to project team addresses and is
-not for production use. Turning off confirmation does not fix password-reset
-email delivery. Keep confirmation enabled for the public launch.
+For the requested immediate signup flow, open Authentication > Sign In / Providers
+> Email (the dashboard may label this Email settings) and turn **Confirm email**
+off. Keep email/password sign-in enabled. A successful public signup must return
+both a user and a session, then go straight to onboarding without an email link.
+An admin-created, pre-confirmed account does not prove this flow works.
+
+This setting skips proof of email ownership. Before a public launch, review that
+tradeoff and account-abuse protections. The app also handles confirmation if you
+intentionally enable it later; do not silently bypass the server's setting.
+
+Password reset is separate: configure custom SMTP and test delivery to an address
+outside your Supabase organization. The default email service is restricted to
+project team addresses and is not for production use. Turning confirmation off
+does not make password-reset delivery work.
 See [Supabase's SMTP requirements](https://supabase.com/docs/guides/auth/auth-smtp).
 
 ## 3. Set server variables
@@ -127,7 +135,8 @@ without a rebuild does not reconnect the currently deployed website.
 
 ## 6. Verify the deployed user journey
 
-- Create a new account and confirm its email, if enabled.
+- Create a new account through the public signup form. With the requested setting,
+  it must immediately open onboarding without asking for email confirmation.
 - Complete onboarding and verify the generated workout and nutrition plan.
 - Sign out and sign in again; the saved plan must remain.
 - Reload the dashboard and check that the session and data remain available.
@@ -150,3 +159,11 @@ npm run smoke -- --setup-sql
 This checks that the bundle contains every current migration, can run twice,
 records the migration ledger, enables RLS and removes direct REST-role SELECT
 grants. It then runs the same application smoke journey against that schema.
+
+For an explicit live check, run `node scripts/verify-live-auth.cjs --settings-only`
+first (read-only). Then `node scripts/verify-live-auth.cjs --run-live` checks public
+signup, returning login, persistence and account isolation against the configured
+FitAI project and deployed backend. It creates only uniquely named temporary test
+accounts and removes those accounts and their linked data in `finally`.
+It never uses admin account creation or confirms a user on their behalf. It does
+not prove password-reset email delivery, and does not deploy local changes.

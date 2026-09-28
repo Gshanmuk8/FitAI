@@ -23,8 +23,9 @@
  * gatewayInstance.js; tests wire fakes. That inversion is what makes the
  * fallback matrix actually testable instead of theoretically correct.
  */
-const { executeWithRetry, classifyError } = require('./retry');
-const { estimateTokens } = require('./usageTracker');
+const { executeWithRetry, classifyError } = require("./retry");
+const { estimateTokens } = require("./usageTracker");
+const { withinDeadline } = require("../providerUtils");
 
 // Counting semaphore for the provider cascade: bounds how many outbound AI
 // calls run at once per instance. Everything else in execute() (cache reads,
@@ -34,14 +35,30 @@ function createSemaphore(limit) {
   let active = 0;
   const waiters = [];
   return {
-    async acquire() {
-      if (active >= limit) await new Promise((resolve) => waiters.push(resolve));
-      active += 1;
+    async acquire(deadline) {
+      if (active < limit) {
+        active += 1;
+        return true;
+      }
+      return new Promise((resolve) => {
+        const waiter = { resolve, timer: null };
+        waiter.timer = setTimeout(
+          () => {
+            const i = waiters.indexOf(waiter);
+            if (i >= 0) waiters.splice(i, 1);
+            resolve(false);
+          },
+          Math.max(1, deadline - Date.now()),
+        );
+        waiters.push(waiter);
+      });
     },
     release() {
-      active -= 1;
       const next = waiters.shift();
-      if (next) next();
+      if (next) {
+        clearTimeout(next.timer);
+        next.resolve(true);
+      } else active -= 1;
     },
   };
 }
@@ -56,19 +73,22 @@ function createGateway({
   usage, // usageTracker
   telemetry, // createTelemetry(...)
 }) {
-  const byName = providers instanceof Map ? providers : new Map(Object.entries(providers));
-  const aiSlots = createSemaphore(config.maxConcurrentCalls || 8);
+  const byName =
+    providers instanceof Map ? providers : new Map(Object.entries(providers));
+  const aiSlots = createSemaphore(Math.max(1, config.maxConcurrentCalls || 8));
 
   function eligibleProviders({ vision = false } = {}) {
-    const baseOrder = vision && config.providerOrderVision?.length
-      ? config.providerOrderVision
-      : config.providerOrder;
+    const baseOrder =
+      vision && config.providerOrderVision?.length
+        ? config.providerOrderVision
+        : config.providerOrder;
     const ordered = baseOrder
       .filter((name) => byName.has(name))
       .filter((name) => !config.disabledProviders.has(name))
       .filter((name) => !vision || byName.get(name).supportsVision);
     if (!health) return ordered;
-    if (!vision || typeof health.healthScore !== 'function') return health.orderByHealth(ordered);
+    if (!vision || typeof health.healthScore !== "function")
+      return health.orderByHealth(ordered);
     // Vision keeps its explicit priority (the primary is a product choice,
     // not a latency race) — health only DEMOTES providers that are proven
     // degraded or cooling down; it never promotes one over the configured
@@ -89,16 +109,22 @@ function createGateway({
    * Returns { data, source: 'ai' | 'cache' | 'stale_cache' | 'fallback' }.
    */
   async function execute(opts) {
-    const trace = telemetry.startTrace(opts.task, { userId: opts.userId ? 'present' : 'anonymous' });
+    const deadline = Date.now() + (config.requestTimeoutMs || 90000);
+    const trace = telemetry.startTrace(opts.task, {
+      userId: opts.userId ? "present" : "anonymous",
+    });
 
     // 1. Budget rail — degrade to cache/fallback, never to an error.
     const budgetCheck = usage.checkBudget(opts.userId);
     if (!budgetCheck.allowed) {
-      trace.event('budget_blocked', { reason: budgetCheck.reason });
-      const rescue = await tryCachePaths(opts, trace, { includeFresh: true, includeStale: true });
+      trace.event("budget_blocked", { reason: budgetCheck.reason });
+      const rescue = await tryCachePaths(opts, trace, {
+        includeFresh: true,
+        includeStale: true,
+      });
       if (rescue) return rescue;
-      trace.end('budget_blocked');
-      return { data: opts.fallback(), source: 'fallback' };
+      trace.end("budget_blocked");
+      return { data: opts.fallback(), source: "fallback" };
     }
 
     // 2. An empty prompt is a CALLER bug, not a provider outage. Without this
@@ -107,42 +133,70 @@ function createGateway({
     // call degrades routing for every OTHER user while this one is told the
     // coach is unreachable. Fail straight to the deterministic floor and make
     // the real cause loud in the logs.
-    if (typeof opts.prompt !== 'string' || !opts.prompt.trim()) {
-      trace.event('empty_prompt', { task: opts.task });
-      trace.end('fallback');
-      return { data: opts.fallback(), source: 'fallback' };
+    if (typeof opts.prompt !== "string" || !opts.prompt.trim()) {
+      trace.event("empty_prompt", { task: opts.task });
+      trace.end("fallback");
+      return { data: opts.fallback(), source: "fallback" };
     }
 
     // 3. Fresh cache.
-    const cached = await tryCachePaths(opts, trace, { includeFresh: true, includeStale: false });
+    const cached = await tryCachePaths(opts, trace, {
+      includeFresh: true,
+      includeStale: false,
+    });
     if (cached) return cached;
 
     // 4. Provider cascade — gated by the concurrency semaphore.
-    await aiSlots.acquire();
+    const acquired = await aiSlots.acquire(deadline);
     try {
-      for (const name of eligibleProviders({ vision: opts.mode === 'vision' })) {
+      for (const name of acquired
+        ? eligibleProviders({ vision: opts.mode === "vision" })
+        : []) {
+        if (Date.now() >= deadline) {
+          trace.event("deadline_reached");
+          break;
+        }
         const provider = byName.get(name);
         if (!provider.isConfigured()) continue;
         if (breaker && !breaker.canRequest(name)) {
-          trace.event('breaker_skip', { provider: name });
+          trace.event("breaker_skip", { provider: name });
           continue;
         }
 
         const started = Date.now();
         try {
-          const raw = await executeWithRetry(
-            () => (opts.mode === 'vision'
-              ? provider.callVision(opts.prompt, opts.imageBase64, opts.mimeType)
-              : provider.callText(opts.prompt)),
-            {
-              ...config.retry,
-              onRetry: (attempt, delayMs, err) =>
-                trace.event('retry', { provider: name, attempt, delayMs, error: classifyError(err) }),
-            }
+          const raw = await withinDeadline(deadline, () =>
+            executeWithRetry(
+              () => {
+                if (Date.now() >= deadline)
+                  throw new Error("AI request deadline exceeded");
+                return opts.mode === "vision"
+                  ? provider.callVision(
+                      opts.prompt,
+                      opts.imageBase64,
+                      opts.mimeType,
+                    )
+                  : provider.callText(opts.prompt);
+              },
+              {
+                ...config.retry,
+                onRetry: (attempt, delayMs, err) =>
+                  trace.event("retry", {
+                    provider: name,
+                    attempt,
+                    delayMs,
+                    error: classifyError(err),
+                  }),
+              },
+            ),
           );
 
-          const { valid, data } = validate(opts.schemaName, raw);
+          const { valid, data, issues } = validate(opts.schemaName, raw);
           if (!valid) {
+            trace.event("validation_failed", {
+              schema: opts.schemaName,
+              issues,
+            });
             // Malformed-but-parsed output: the provider "worked" transport-
             // wise but produced junk — count it against health, try the next
             // provider (a different model is the best second opinion).
@@ -162,61 +216,86 @@ function createGateway({
             promptTokens: estimateTokens(opts.prompt),
             completionTokens: estimateTokens(JSON.stringify(raw)),
           });
-          trace.event('provider_success', { provider: name, latencyMs });
+          trace.event("provider_success", { provider: name, latencyMs });
 
           if (opts.cacheKey) {
-            await cache.setCached(opts.cacheKey.namespace, opts.cacheKey.input, data);
+            await cache.setCached(
+              opts.cacheKey.namespace,
+              opts.cacheKey.input,
+              data,
+            );
             if (opts.useLastKnownGood) {
-              await cache.setLastKnownGood(opts.cacheKey.namespace, opts.cacheKey.input, data);
+              await cache.setLastKnownGood(
+                opts.cacheKey.namespace,
+                opts.cacheKey.input,
+                data,
+              );
             }
           }
-          trace.end('ai');
-          return { data, source: 'ai' };
+          trace.end("ai");
+          return { data, source: "ai" };
         } catch (err) {
           const latencyMs = Date.now() - started;
-          const errorClass = err.invalidOutput ? 'invalid_output' : classifyError(err);
+          const errorClass = err.invalidOutput
+            ? "invalid_output"
+            : classifyError(err);
           health?.recordOutcome(name, {
             success: false,
             latencyMs,
-            rateLimited: errorClass === 'rate_limited',
+            rateLimited: errorClass === "rate_limited",
           });
           // Rate limits open the health cooldown, not the breaker — the
           // provider is healthy, just throttling us. Everything else counts
           // toward tripping the circuit.
-          if (breaker && errorClass !== 'rate_limited') breaker.recordFailure(name);
-          trace.event('provider_failure', { provider: name, errorClass, latencyMs, message: String(err.message).slice(0, 160) });
+          if (breaker && errorClass !== "rate_limited")
+            breaker.recordFailure(name);
+          trace.event("provider_failure", {
+            provider: name,
+            errorClass,
+            latencyMs,
+            message: String(err.message).slice(0, 160),
+          });
         }
       }
     } finally {
-      aiSlots.release();
+      if (acquired) aiSlots.release();
     }
 
     // 5. Stale last-known-good beats a generic template.
-    const stale = await tryCachePaths(opts, trace, { includeFresh: false, includeStale: true });
+    const stale = await tryCachePaths(opts, trace, {
+      includeFresh: false,
+      includeStale: true,
+    });
     if (stale) return stale;
 
     // 6. Deterministic floor — rules engine / static templates.
-    trace.event('fallback');
-    trace.end('fallback');
-    return { data: opts.fallback(), source: 'fallback' };
+    trace.event("fallback");
+    trace.end("fallback");
+    return { data: opts.fallback(), source: "fallback" };
   }
 
   async function tryCachePaths(opts, trace, { includeFresh, includeStale }) {
     if (!opts.cacheKey) return null;
     if (includeFresh) {
-      const hit = await cache.getCached(opts.cacheKey.namespace, opts.cacheKey.input);
+      const hit = await cache.getCached(
+        opts.cacheKey.namespace,
+        opts.cacheKey.input,
+      );
       if (hit) {
-        trace.event('cache_hit');
-        trace.end('cache');
-        return { data: hit, source: 'cache' };
+        trace.event("cache_hit");
+        trace.end("cache");
+        return { data: hit, source: "cache" };
       }
     }
     if (includeStale && opts.useLastKnownGood) {
-      const stale = await cache.getLastKnownGood(opts.cacheKey.namespace, opts.cacheKey.input);
+      const stale = await cache.getLastKnownGood(
+        opts.cacheKey.namespace,
+        opts.cacheKey.input,
+      );
       if (stale) {
-        trace.event('stale_cache_hit');
-        trace.end('stale_cache');
-        return { data: stale, source: 'stale_cache' };
+        trace.event("stale_cache_hit");
+        trace.end("stale_cache");
+        return { data: stale, source: "stale_cache" };
       }
     }
     return null;

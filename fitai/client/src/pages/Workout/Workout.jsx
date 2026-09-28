@@ -1,347 +1,574 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getTodayChecklist, updateChecklistItem, logSet, getProgression, getTodaySets } from '../../services/workoutService';
-import Button from '../../components/ui/Button';
+import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  getTodayChecklist,
+  updateChecklistItem,
+  logSet,
+  getProgression,
+  getTodaySets,
+} from "../../services/workoutService";
+import { workoutNumbers } from "../../utils/productState";
+import Button from "../../components/ui/Button";
+import ButtonLink from "../../components/ui/ButtonLink";
+import Icon from "../../components/ui/Icon";
+import {
+  PageHeader,
+  LoadingState,
+  EmptyState,
+  Ring,
+  ConfirmDialog,
+} from "../../components/ui/PageKit";
 
-const inputStyle = { width: '100%', marginBottom: 'var(--s2)' };
-
-// Mid-session this page is read at arm's length, one-handed, in a hurry.
-// Every control here clears 52px and every figure is tabular.
-const fieldStyle = {
-  width: '100%',
-  minHeight: 56,
-  fontSize: 'var(--t-h2)',
-  fontWeight: 550,
-  textAlign: 'center',
-  fontVariantNumeric: 'tabular-nums',
-  letterSpacing: '-0.02em',
-};
-
-/**
- * Guided session for one exercise from today's plan: prefilled targets,
- * the progression engine's suggestion, per-set logging. `initialSetsDone`
- * comes from the server so a refresh mid-session resumes where it left off.
- *
- * The card carries the whole hierarchy: a finished exercise collapses to a
- * quiet ruled row, an unfinished one stays a full surface with a 56px
- * keypad. That alone makes "what am I doing right now" unmistakable —
- * the next thing to do is simply the next thing that still has a card.
- */
-function ExerciseCard({ exercise, initialSetsDone = 0, onSetLogged }) {
+function Exercise({ exercise, index, count, open, onOpen, onLogged }) {
   const [suggestion, setSuggestion] = useState(null);
-  const [weight, setWeight] = useState('');
-  const [reps, setReps] = useState(String(exercise.reps || ''));
-  const [setsDone, setSetsDone] = useState(initialSetsDone);
-  const [error, setError] = useState('');
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState(String(exercise.reps));
   const [busy, setBusy] = useState(false);
-
+  const [error, setError] = useState("");
+  const lock = useRef(false);
+  const touchedWeight = useRef(false);
   useEffect(() => {
+    let active = true;
     getProgression(exercise.name)
-      .then((s) => {
-        setSuggestion(s);
-        if (s?.weightKg) setWeight(String(s.weightKg));
+      .then((value) => {
+        if (active) {
+          setSuggestion(value);
+          if (!touchedWeight.current && value.weightKg != null)
+            setWeight(String(value.weightKg));
+        }
       })
       .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [exercise.name]);
-
-  async function logOneSet() {
-    const repsNum = Number(reps);
-    if (!Number.isFinite(repsNum) || repsNum < 1) {
-      setError('Enter the reps you completed first.');
+  async function save(e) {
+    e.preventDefault();
+    if (lock.current) return;
+    setError("");
+    let values;
+    try {
+      values = workoutNumbers(weight, reps);
+    } catch (err) {
+      setError(err.message);
       return;
     }
+    lock.current = true;
     setBusy(true);
-    setError('');
     try {
       await logSet({
         exerciseName: exercise.name,
-        weightKg: Number(weight) || 0, // 0kg is legitimate for bodyweight work
-        reps: repsNum,
-        setNumber: setsDone + 1,
-        completedAllReps: repsNum >= exercise.reps,
+        ...values,
+        setNumber: count + 1,
+        completedAllReps: values.reps >= exercise.reps,
       });
-      setSetsDone((n) => n + 1);
-      onSetLogged();
+      onLogged(exercise.name, exercise.restSeconds ?? 60);
     } catch (err) {
       setError(err.message);
     } finally {
+      lock.current = false;
       setBusy(false);
     }
   }
-
-  const done = setsDone >= exercise.sets;
-
-  // A cleared exercise recedes to a rule — done work gets quieter, so the
-  // eye lands on what is still outstanding.
-  if (done) {
-    return (
-      <div className="list-row" style={{ alignItems: 'baseline', gap: 'var(--s3)' }}>
-        <span className="muted" style={{ minWidth: 0 }}>
-          {exercise.name}
-          {suggestion?.note && (
-            <span className="tiny faint" style={{ display: 'block', marginTop: '0.15rem' }}>
-              {suggestion.weightKg ? `Suggested: ${suggestion.weightKg}kg — ` : ''}{suggestion.note}
-            </span>
+  const done = count >= exercise.sets;
+  return (
+    <article className={`exercise-card${done ? " is-complete" : ""}`}>
+      <button
+        className="exercise-head"
+        aria-expanded={open}
+        aria-controls={`exercise-${index}`}
+        onClick={onOpen}
+      >
+        <span className="exercise-index">
+          {done ? (
+            <Icon name="check" size={18} />
+          ) : (
+            String(index + 1).padStart(2, "0")
           )}
         </span>
-        <span className="mono faint" style={{ whiteSpace: 'nowrap' }}>
-          ✓ {setsDone}/{exercise.sets} · All sets done
+        <span className="exercise-title">
+          <strong>{exercise.name}</strong>
+          <small>
+            {exercise.sets} sets · {exercise.reps} reps
+            {exercise.restSeconds ? ` · ${exercise.restSeconds}s rest` : ""}
+          </small>
         </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card" style={{ padding: 'var(--s4)', marginBottom: 'var(--s3)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 'var(--s1) var(--s3)' }}>
-        <h3 style={{ margin: 0, fontSize: 'var(--t-h2)' }}>{exercise.name}</h3>
-        {/* The set count is the number you glance at between sets — display
-            size, tabular, so 2/4 and 3/4 occupy identical width. */}
-        <span
-          className="mono"
-          style={{ fontSize: 'var(--t-h2)', fontWeight: 600, letterSpacing: '-0.02em', flex: 'none' }}
-        >
-          {setsDone}/{exercise.sets}
+        <span className="set-count">
+          {Math.min(count, exercise.sets)}/{exercise.sets}
         </span>
-      </div>
-
-      <div className="eyebrow" style={{ marginTop: '0.15rem' }}>
-        {setsDone}/{exercise.sets} sets · target {exercise.reps} reps
-      </div>
-
-      {/* Sets as pips: countable without reading, which is the whole point
-          when you are three breaths into a rest period. */}
-      <div style={{ display: 'flex', gap: '0.3rem', margin: 'var(--s3) 0 var(--s4)' }} aria-hidden="true">
-        {Array.from({ length: exercise.sets }).map((_, i) => (
-          <span
-            key={i}
-            style={{
-              flex: 1,
-              height: 4,
-              borderRadius: 'var(--r-pill)',
-              background: i < setsDone ? 'var(--text)' : 'var(--bg1)',
+        <Icon
+          name="chevron"
+          size={16}
+          style={{ transform: open ? "rotate(90deg)" : undefined }}
+        />
+      </button>
+      {open && (
+        <div id={`exercise-${index}`} className="exercise-body">
+          <div className="set-pips" aria-hidden="true">
+            {Array.from({ length: exercise.sets }, (_, i) => (
+              <span key={i} className={i < count ? "done" : ""} />
+            ))}
+          </div>
+          {exercise.notes && <p className="small muted">{exercise.notes}</p>}
+          {suggestion?.note && (
+            <p className="small muted">
+              {suggestion.weightKg != null
+                ? `Suggested load: ${suggestion.weightKg} kg. `
+                : ""}
+              {suggestion.note}
+            </p>
+          )}
+          {done ? (
+            <p className="success-text small" role="status">
+              All planned sets logged. Nicely done.
+            </p>
+          ) : (
+            <form onSubmit={save}>
+              <fieldset disabled={busy}>
+                <div className="form-grid">
+                  <div>
+                    <label className="label" htmlFor={`kg-${index}`}>
+                      Weight · kg
+                    </label>
+                    <input
+                      id={`kg-${index}`}
+                      className="field workout-input"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.5"
+                      placeholder="0"
+                      value={weight}
+                      onChange={(e) => {
+                        touchedWeight.current = true;
+                        setWeight(e.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor={`reps-${index}`}>
+                      Reps completed
+                    </label>
+                    <input
+                      id={`reps-${index}`}
+                      className="field workout-input"
+                      type="number"
+                      min="1"
+                      max="100"
+                      step="1"
+                      value={reps}
+                      onChange={(e) => setReps(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <p className="field-hint">
+                  Use 0 kg for bodyweight. Log what you actually completed.
+                </p>
+                <Button
+                  type="submit"
+                  className="btn-block"
+                  style={{ marginTop: 20 }}
+                >
+                  {busy ? "Saving set…" : `Log set ${count + 1}`}
+                  <Icon name="plus" size={17} />
+                </Button>
+              </fieldset>
+            </form>
+          )}
+          {error && (
+            <p className="error-text small" role="alert">
+              {error}
+            </p>
+          )}
+          <Link
+            className="quiet-link"
+            to="/tutor"
+            state={{
+              mode: "gym",
+              question: `Help me with safe technique for ${exercise.name}.`,
             }}
-          />
-        ))}
-      </div>
-
-      {suggestion?.note && (
-        <p className="small muted" style={{ margin: '0 0 var(--s3)' }}>
-          {suggestion.weightKg ? <span className="mono" style={{ color: 'var(--text)' }}>{`Suggested: ${suggestion.weightKg}kg`}</span> : ''}
-          {suggestion.weightKg ? ' — ' : ''}{suggestion.note}
-        </p>
+          >
+            Ask your coach about this movement
+            <Icon name="coach" size={16} />
+          </Link>
+        </div>
       )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s2)' }}>
-        <label style={{ minWidth: 0 }}>
-          <span className="eyebrow" style={{ display: 'block', marginBottom: '0.3rem' }}>kg</span>
-          <input type="number" step="0.5" min="0" max="500" placeholder="kg" aria-label="Weight in kilograms" value={weight} onChange={(e) => setWeight(e.target.value)} style={fieldStyle} />
-        </label>
-        <label style={{ minWidth: 0 }}>
-          <span className="eyebrow" style={{ display: 'block', marginBottom: '0.3rem' }}>reps</span>
-          <input type="number" min="1" max="100" placeholder="reps" aria-label="Reps completed" value={reps} onChange={(e) => setReps(e.target.value)} style={fieldStyle} />
-        </label>
-      </div>
-
-      {/* One target, full width, unmissable with a thumb. */}
-      <Button type="button" disabled={busy} onClick={logOneSet} className="btn btn-primary btn-block" style={{ minHeight: 56, marginTop: 'var(--s3)', fontSize: 'var(--t-body)' }}>
-        {busy ? 'Saving…' : `Log set ${setsDone + 1}`}
-      </Button>
-
-      {error && <p className="error-text small" style={{ margin: 'var(--s2) 0 0' }}>{error}</p>}
-    </div>
+    </article>
   );
 }
-
 export default function Workout() {
   const [checklist, setChecklist] = useState(null);
-  const [todaySets, setTodaySets] = useState({});
+  const [sets, setSets] = useState({});
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [totalSetsLogged, setTotalSetsLogged] = useState(0);
+  const [loadError, setLoadError] = useState("");
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(0);
   const [finishing, setFinishing] = useState(false);
-  const [error, setError] = useState('');
-
-  // Quick-log form for ad-hoc training outside the plan. No set-number
-  // field: the system already counts today's sets per exercise. No
-  // completed-all-reps checkbox: with no target to compare against it was a
-  // decision the user shouldn't have to make.
-  const [form, setForm] = useState({ exerciseName: '', weightKg: '', reps: '' });
-  const [quickResult, setQuickResult] = useState(null);
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const [restUntil, setRestUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const [quick, setQuick] = useState({
+    exerciseName: "",
+    weight: "",
+    reps: "",
+  });
   const [quickBusy, setQuickBusy] = useState(false);
-
+  const [quickNotice, setQuickNotice] = useState("");
+  const quickLock = useRef(false);
+  const finishLock = useRef(false);
   async function load() {
     setLoading(true);
-    setLoadError('');
+    setLoadError("");
     try {
-      // today-sets is enrichment: if it fails we still render the session,
-      // just without rehydrated counts.
-      const [cl, sets] = await Promise.all([
+      // Counts are essential, not optional enrichment. Logging against a
+      // failed count request would quietly restart an existing session.
+      const [row, counts] = await Promise.all([
         getTodayChecklist(),
-        getTodaySets().catch(() => ({})),
+        getTodaySets(),
       ]);
-      setChecklist(cl);
-      setTodaySets(sets);
-      setTotalSetsLogged(Object.values(sets).reduce((sum, n) => sum + n, 0));
-    } catch (err) {
-      setLoadError(err.message);
+      setChecklist(row);
+      setSets(counts);
+      const first = row?.plan_snapshot?.workout?.exercises?.findIndex(
+        (ex) => (counts[ex.name] || 0) < ex.sets,
+      );
+      setOpen(first >= 0 ? first : 0);
+    } catch (e) {
+      setLoadError(e.message);
     } finally {
       setLoading(false);
     }
   }
-
-  useEffect(() => { load(); }, []);
-
+  useEffect(() => {
+    load();
+  }, []);
+  useEffect(() => {
+    if (!restUntil) return;
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, [restUntil]);
   const workout = checklist?.plan_snapshot?.workout;
-  const isWorkoutDay = workout?.type === 'workout' && workout.exercises?.length > 0;
-  const alreadyDone = Boolean(checklist?.workout_completed);
-
-  async function finishSession() {
+  const exercises = workout?.exercises || [];
+  const planned = exercises.reduce((n, e) => n + Number(e.sets), 0);
+  const done = exercises.reduce(
+    (n, e) => n + Math.min(sets[e.name] || 0, e.sets),
+    0,
+  );
+  const remaining = Math.max(0, Math.ceil((restUntil - now) / 1000));
+  const complete = Boolean(checklist?.workout_completed);
+  function logged(name, seconds) {
+    setSets((current) => ({ ...current, [name]: (current[name] || 0) + 1 }));
+    setNow(Date.now());
+    setRestUntil(seconds ? Date.now() + seconds * 1000 : 0);
+  }
+  useEffect(() => {
+    if (
+      open < 0 ||
+      !exercises[open] ||
+      (sets[exercises[open].name] || 0) < exercises[open].sets
+    )
+      return;
+    const nextIndex = exercises.findIndex((e) => (sets[e.name] || 0) < e.sets);
+    if (nextIndex >= 0) setOpen(nextIndex);
+  }, [sets]);
+  async function finish() {
+    if (finishLock.current) return;
+    finishLock.current = true;
     setFinishing(true);
-    setError('');
+    setError("");
     try {
-      const updated = await updateChecklistItem('workout_completed', true);
-      setChecklist((c) => ({ ...c, ...updated }));
-    } catch (err) {
-      setError(err.message);
+      const row = await updateChecklistItem("workout_completed", true);
+      setChecklist((c) => ({ ...c, ...row }));
+      setConfirmFinish(false);
+      setRestUntil(0);
+    } catch (e) {
+      setError(e.message);
+      setConfirmFinish(false);
     } finally {
       setFinishing(false);
+      finishLock.current = false;
     }
   }
-
-  async function handleQuickLog(e) {
+  async function quickLog(e) {
     e.preventDefault();
-    if (quickBusy) return;
-    setQuickBusy(true);
-    setError('');
+    if (quickLock.current) return;
+    setError("");
+    setQuickNotice("");
+    let values;
     try {
-      const name = form.exerciseName.trim();
+      values = workoutNumbers(quick.weight, quick.reps);
+      if (!quick.exerciseName.trim())
+        throw new Error("Enter an exercise name.");
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+    quickLock.current = true;
+    setQuickBusy(true);
+    try {
+      const name = quick.exerciseName.trim();
       await logSet({
         exerciseName: name,
-        weightKg: Number(form.weightKg),
-        reps: Number(form.reps),
-        setNumber: (todaySets[name] || 0) + 1, // the system counts sets
-        completedAllReps: true, // ad-hoc sets have no target to fall short of
+        ...values,
+        setNumber: (sets[name] || 0) + 1,
+        completedAllReps: true,
       });
-      setTodaySets((prev) => ({ ...prev, [name]: (prev[name] || 0) + 1 }));
-      setQuickResult(await getProgression(name));
+      setSets((s) => ({ ...s, [name]: (s[name] || 0) + 1 }));
+      setQuickNotice("Set saved to your training log.");
+      // A failed suggestion is NOT a failed save. Never invite duplicate logs.
+      getProgression(name)
+        .then((p) => setQuickNotice(`Set saved. Next session: ${p.note}`))
+        .catch(() => {});
     } catch (err) {
       setError(err.message);
     } finally {
       setQuickBusy(false);
+      quickLock.current = false;
     }
   }
-
-  if (loading) return <div className="page-loading">Loading today's session…</div>;
-
-  // A fetch failure is NOT "you're not onboarded" — offering onboarding here
-  // would send an established user off to regenerate their plan over a blip.
-  if (loadError) {
+  if (loading)
     return (
-      <div className="page page-mid page-enter">
-        <h2 className="page-title">Workout</h2>
-        <div className="notice tone-red" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)' }}>
-          <p style={{ margin: '0 0 var(--s3)', color: 'var(--text)' }}>Couldn't load today's session: {loadError}</p>
-          <Button type="button" onClick={load}>Try again</Button>
-        </div>
+      <LoadingState
+        title="Your session, ready for you"
+        detail="Restoring your plan and every set already logged today."
+      />
+    );
+  if (loadError)
+    return (
+      <div className="page">
+        <EmptyState
+          icon="refresh"
+          title="Let’s reconnect your session."
+          description={loadError}
+        >
+          <Button onClick={load}>Try again</Button>
+        </EmptyState>
       </div>
     );
-  }
-
   return (
-    <div className="page page-mid page-enter">
-      <header className="page-header">
+    <div className="page page-wide page-enter">
+      <PageHeader
+        eyebrow={
+          workout?.type === "rest"
+            ? "RECOVERY COUNTS, TOO"
+            : "ONE GOOD SET AT A TIME"
+        }
+        title={
+          workout?.type === "workout" ? workout.dayName : "Move with intention."
+        }
+        description={
+          workout?.type === "workout"
+            ? "Your targets are a guide. Your actual effort is what we log."
+            : "Listen to your body. Make room for an easier day."
+        }
+      >
+        <Link to="/plan" className="btn btn-ghost">
+          View my plan
+          <Icon name="plan" size={16} />
+        </Link>
+      </PageHeader>
+      {(checklist?.plan_snapshot?.adaptations || []).map((a) => (
+        <p className="notice" key={a.code}>
+          {a.message}
+        </p>
+      ))}
+      <div className="workout-layout">
         <div>
-          <p className="eyebrow" style={{ margin: '0 0 var(--s1)' }}>Today's session</p>
-          <h2 className="page-title" style={{ marginBottom: 0 }}>
-            {isWorkoutDay ? workout.dayName : 'Workout'}
-          </h2>
-        </div>
-        {isWorkoutDay && workout.intensity === 'reduced' && (
-          <span className="chip tone-amber">reduced intensity</span>
-        )}
-      </header>
-
-      {/* ---- Today's session, from the plan ---- */}
-      <section style={{ marginBottom: 'var(--s7)' }}>
-        {isWorkoutDay ? (
-          <>
-            {(checklist.plan_snapshot.adaptations || []).map((a) => (
-              <p key={a.code} className="notice">{a.message}</p>
-            ))}
-
-            <div style={{ marginTop: 'var(--s4)' }}>
-              {workout.exercises.map((ex, i) => (
-                <ExerciseCard
-                  key={`${ex.name}-${i}`}
-                  exercise={ex}
-                  initialSetsDone={Math.min(todaySets[ex.name] || 0, ex.sets)}
-                  onSetLogged={() => setTotalSetsLogged((n) => n + 1)}
+          {exercises.length ? (
+            exercises.map((exercise, i) => (
+              <Exercise
+                key={`${exercise.name}-${i}`}
+                exercise={exercise}
+                index={i}
+                count={sets[exercise.name] || 0}
+                open={open === i}
+                onOpen={() => setOpen(open === i ? -1 : i)}
+                onLogged={logged}
+              />
+            ))
+          ) : (
+            <EmptyState
+              icon="moon"
+              title={
+                workout?.type === "rest"
+                  ? "Rest is part of the plan."
+                  : "Your next session starts with a plan."
+              }
+              description={
+                workout?.type === "rest"
+                  ? "A walk, some gentle mobility, or simply a quieter day. You don’t have to earn recovery."
+                  : "Set up your training preferences to get a session built around you."
+              }
+            >
+              <ButtonLink
+                to={workout?.type === "rest" ? "/tutor" : "/onboarding"}
+                state={
+                  workout?.type === "rest" ? { mode: "recovery" } : undefined
+                }
+                variant="ghost"
+              >
+                {workout?.type === "rest"
+                  ? "Talk to your recovery coach"
+                  : "Set up my plan"}
+              </ButtonLink>
+            </EmptyState>
+          )}
+          <details className="card" style={{ marginTop: 22 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 500 }}>
+              Doing something different? Quick-log a set.
+            </summary>
+            <form onSubmit={quickLog}>
+              <fieldset disabled={quickBusy}>
+                <label className="label" htmlFor="quick-exercise">
+                  Exercise
+                </label>
+                <input
+                  className="field"
+                  id="quick-exercise"
+                  required
+                  maxLength={120}
+                  placeholder="e.g. Goblet squat"
+                  value={quick.exerciseName}
+                  onChange={(e) =>
+                    setQuick({ ...quick, exerciseName: e.target.value })
+                  }
                 />
-              ))}
-            </div>
-
-            {/* The session's terminal action, given its own air above a rule
-                so it never reads as one more exercise control. */}
-            <div style={{ marginTop: 'var(--s5)', paddingTop: 'var(--s4)', borderTop: '1px solid var(--border)' }}>
-              {alreadyDone ? (
-                <p className="small muted" style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 'var(--s3)', flexWrap: 'wrap' }}>
-                  <span>✓ Workout checked off for today.</span>
-                  <Link to="/dashboard" className="small">Back to Today →</Link>
+                <div className="form-grid">
+                  <div>
+                    <label className="label" htmlFor="quick-weight">
+                      Weight · kg
+                    </label>
+                    <input
+                      className="field"
+                      id="quick-weight"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.5"
+                      placeholder="0 for bodyweight"
+                      value={quick.weight}
+                      onChange={(e) =>
+                        setQuick({ ...quick, weight: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="quick-reps">
+                      Reps
+                    </label>
+                    <input
+                      className="field"
+                      id="quick-reps"
+                      type="number"
+                      min="1"
+                      max="100"
+                      step="1"
+                      required
+                      value={quick.reps}
+                      onChange={(e) =>
+                        setQuick({ ...quick, reps: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <Button type="submit" variant="ghost" style={{ marginTop: 20 }}>
+                  {quickBusy ? "Saving…" : "Log extra set"}
+                </Button>
+              </fieldset>
+            </form>
+            {quickNotice && (
+              <p className="small success-text" role="status">
+                {quickNotice}
+              </p>
+            )}
+          </details>
+        </div>
+        <aside className="workout-sidebar">
+          {planned > 0 && (
+            <section className="card session-summary">
+              <Ring
+                value={done}
+                total={planned}
+                size={130}
+                label={`${done} of ${planned} planned sets logged`}
+              />
+              <div>
+                <h3>
+                  {complete
+                    ? "Session in the books."
+                    : done
+                      ? "You’re doing the work."
+                      : "A fresh start."}
+                </h3>
+                <p>
+                  {complete
+                    ? "Your effort is saved. Take time to recover."
+                    : `${done} of ${planned} planned sets logged.`}
                 </p>
+              </div>
+              {complete ? (
+                <ButtonLink to="/dashboard" variant="ghost">
+                  Back to Today
+                  <Icon name="check" size={16} />
+                </ButtonLink>
               ) : (
-                <Button type="button" disabled={finishing || totalSetsLogged === 0} onClick={finishSession} className="btn btn-primary btn-block" style={{ minHeight: 56, fontSize: 'var(--t-body)' }}>
-                  {finishing ? 'Saving…' : totalSetsLogged === 0 ? 'Log a set to finish the session' : 'Finish session'}
+                <Button
+                  className="btn-block"
+                  style={{ marginTop: 20 }}
+                  disabled={!done || finishing}
+                  onClick={() =>
+                    done < planned ? setConfirmFinish(true) : finish()
+                  }
+                >
+                  {finishing ? "Saving session…" : "Finish session"}
                 </Button>
               )}
-            </div>
-          </>
-        ) : workout?.type === 'rest' ? (
-          <div className="card">
-            <h3 style={{ margin: '0 0 var(--s2)' }}>Rest day.</h3>
-            <p className="small muted" style={{ margin: 0 }}>
-              Recovery is part of the program — easy walk, mobility, sleep. You can still quick-log ad-hoc training below.
-            </p>
-          </div>
-        ) : !checklist?.plan_snapshot ? (
-          <div className="card" style={{ textAlign: 'center', padding: 'var(--s6) var(--s5)' }}>
-            <p className="muted" style={{ margin: 0 }}>
-              You don't have a plan yet — <Link to="/onboarding">complete onboarding</Link> to get your program.
-            </p>
-          </div>
-        ) : (
-          <div className="card" style={{ textAlign: 'center', padding: 'var(--s6) var(--s5)' }}>
-            <p className="muted" style={{ margin: 0 }}>
-              No workout is scheduled for today. You can still quick-log ad-hoc training below.
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* ---- Quick log (collapsed: the exception path, not the main one) ---- */}
-      <section>
-        <details>
-          <summary className="eyebrow" style={{ cursor: 'pointer', padding: 'var(--s3) 0', borderTop: '1px solid var(--border)' }}>
-            Log something outside the plan
-          </summary>
-          <form onSubmit={handleQuickLog} style={{ marginTop: 'var(--s3)' }}>
-            <input placeholder="Exercise name" value={form.exerciseName} onChange={(e) => setForm((f) => ({ ...f, exerciseName: e.target.value }))} required style={inputStyle} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s2)' }}>
-              <input placeholder="Weight (kg)" type="number" step="0.5" min="0" value={form.weightKg} onChange={(e) => setForm((f) => ({ ...f, weightKg: e.target.value }))} required style={{ ...inputStyle, minHeight: 52, fontVariantNumeric: 'tabular-nums' }} />
-              <input placeholder="Reps" type="number" min="1" value={form.reps} onChange={(e) => setForm((f) => ({ ...f, reps: e.target.value }))} required style={{ ...inputStyle, minHeight: 52, fontVariantNumeric: 'tabular-nums' }} />
-            </div>
-            <Button type="submit" variant="ghost" disabled={quickBusy} style={{ minHeight: 48 }}>{quickBusy ? 'Saving…' : 'Log set'}</Button>
-          </form>
-          {quickResult && (
-            <p className="notice" style={{ marginTop: 'var(--s3)' }}>
-              <strong style={{ color: 'var(--text)' }}>Next session:</strong>{' '}
-              <span className="mono">{quickResult.weightKg ? `${quickResult.weightKg}kg` : 'no prior data'}</span> — {quickResult.note}
-            </p>
+            </section>
           )}
-        </details>
-      </section>
-
-      {error && <p className="error-text" style={{ marginTop: 'var(--s4)' }}>{error}</p>}
+          {remaining > 0 && (
+            <div
+              className="rest-timer"
+              role="timer"
+              aria-label="Suggested rest remaining"
+            >
+              <span>
+                Take a breath
+                <br />
+                <strong>
+                  {Math.floor(remaining / 60)}:
+                  {String(remaining % 60).padStart(2, "0")}
+                </strong>
+              </span>
+              <button className="ghost-button" onClick={() => setRestUntil(0)}>
+                Skip rest
+              </button>
+            </div>
+          )}
+          <p className="field-hint" style={{ marginTop: 18 }}>
+            Stop if an exercise causes pain. Your plan is guidance, not a
+            medical assessment.
+          </p>
+        </aside>
+      </div>
+      {error && (
+        <p className="notice tone-red" role="alert">
+          {error}
+        </p>
+      )}
+      <ConfirmDialog
+        open={confirmFinish}
+        title="Call it a session?"
+        confirmLabel="Finish with logged sets"
+        busy={finishing}
+        onCancel={() => setConfirmFinish(false)}
+        onConfirm={finish}
+      >
+        <p>
+          You logged {done} of {planned} planned sets. We’ll mark today’s
+          session finished and keep only the sets you actually logged. Stopping
+          early is okay.
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }
